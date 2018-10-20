@@ -6,4 +6,4 @@ cd public_html;
 composer install -n;
 cd ..;
 sudo docker build -t yamba:${version} .;
-sudo docker run -d --name yamba -p 80:80 yamba:${version};
+sudo docker run -d --net="host" --name yamba -p 80:80 yamba:${version};
