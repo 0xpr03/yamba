@@ -13,7 +13,15 @@ class UsersTable extends Table
     public function validationDefault(Validator $validator)
     {
         return $validator
-            ->notEmpty('email', 'An email is required')
+            ->notEmpty('email', 'A email-address is required')
             ->notEmpty('password', 'A password is required');
+    }
+
+    public function findAuth(\Cake\ORM\Query $query, array $options)
+    {
+        $query
+            ->select(['id', 'email', 'password', 'created', 'modified']);
+
+        return $query;
     }
 }

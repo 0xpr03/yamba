@@ -7,6 +7,8 @@
  */
 namespace App\Controller;
 use Cake\Event\Event;
+use Cake\ORM\TableRegistry;
+
 class UsersController extends AppController
 {
     public function beforeFilter(Event $event)
@@ -25,15 +27,29 @@ class UsersController extends AppController
     }
     public function add()
     {
-        $user = $this->Users->newEntity();
+        $usersTable = TableRegistry::get('Users');
+        $user = $usersTable->newEntity();
         if ($this->request->is('post')) {
-            // Prior to 3.4.0 $this->request->data() was used.
-            $user = $this->Users->patchEntity($user, $this->request->getData());
-            if ($this->Users->save($user)) {
-                $this->Flash->success(__('The user has been saved.'));
-                return $this->redirect(['action' => 'add']);
+            $email = $this->request->getData('email');
+            $password = $this->request->getData('password');
+            if (!isset($email, $password)) {
+                return $this->response->withStatus(400)->withStringBody('Bad request');
             }
-            $this->Flash->error(__('Unable to add the user.'));
+            $user->set('email', $email);
+            $user->set('password', $password);
+            $created = date("Y-m-d H:i:s");
+            $user->set('created', $created);
+            $user->set('modified', $created);
+            try {
+                if ($usersTable->save($user)) {
+                    $this->Flash->success(__('The user has been saved.'));
+                    return $this->redirect(['action' => 'login']);
+                } else {
+                    $this->Flash->error(__('Unable to add the user.'));
+                }
+            } catch (\PDOException $e) {
+                $this->Flash->error(__('This email address is assigned to another user!'));
+            }
         }
         $this->set('user', $user);
     }
