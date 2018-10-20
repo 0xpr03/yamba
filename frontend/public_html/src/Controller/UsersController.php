@@ -5,7 +5,9 @@
  * Date: 20.10.18
  * Time: 15:21
  */
+
 namespace App\Controller;
+
 use Cake\Event\Event;
 use Cake\ORM\TableRegistry;
 
@@ -16,15 +18,19 @@ class UsersController extends AppController
         parent::beforeFilter($event);
         $this->Auth->allow(['add', 'logout']);
     }
+
     public function index()
     {
-        $this->set('users', $this->Users->find('all'));
+        return $this->redirect(['action' => 'login']);
     }
+
     public function view($id)
     {
-        $user = $this->Users->get($id);
+        $usersTable = TableRegistry::get('Users');
+        $user = $usersTable->get($id);
         $this->set(compact('user'));
     }
+
     public function add()
     {
         $usersTable = TableRegistry::get('Users');
@@ -53,6 +59,7 @@ class UsersController extends AppController
         }
         $this->set('user', $user);
     }
+
     public function login()
     {
         if ($this->request->is('post')) {
@@ -64,6 +71,7 @@ class UsersController extends AppController
             $this->Flash->error(__('Invalid username or password, try again'));
         }
     }
+
     public function logout()
     {
         return $this->redirect($this->Auth->logout());
