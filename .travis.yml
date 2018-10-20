@@ -1,0 +1,26 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+matrix:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
+cache: cargo 
+before_install:
+  - sudo apt-get install -y vlc libvlc-dev libvlc5 vlc-data pulseaudio
+addons:
+  apt:
+    update: true
+  mariadb: '10.2'
+env:
+  - RUST_BACKTRACE=1
+before_cache:
+  - rm -f ~/.cargo/registry/lock
+  - rm -r backend/target/debug/config
+  - rm -r backend/target/debug/log
+script:
+  - cd backend
+  - cargo build --verbose
+  - cargo test --verbose
