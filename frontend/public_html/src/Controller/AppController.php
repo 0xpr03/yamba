@@ -12,10 +12,10 @@
  * @since     0.2.9
  * @license   https://opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace App\Controller;
 
 use Cake\Controller\Controller;
-use Cake\Event\Event;
 
 /**
  * Application Controller
@@ -51,15 +51,15 @@ class AppController extends Controller
                 'action' => 'login',
             ],
             'loginRedirect' => [
-                'controller' => 'Pages',
-                'action' => 'display'
+                'controller' => 'Music',
+                'action' => 'index'
             ],
             'logoutRedirect' => [
-                'controller' => 'Pages',
-                'action' => 'display',
+                'controller' => 'Users',
+                'action' => 'login',
                 'home'
             ],
-            'authError' => 'Did you really think you are allowed to see that?',
+            'authError' => 'Did you really think you were allowed to see that?',
             'authenticate' => [
                 'Form' => [
                     'fields' => [
@@ -76,8 +76,5 @@ class AppController extends Controller
          */
         //$this->loadComponent('Security');
     }
-    public function beforeFilter(Event $event)
-    {
-        $this->Auth->allow(['index', 'view', 'display']);
-    }
+
 }
