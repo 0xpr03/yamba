@@ -21,7 +21,6 @@ RUN apt-get update -q && apt-get install -qqy \
     
 WORKDIR /var/yamba
 
-COPY ./ts3client /opt/
 COPY ./target/release/yamba-backend ./
 
-CMD yamba-backend
+CMD cd /opt/ts3 && ls -la;
