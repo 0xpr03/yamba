@@ -46,8 +46,9 @@ CREATE TABLE `songs2playlists` (
   FOREIGN KEY (`playlist_id`) REFERENCES `playlists`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `usersNotConfirmed` (
+CREATE TABLE `users_not_confirmed` (
+  `confirmationToken` char(40) NOT NULL,
   `user_id` char(36) NOT NULL,
-  PRIMARY KEY (`user_id`),
+  PRIMARY KEY (`confirmationToken`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
