@@ -32,20 +32,23 @@ extern crate slog_async;
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
-extern crate config;
+extern crate config as config_rs;
 extern crate glob;
+extern crate reqwest;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 
 mod playback;
+mod config;
 
 use clap::{Arg,App,SubCommand};
 use failure::Fallible;
 use slog::Drain;
-use config::{File,Config};
-use glob::glob;
+
 
 use std::fs::{OpenOptions,DirBuilder};
 use std::thread;
-use std::ffi::OsStr;
 use std::time::Duration;
 use std::path::PathBuf;
 use std::sync::RwLock;
@@ -54,7 +57,7 @@ const DEFAULT_CONFIG_NAME: &'static str = "00-config.toml";
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 lazy_static! {
-	static ref SETTINGS: RwLock<Config> = RwLock::new(init_settings());
+	static ref SETTINGS: RwLock<config::ConfigRoot> = RwLock::new(config::init_settings().unwrap());
 }
 
 fn main() -> Fallible<()> {
@@ -123,19 +126,6 @@ fn main() -> Fallible<()> {
         }
     }
     Ok(())
-}
-
-fn init_settings() -> Config {
-    let mut settings = Config::default();
-    settings.merge(File::with_name(&format!("conf/{}",DEFAULT_CONFIG_NAME))).unwrap();
-    settings.merge(glob("conf/*")
-                    .unwrap()
-                    .map(|path| path.unwrap())
-                    .filter(|path| path.file_name() != Some(OsStr::new(DEFAULT_CONFIG_NAME)))
-                    .map(|path| File::from(path))
-                    .collect::<Vec<_>>()).unwrap();
-    //settings.set_default().unwrap();
-    settings
 }
 
 /// validate path input
