@@ -29,7 +29,7 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
     <?= $this->Html->css(['app', 'foundation.min', 'foundation-icons/foundation-icons']); ?>
     <?= $this->fetch('css') ?>
 
-    <?= $this->Html->script(['jquery-3.3.1.min', 'vendor/foundation.min', 'vendor/what-input']); ?>
+    <?= $this->Html->script(['vendor/jquery', 'vendor/foundation.min', 'vendor/what-input']); ?>
     <?= $this->fetch('script') ?>
 </head>
 <body>
