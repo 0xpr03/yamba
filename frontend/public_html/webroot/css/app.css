@@ -38,3 +38,14 @@ div.flash {
     margin: 0.5rem 0 0.5rem 0 !important;
     text-align: center;
 }
+
+label.required {
+    color: #152b2b;
+    font-weight: bold;
+}
+
+label.required:after {
+    color: #e32;
+    content: ' *';
+    display:inline;
+}

@@ -33,6 +33,10 @@ class UsersController extends AppController
 
     public function add()
     {
+        if ($this->isLoggedIn()) {
+            return $this->redirect($this->Auth->redirectUrl());
+        }
+
         $usersTable = TableRegistry::get('Users');
         $user = $usersTable->newEntity();
         if ($this->request->is('post')) {
@@ -62,6 +66,10 @@ class UsersController extends AppController
 
     public function login()
     {
+        if ($this->isLoggedIn()) {
+            return $this->redirect($this->Auth->redirectUrl());
+        }
+
         if ($this->request->is('post')) {
             $user = $this->Auth->identify();
             if ($user) {
@@ -75,5 +83,9 @@ class UsersController extends AppController
     public function logout()
     {
         return $this->redirect($this->Auth->logout());
+    }
+
+    public function isLoggedIn() {
+        return $this->request->getSession()->read('Auth.User');
     }
 }
