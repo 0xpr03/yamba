@@ -27,6 +27,8 @@ CREATE TABLE `songs` (
   `url` varchar(255) NOT NULL,
   `artist` varchar(50) NOT NULL,
   `length` varchar(50) NOT NULL,
+  `keep` bit NOT NULL,
+  `last_used` DATETIME NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
