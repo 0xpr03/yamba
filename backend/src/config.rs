@@ -28,12 +28,12 @@ pub struct ConfigDB {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigYtDL {
-    dir: String,
-    update_intervall: u8,
-    version_source: String,
-    version_key: String,
-    download_source: String,
-    timeout_version: u8,
+    pub dir: String,
+    pub update_intervall: u8,
+    pub version_source: String,
+    pub version_key: String,
+    pub download_source: String,
+    pub timeout_version: u8,
 }
 
 pub fn init_settings() -> Fallible<ConfigRoot> {
