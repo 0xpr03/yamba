@@ -1,7 +1,7 @@
 CREATE TABLE `users` (
   `id` char(36) NOT NULL,
-  `email` varchar(255) UNIQUE NOT NULL,
-  `password` varchar(255) NOT NULL,
+  `email` varchar(150) UNIQUE NOT NULL,
+  `password` varchar(150) NOT NULL,
   `created` DATETIME NOT NULL,
   `modified` DATETIME NOT NULL,
   PRIMARY KEY (`id`)
@@ -17,14 +17,14 @@ CREATE TABLE `permissions` (
 CREATE TABLE `streams` (
   `id` char(32) NOT NULL,
   `name` varchar(50) NOT NULL,
-  `url` varchar(255) NOT NULL,
+  `url` varchar(150) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `songs` (
   `id` char(32) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `url` varchar(255) NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `url` varchar(150) NOT NULL,
   `artist` varchar(50) NOT NULL,
   `length` varchar(50) NOT NULL,
   `keep` bit NOT NULL,
@@ -44,4 +44,10 @@ CREATE TABLE `songs2playlists` (
   PRIMARY KEY (`song_id`, `playlist_id`),
   FOREIGN KEY (`song_id`) REFERENCES `songs`(`id`),
   FOREIGN KEY (`playlist_id`) REFERENCES `playlists`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `usersNotConfirmed` (
+  `user_id` char(36) NOT NULL,
+  PRIMARY KEY (`user_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
