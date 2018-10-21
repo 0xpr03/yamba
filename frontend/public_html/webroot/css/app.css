@@ -1,0 +1,40 @@
+footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: #0a0a0a;
+    color: #fefefe;
+    font-size: 1.25rem;
+    text-align: center;
+    padding: 1rem;
+}
+
+.footer-copyright {
+    color: #cbcbcb;
+}
+
+a.footer-icon, a.footer-icon:visited {
+    color: inherit;
+}
+
+a.footer-icon:hover, a.footer-icon:active {
+    color: #808080;
+}
+
+.menu, .top-bar {
+    background: #2c3840 !important;
+}
+
+.menu-text-top {
+    color: #dddddd !important;
+}
+
+.divider {
+    padding: 1px;
+}
+
+div.flash {
+    margin: 0.5rem 0 0.5rem 0 !important;
+    text-align: center;
+}
