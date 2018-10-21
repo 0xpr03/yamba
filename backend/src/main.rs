@@ -22,20 +22,55 @@ extern crate failure_derive;
 extern crate vlc;
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate slog;
+extern crate slog_scope;
+extern crate slog_stdlog;
+extern crate slog_term;
+extern crate slog_async;
+#[macro_use]
+extern crate log;
 
 mod playback;
 
+use clap::{Arg,App,SubCommand};
+use failure::Fallible;
+use slog::Drain;
+
+use std::fs::OpenOptions;
+use std::fs::DirBuilder;
 use std::thread;
 use std::time::Duration;
-use clap::{Arg,App,SubCommand};
 use std::path::PathBuf;
-use failure::Fallible;
 
-const VERSION: &'static str = "0.1.0";
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 fn main() -> Fallible<()> {
-    println!("Hello, world!");
     
+    let mut log_path = PathBuf::from("log");
+    DirBuilder::new()
+        .recursive(true)
+        .create(&log_path).unwrap();
+    log_path.push("backend.log");
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(log_path)
+        .unwrap();
+
+    let decorator = slog_term::PlainDecorator::new(file);
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    let drain = slog_async::Async::new(drain).build().fuse();
+
+    let _log = slog::Logger::root(drain, o!());
+    
+    let _guard = slog_scope::set_global_logger(_log);
+    
+    slog_stdlog::init().unwrap();
+    
+    info!("Startup");
+
     let app = App::new("Clantool")
                     .version(VERSION)
                     .author(crate_authors!(",\n"))
@@ -57,22 +92,22 @@ fn main() -> Fallible<()> {
             
         },
         ("play-audio", Some(sub_m)) => {
-            println!("Audio play testing..");
+            info!("Audio play testing..");
             let instance = playback::Player::create_instance()?;
             let mut player = playback::Player::new(&instance)?;
             let path = get_path_for_existing_file(sub_m.value_of("file").unwrap()).unwrap();
             player.set_file(&path)?;
             player.play()?;
             
-            println!("File: {:?}",path);
+            debug!("File: {:?}",path);
             while !player.ended() {
-                println!("Position: {}",player.get_position());
+                trace!("Position: {}",player.get_position());
                 thread::sleep(Duration::from_millis(500));
             }
-            println!("Finished");
+            info!("Finished");
         },
         (c,_) => {
-            println!("Unknown command: {}",c);
+            warn!("Unknown command: {}",c);
         }
     }
     Ok(())
