@@ -1,11 +1,14 @@
-<div class="users form">
-    <?= $this->Flash->render() ?>
-    <?= $this->Form->create() ?>
-    <fieldset>
+<?= $this->Form->create() ?>
+<div class="row">
+    <fieldset class="fieldset">
         <legend><?= __('Please enter your username and password') ?></legend>
-        <?= $this->Form->control('email') ?>
-        <?= $this->Form->control('password') ?>
+        <div class="medium-6 cell">
+            <?= $this->Form->control('email', ['placeholder' => 'example@mail.net']) ?>
+        </div>
+        <div class="medium-6 cell">
+            <?= $this->Form->control('password', ['placeholder' => 'Not 1234']) ?>
+        </div>
+        <?= $this->Form->button(__('Login'), ['class' => 'button expanded']); ?>
     </fieldset>
-    <?= $this->Form->button(__('Login')); ?>
-    <?= $this->Form->end() ?>
 </div>
+<?= $this->Form->end() ?>
