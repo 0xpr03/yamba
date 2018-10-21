@@ -23,7 +23,7 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
     <title>
         <?= $this->fetch('title') ?> - Yamba
     </title>
-    <?= $this->Html->meta('icon') ?>
+    <?= $this->Html->meta('icon', 'img/favicon.ico', ['type'=>'icon']) ?>
     <?= $this->fetch('meta') ?>
 
     <?= $this->Html->css(['app', 'foundation.min', 'foundation-icons/foundation-icons']); ?>
@@ -33,25 +33,13 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
     <?= $this->fetch('script') ?>
 </head>
 <body>
-<nav class="top-bar" data-topbar role="navigation">
-    <div class="top-bar-left">
-        <ul class="menu" data-dropdown-menu>
-            <li class="menu-text menu-text-top"><?= $this->fetch('title') ?></li>
-        </ul>
-    </div>
-    <div class="top-bar-right">
-        <ul class="menu">
-            <li><a type="button" class="button" title="Start/Stop Yamba"><i class="fi-power"></i></a></li>
-            <li class="divider"></li>
-            <li><?= $this->Html->link(
-                'Logout',
-                ['controller' => 'Users', 'action' => 'logout'],
-                ['class' => 'button']);
-                ?>
-            </li>
-        </ul>
-    </div>
-</nav>
+<?php
+    if($this->request->getSession()->read('Auth.User')) {
+        echo $this->element('Topbar/loggedIn');
+    } else {
+        echo $this->element('Topbar/default');
+    }
+?>
 <?= $this->Flash->render() ?>
 <div class="grid-container">
     <?= $this->fetch('content') ?>
@@ -59,7 +47,7 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
 <footer>
     <div class="row">
         <span class="footer-copyright">© 2018–<?= date('Y')?> Yamba Authors</span>
-        <a class="footer-icon" href="https://github.com/0xpr03/yamba"><i class="fi-social-github"></i></a>
+        <a class="footer-icon" href="https://github.com/0xpr03/yamba" target="_blank"><i class="fi-social-github"></i></a>
     </div>
 </footer>
 <?= $this->Html->script('app'); ?>
