@@ -64,6 +64,7 @@ lazy_static! {
 }
 
 fn main() -> Fallible<()> {
+    println!("YAMBA BACKEND");
     
     let mut log_path = PathBuf::from("log");
     DirBuilder::new()
