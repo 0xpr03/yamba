@@ -2,7 +2,12 @@
 git pull && version=$(git rev-parse HEAD) || version=testing;
 echo "Version=${version}";
 echo "Building executable... ";
+cd ./deamon/
 RUST_BACKTRACE=1 cargo build --release
+cd ..
+cd ./ts3plugin//
+RUST_BACKTRACE=1 cargo build --release
+cd ..
 if [ ! -d "ts3client" ]; then
     chmod +x ./ts3-dl.sh
     ./ts3-dl.sh

@@ -21,7 +21,7 @@ RUN apt-get update -q && apt-get install -qqy \
     
 WORKDIR /var/yamba
 
-COPY ./target/release/yamba-backend ./
+COPY ./deamon/target/release/yamba-backend ./
 COPY ./ts3-start.sh ./
 
 CMD /var/yamba/yamba-backend
