@@ -1,2 +1,3 @@
 * 
-!target/release/yamba-backend
+!deamon
+!ts3plugin
