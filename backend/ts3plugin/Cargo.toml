@@ -1,6 +1,12 @@
 [package]
-name = "ts3plugin"
+name = "yamba-plugin"
 version = "0.1.0"
-authors = ["Oliver Habersetzer <oliver.habersetzer@gmail.com>"]
+authors = ["Aron Heinecke <aron.heinecke@t-online.de>","Oliver Habersetzer <oliver.habersetzer@gmail.com>"]
+
+[lib]
+name = "yamba_plugin"
+crate-type = ["dylib"]
 
 [dependencies]
+ts3plugin = "0.2"
+lazy_static = "1.1"
