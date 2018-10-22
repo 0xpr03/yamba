@@ -54,7 +54,6 @@ use std::fs::{OpenOptions,DirBuilder};
 use std::thread;
 use std::time::Duration;
 use std::path::PathBuf;
-use std::sync::RwLock;
 
 const DEFAULT_CONFIG_NAME: &'static str = "00-config.toml";
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -107,7 +106,7 @@ fn main() -> Fallible<()> {
                     .get_matches();
     
     match app.subcommand() {
-        ("init", Some(sub_m)) => {
+        ("init", Some(_)) => {
             let downloader = ytdl::YtDL::new()?;
             info!("Downloader startup test success: {}", downloader.startup_test());
         },

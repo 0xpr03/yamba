@@ -31,8 +31,6 @@ use sha2::{Sha256, Digest};
 use http;
 use ::SETTINGS;
 
-const UPDATE_VERSION_URL: &'static str = "https://rg3.github.io/youtube-dl/update/versions.json"; // youtube-dl version check url
-const UPDATE_DOWNLOAD_URL: &'static str = "https://yt-dl.org/downloads/latest/youtube-dl"; // youtube-dl update url
 const UPDATE_VERSION_KEY: &'static str = "latest"; // key in the json map
 const VERSIONS_KEY: &'static str = "versions"; // key for versions sub group
 const VERSION_BIN_KEY: &'static str = "bin"; // key for versions sub group
@@ -47,8 +45,6 @@ lazy_static! {
 pub enum YtDLErr {
     #[fail(display = "{}", _0)]
     Io(#[cause] io::Error),
-    #[fail(display= "Lock poisoned")]
-    LockPoison,
     #[fail(display = "Json invalid input {}",_0)]
     JsonError(&'static str),
     #[fail(display = "Invalid response {}",_0)]
@@ -64,10 +60,12 @@ pub struct Version {
 }
 
 pub struct YtDL {
+    // base dir from which ytdl is called
     base: PathBuf
 }
 
 impl YtDL {
+    /// Creates a new YtDL struct, expects SETTINGS
     pub fn new() -> Fallible<YtDL> {
         let start_path = PathBuf::from(&SETTINGS.ytdl.dir);
         let path;
@@ -142,7 +140,8 @@ impl YtDL {
         }
     }
     
-    /// Update yt-dl
+    /// Update yt-dl, blocks untill complection.
+    /// Blocks new jobs untill finish & waits till current jobs are completed.
     pub fn update_downloader(&self) -> Fallible<()> {
         let latest = YtDL::latest_version()?;
         // if the guard is poinsoned, we can't do anything anymore
@@ -195,6 +194,7 @@ impl YtDL {
         Ok(())
     }
 
+    /// Set permissions for executable
     fn set_permissions(&self) -> Fallible<()> {
         debug!("permission application: {:?}",self.get_exec_path());
         let metadata = self.get_exec_path().metadata()?;
@@ -205,6 +205,7 @@ impl YtDL {
     }
 
     /// Check sha256 of current exec
+    /// expected is a hexadecimal representation of the expected hash
     fn check_sha256(&self, expected: &str) -> Fallible<bool> {
         let mut file = File::open(self.get_exec_path())?;
         let mut sha2 = Sha256::default();
@@ -228,7 +229,7 @@ impl YtDL {
     }
 
     /// Inner update method, downloads latest version to target
-    /// Doesn't make any lock checks!
+    /// Doesn't perform any lock checks!
     fn download_latest(&self, target: &Path, hash: &str) -> Fallible<()> {
         http::get_file(&SETTINGS.ytdl.download_source,&target)?;
         if self.check_sha256(hash)? {

@@ -17,7 +17,6 @@
 use std::path::Path;
 
 use vlc::{self,Instance, Media, MediaPlayer};
-use std::thread;
 use failure::Fallible;
 
 #[derive(Fail, Debug)]
@@ -37,42 +36,44 @@ pub struct Player<'a> {
 }
 
 impl <'a>Player<'a> {
+    /// Creates a new instance of libvlc
     pub fn create_instance() -> Fallible<Instance> {
         let instance = Instance::new().ok_or(PlaybackErr::Instance("can't create a new player instance"))?;
         Ok(instance)
     }
-
+    /// Create new Player with given instance
     pub fn new(instance: &'a Instance) -> Fallible<Player<'a>> {
+        debug!("player init");
         Ok(Player {
             media: None,
             player: MediaPlayer::new(instance).ok_or(PlaybackErr::Player("can't create player"))?,
             instance,
         })
     }
-    
+    /// Set file to play
     pub fn set_file(&mut self, file: &Path) -> Fallible<()> {
         self.media = Some(Media::new_path(self.instance,file).ok_or(PlaybackErr::Media("can't create media for file"))?);
         self.player.set_media(self.media.as_ref().unwrap());
         
         Ok(())
     }
-    
+    /// Play current media
     pub fn play(&self) -> Fallible<()> {
         self.player.play().unwrap();
         Ok(())
     }
-    
+    /// Check whether player is playing
     pub fn is_playing(&self) -> bool {
         self.player.is_playing()
     }
-    
+    /// Get position of player from 0.0 to 1.0 in media
     pub fn get_position(&self) -> f32 {
         match self.player.get_position() {
             Some(v) => v,
             None => 0.0
         }
     }
-    
+    /// Check whether current media has ended playing, false when no media is set
     pub fn ended(&self) -> bool {
         match self.media {
             Some(ref m) => m.state() == vlc::State::Ended,
@@ -85,7 +86,8 @@ impl <'a>Player<'a> {
 mod tests {
     use super::*;
     use std::time::Duration;
-    
+    use std::thread;
+
     #[test]
     fn libvlc_minimal_playback() {
         // Create an instance

@@ -52,12 +52,14 @@ pub struct ConfigYtDL {
     pub timeout_version: u8,
 }
 
+/// Init settings
 pub fn init_settings() -> Fallible<ConfigRoot> {
     let settings = load_settings()?;
     let parsed = settings.try_into::<ConfigRoot>()?;
     Ok(parsed)
 }
 
+/// Load full settings
 fn load_settings() -> Fallible<Config> {
     let mut settings = load_default()?;
     settings.merge(glob("conf/*")
@@ -70,6 +72,7 @@ fn load_settings() -> Fallible<Config> {
     Ok(settings)
 }
 
+/// Load default config file
 fn load_default() -> Fallible<Config> {
     let mut settings = Config::default();
     settings.merge(File::with_name(&format!("conf/{}",DEFAULT_CONFIG_NAME)))?;
