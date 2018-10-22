@@ -38,14 +38,17 @@ extern crate reqwest;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate json;
+extern crate sha2;
 
 mod playback;
 mod config;
+mod ytdl;
+mod http;
 
 use clap::{Arg,App,SubCommand};
 use failure::Fallible;
 use slog::Drain;
-
 
 use std::fs::{OpenOptions,DirBuilder};
 use std::thread;
@@ -57,7 +60,7 @@ const DEFAULT_CONFIG_NAME: &'static str = "00-config.toml";
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 lazy_static! {
-	static ref SETTINGS: RwLock<config::ConfigRoot> = RwLock::new(config::init_settings().unwrap());
+	static ref SETTINGS: config::ConfigRoot = config::init_settings().unwrap();
 }
 
 fn main() -> Fallible<()> {
@@ -104,7 +107,8 @@ fn main() -> Fallible<()> {
     
     match app.subcommand() {
         ("init", Some(sub_m)) => {
-            
+            let downloader = ytdl::YtDL::new()?;
+            info!("Downloader startup test success: {}", downloader.startup_test());
         },
         ("play-audio", Some(sub_m)) => {
             info!("Audio play testing..");
