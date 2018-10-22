@@ -25,4 +25,4 @@ impl Plugin for MyTsPlugin {
 
 create_plugin!(
     PLUGIN_NAME_I, env!("CARGO_PKG_VERSION"), env!("CARGO_PKG_AUTHORS"), "yamba ts3 controller",
-    ConfigureOffer::No, false, MyTsPlugin);
+    ConfigureOffer::No, true, MyTsPlugin);
