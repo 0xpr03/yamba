@@ -1,0 +1,6 @@
+[package]
+name = "ts3plugin"
+version = "0.1.0"
+authors = ["Oliver Habersetzer <oliver.habersetzer@gmail.com>"]
+
+[dependencies]
