@@ -81,6 +81,13 @@ impl YtDL {
         })
     }
 
+    /// Get url info
+    fn get_url_info(&self, url: &str) -> Fallible<JsonValue> {
+        let _guard = LOCK.read().unwrap();
+        let result = self.cmd_base().arg("-j").arg(url).output()?;
+        Ok(json::parse(&String::from_utf8_lossy(&result.stdout))?)
+    }
+
     /// get executable path
     fn get_exec_path(&self) -> PathBuf {
         self.base.join(YTDL_NAME)
