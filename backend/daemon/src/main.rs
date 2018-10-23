@@ -103,6 +103,13 @@ fn main() -> Fallible<()> {
                             .validator(validator_path)
                             .takes_value(true)
                             .help("audio file")))
+                    .subcommand(SubCommand::with_name("play-url")
+                        .about("Test command to play audio")
+                        .arg(Arg::with_name("url")
+                            .short("u")
+                            .required(true)
+                            .takes_value(true)
+                            .help("media url")))
                     .get_matches();
     
     match app.subcommand() {
@@ -125,6 +132,21 @@ fn main() -> Fallible<()> {
             }
             info!("Finished");
         },
+        ("play-url", Some(sub_m)) => {
+            info!("Url play testing..");
+            let instance = playback::Player::create_instance()?;
+            let mut player = playback::Player::new(&instance)?;
+            let url = sub_m.value_of("url").unwrap();
+            player.set_url(&url)?;
+            player.play()?;
+            
+            debug!("url: {:?}",url);
+            while !player.ended() {
+                trace!("Position: {}",player.get_position());
+                thread::sleep(Duration::from_millis(500));
+            }
+            info!("Finished");
+        }
         (c,_) => {
             warn!("Unknown command: {}",c);
         }
