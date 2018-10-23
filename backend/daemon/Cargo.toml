@@ -6,7 +6,6 @@ authors = ["Aron Heinecke <aron.heinecke@t-online.de>"]
 [dependencies]
 failure = "0.1"
 failure_derive = "0.1"
-vlc-rs = "0.3"
 clap = "2"
 log = "0.4"
 slog = "2.4"
@@ -22,3 +21,7 @@ serde = "1.0"
 serde_derive = "1.0"
 json = "0.11"
 sha2 = "0.8"
+
+[dependencies.vlc-rs]
+git = "https://github.com/0xpr03/vlc-rs"
+branch = "feature_args"

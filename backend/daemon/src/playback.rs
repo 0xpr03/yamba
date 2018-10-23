@@ -38,7 +38,9 @@ pub struct Player<'a> {
 impl <'a>Player<'a> {
     /// Creates a new instance of libvlc
     pub fn create_instance() -> Fallible<Instance> {
-        let instance = Instance::new().ok_or(PlaybackErr::Instance("can't create a new player instance"))?;
+        let mut args: Vec<String> = Vec::new();
+        args.push("--no-video".to_string());
+        let instance = Instance::new(Some(args)).ok_or(PlaybackErr::Instance("can't create a new player instance"))?;
         Ok(instance)
     }
     /// Create new Player with given instance
@@ -104,7 +106,7 @@ mod tests {
     #[test]
     fn libvlc_minimal_playback() {
         // Create an instance
-        let instance = Instance::new().unwrap();
+        let instance = Instance::new(None).unwrap();
         // Create a media from a file
         //https://cdn.online-convert.com/example-file/audio/ogg/example.ogg
         let md = Media::new_path(&instance, "example.ogg").unwrap();
