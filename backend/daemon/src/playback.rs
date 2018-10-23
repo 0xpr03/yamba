@@ -62,7 +62,7 @@ impl <'a>Player<'a> {
     /// Set file to play
     pub fn set_file(&mut self, file: &Path) -> Fallible<()> {
         self.media = Some(Media::new_path(self.instance,file).ok_or(PlaybackErr::Media("can't create media for file"))?);
-        self.media.as_ref().unwrap().parse();
+        self.media.as_ref().unwrap().parse_async();
         self.player.set_media(self.media.as_ref().unwrap());
         
         Ok(())
@@ -107,12 +107,12 @@ mod tests {
         let instance = Instance::new().unwrap();
         // Create a media from a file
         //https://cdn.online-convert.com/example-file/audio/ogg/example.ogg
-        let md = Media::new_location(&instance, "https://cdn.online-convert.com/example-file/audio/ogg/example.ogg").unwrap();
+        let md = Media::new_path(&instance, "example.ogg").unwrap();
         println!("State: {:?}",md.state());
         md.parse();
-        // while !md.is_parsed() {
-        //     thread::sleep(Duration::from_millis(10));
-        // }
+        while !md.is_parsed() {
+            thread::sleep(Duration::from_millis(10));
+        }
         println!("State: {:?}",md.state());
         println!("Parsed: {}",md.is_parsed());
         println!("Tracks: {:?}",md.tracks());
@@ -122,7 +122,7 @@ mod tests {
         } else {
             println!("No duration!");
         }
-        //assert_eq!(Some(34000),md.duration());
+        assert_eq!(Some(34000),md.duration());
         // Create a media player
         let mdp = MediaPlayer::new(&instance).unwrap();
         mdp.set_media(&md);
