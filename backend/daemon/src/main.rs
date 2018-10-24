@@ -49,7 +49,7 @@ mod http;
 use clap::{Arg,App,SubCommand};
 use failure::Fallible;
 
-use std::fs::{File,OpenOptions,DirBuilder,metadata};
+use std::fs::{File,DirBuilder,metadata};
 use std::io::Write;
 use std::thread;
 use std::time::Duration;
@@ -139,7 +139,7 @@ fn main() -> Fallible<()> {
             thread::sleep(Duration::from_millis(5000));
             info!("Finished");
         },
-        (c,_) => {
+        (_,_) => {
             warn!("No params, entering daemon mode");
             loop {
                 thread::sleep(Duration::from_millis(500));
