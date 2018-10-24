@@ -41,6 +41,11 @@ extern crate serde_derive;
 extern crate json;
 extern crate sha2;
 
+use std::alloc::System;
+
+#[global_allocator]
+static GLOBAL: System = System;
+
 mod playback;
 mod config;
 mod ytdl;
