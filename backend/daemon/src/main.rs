@@ -140,9 +140,13 @@ fn main() -> Fallible<()> {
             info!("Finished");
         },
         (c,_) => {
-            warn!("Unknown command: {}",c);
+            warn!("No params, entering daemon mode");
+            loop {
+                thread::sleep(Duration::from_millis(500));
+            }
         }
     }
+    info!("Shutdown of yamba daemon");
     Ok(())
 }
 
