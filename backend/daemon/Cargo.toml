@@ -24,4 +24,4 @@ sha2 = "0.8"
 
 [dependencies.vlc-rs]
 git = "https://github.com/0xpr03/vlc-rs"
-branch = "feature_args"
+branch = "merge_master"

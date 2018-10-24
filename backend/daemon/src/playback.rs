@@ -53,6 +53,12 @@ impl <'a>Player<'a> {
         })
     }
 
+    /// Set volume
+    pub fn set_volume(&self, volume: i32) -> Fallible<()> {
+        self.player.set_volume(volume). ok_or(PlaybackErr::Player("can't set volume"))?;
+        Ok(())
+    }
+
     /// Set url as media
     pub fn set_url(&mut self, url: &str) -> Fallible<()> {
         self.media = Some(Media::new_location(self.instance,url).ok_or(PlaybackErr::Media("can't create media for url"))?);
