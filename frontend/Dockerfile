@@ -28,12 +28,13 @@ RUN apt-get update -q && apt-get install -qqy \
 
 WORKDIR /var/www/html
 
+# Add config files
 COPY public_html/index.php ./
 COPY public_html/bin ./bin
-COPY public_html/config ./config
 COPY nginx.conf /etc/nginx/sites-available/default
 COPY public_html/composer.json ./
 COPY public_html/composer.lock ./
+COPY public_html/config ./config
 
 RUN COMPOSER_ALLOW_SUPERUSER=1 composer install -n \
     # Define logsDir
@@ -48,7 +49,9 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer install -n \
     && chmod -R g+rw cakeLogsDir tmp \
     && ln -s cakeLogsDir logs
 
+# Add source files
 COPY public_html/src ./src
 COPY public_html/webroot ./webroot
+COPY public_html/copyEnvVars.sh .
 
-CMD service php7.0-fpm start && nginx -g "daemon off;"
+CMD /bin/bash -c ./copyEnvVars.sh && service php7.0-fpm start && nginx -g "daemon off;"
