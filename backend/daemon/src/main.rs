@@ -28,7 +28,6 @@ extern crate log;
 #[macro_use]
 extern crate lazy_static;
 extern crate config as config_rs;
-extern crate glob;
 extern crate reqwest;
 extern crate serde;
 #[macro_use]

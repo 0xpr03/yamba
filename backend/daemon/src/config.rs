@@ -14,10 +14,13 @@
  *  You should have received a copy of the GNU General Public License
  *  along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+use std::ffi::OsStr;
+use std::env::current_dir;
+use std::fs::read_dir;
+
 use failure::Fallible;
 use config_rs::{File,Config};
-use glob::glob;
-use std::ffi::OsStr;
 
 use ::DEFAULT_CONFIG_NAME;
 
@@ -62,13 +65,16 @@ pub fn init_settings() -> Fallible<ConfigRoot> {
 /// Load full settings
 fn load_settings() -> Fallible<Config> {
     let mut settings = load_default()?;
-    settings.merge(glob("conf/*")
-                    .unwrap()
-                    .map(|path| path.unwrap())
-                    .filter(|path| path.file_name() != Some(OsStr::new(DEFAULT_CONFIG_NAME)))
-                    .map(|path| File::from(path))
-                    .collect::<Vec<_>>())?;
-    //settings.set_default().unwrap();
+    let config_folder = current_dir()?;
+    let config_files: Vec<_> = read_dir(config_folder)?.filter_map(|x| x.ok()).filter(|x| {
+            match x.metadata() {
+                Ok(metadata) => metadata.is_file() && x.path().file_name() != Some(OsStr::new(DEFAULT_CONFIG_NAME))
+                    && x.path().extension() == Some(OsStr::new("toml")),
+                Err(e) => { warn!("can't handle {:?} during config loading: {}",x, e); false }
+            }
+        })
+        .map(|x| File::from(x.path())).collect();
+    settings.merge(config_files)?;
     Ok(settings)
 }
 
