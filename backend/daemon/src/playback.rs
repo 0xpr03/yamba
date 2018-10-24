@@ -17,7 +17,6 @@
 use std::path::Path;
 
 use vlc::{self,Instance, Media, MediaPlayer};
-use std::thread;
 use failure::Fallible;
 
 #[derive(Fail, Debug)]
@@ -37,42 +36,65 @@ pub struct Player<'a> {
 }
 
 impl <'a>Player<'a> {
+    /// Creates a new instance of libvlc
     pub fn create_instance() -> Fallible<Instance> {
-        let instance = Instance::new().ok_or(PlaybackErr::Instance("can't create a new player instance"))?;
+        let mut args: Vec<String> = Vec::new();
+        args.push("--no-video".to_string());
+        let instance = Instance::new(Some(args)).ok_or(PlaybackErr::Instance("can't create a new player instance"))?;
         Ok(instance)
     }
-
+    /// Create new Player with given instance
     pub fn new(instance: &'a Instance) -> Fallible<Player<'a>> {
+        debug!("player init");
         Ok(Player {
             media: None,
             player: MediaPlayer::new(instance).ok_or(PlaybackErr::Player("can't create player"))?,
             instance,
         })
     }
-    
-    pub fn set_file(&mut self, file: &Path) -> Fallible<()> {
-        self.media = Some(Media::new_path(self.instance,file).ok_or(PlaybackErr::Media("can't create media for file"))?);
+
+    /// Set volume
+    pub fn set_volume(&self, volume: i32) -> Fallible<()> {
+        self.player.set_volume(volume). ok_or(PlaybackErr::Player("can't set volume"))?;
+        Ok(())
+    }
+
+    /// Set url as media
+    pub fn set_url(&mut self, url: &str) -> Fallible<()> {
+        self.media = Some(Media::new_location(self.instance,url).ok_or(PlaybackErr::Media("can't create media for url"))?);
         self.player.set_media(self.media.as_ref().unwrap());
         
         Ok(())
     }
-    
-    pub fn play(&self) -> Fallible<()> {
-        self.player.play().unwrap();
+
+    /// Set file to play
+    pub fn set_file(&mut self, file: &Path) -> Fallible<()> {
+        self.media = Some(Media::new_path(self.instance,file).ok_or(PlaybackErr::Media("can't create media for file"))?);
+        self.media.as_ref().unwrap().parse_async();
+        self.player.set_media(self.media.as_ref().unwrap());
+        
         Ok(())
     }
-    
+    /// Play current media
+    pub fn play(&self) -> Fallible<()> {
+        match self.player.play() {
+            Ok(_) => Ok(()),
+            Err(_ ) => Err(PlaybackErr::Player("can't play media").into())
+        }
+    }
+    /// Check whether player is playing
     pub fn is_playing(&self) -> bool {
         self.player.is_playing()
     }
-    
+
+    /// Get position of player from 0.0 to 1.0 in media
     pub fn get_position(&self) -> f32 {
         match self.player.get_position() {
             Some(v) => v,
             None => 0.0
         }
     }
-    
+    /// Check whether current media has ended playing, false when no media is set
     pub fn ended(&self) -> bool {
         match self.media {
             Some(ref m) => m.state() == vlc::State::Ended,
@@ -85,11 +107,12 @@ impl <'a>Player<'a> {
 mod tests {
     use super::*;
     use std::time::Duration;
-    
+    use std::thread;
+
     #[test]
     fn libvlc_minimal_playback() {
         // Create an instance
-        let instance = Instance::new().unwrap();
+        let instance = Instance::new(None).unwrap();
         // Create a media from a file
         //https://cdn.online-convert.com/example-file/audio/ogg/example.ogg
         let md = Media::new_path(&instance, "example.ogg").unwrap();
