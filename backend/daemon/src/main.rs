@@ -108,8 +108,8 @@ fn main() -> Fallible<()> {
                             .validator(validator_path)
                             .takes_value(true)
                             .help("audio file")))
-                    .subcommand(SubCommand::with_name("play-url")
-                        .about("Test command to play audio")
+                    .subcommand(SubCommand::with_name("test-url")
+                        .about("Test playback on url, for test use")
                         .arg(Arg::with_name("url")
                             .short("u")
                             .required(true)
@@ -137,19 +137,30 @@ fn main() -> Fallible<()> {
             }
             info!("Finished");
         },
-        ("play-url", Some(sub_m)) => {
+        ("test-url", Some(sub_m)) => {
             info!("Url play testing..");
             let instance = playback::Player::create_instance()?;
+            {
             let mut player = playback::Player::new(&instance)?;
             let url = sub_m.value_of("url").unwrap();
-            player.set_url(&url)?;
-            player.play()?;
-            
-            debug!("url: {:?}",url);
-            while !player.ended() {
-                trace!("Position: {}",player.get_position());
-                thread::sleep(Duration::from_millis(500));
+            for i in 0..100 {
+                player.set_url(&url)?;
+                player.play()?;
+                
+                debug!("url: {:?}",url);
+                while !player.ended() {
+                    trace!("Position: {}",player.get_position());
+                    thread::sleep(Duration::from_millis(250));
+                    // play around with volume
+                    player.set_volume((player.get_position() * 1000.0) as i32 % 100)?;
+                }
+                println!("playthough finished {}",i);
             }
+            drop(player);
+            }
+            drop(instance);
+            info!("finished, waiting..");
+            thread::sleep(Duration::from_millis(5000));
             info!("Finished");
         }
         (c,_) => {
