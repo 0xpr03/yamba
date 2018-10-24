@@ -1,7 +1,18 @@
 version: '3'
 
 services:
-  yamba_frontend:
+  database:
+    image: mariadb:10.3.10-bionic
+    restart: always
+    ports:
+    - 3306:3306
+    volumes:
+    - ./dbInit:/docker-entrypoint-initdb.d
+    - ./database:/var/lib/mysql
+    env_file:
+    - ./secrets/database.env
+
+  frontend:
     build: ./frontend
     ports:
       - 80:80
@@ -12,14 +23,3 @@ services:
       - ./secrets/frontend.env
       - ./secrets/database.env
   # yamba_backend:
-
-  database:
-    image: mariadb:10.3.10-bionic
-    restart: always
-    ports:
-      - 3306:3306
-    volumes:
-      - ./dbInit:/docker-entrypoint-initdb.d
-      - ./database:/var/lib/mysql
-    env_file:
-      - ./secrets/database.env
