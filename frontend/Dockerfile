@@ -9,8 +9,6 @@ EXPOSE 80
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -q && apt-get install -qqy \
-    # Install tools
-    vim \
     # Install php
     php7.0-fpm \
     php7.0-mbstring \
@@ -19,6 +17,9 @@ RUN apt-get update -q && apt-get install -qqy \
     php7.0-mysql \
     php7.0-zip \
     php7.0-sqlite3 \
+    # Install tools
+    vim \
+    composer \
     # Install nginx
     nginx \
     # Delete apt cache
@@ -29,11 +30,14 @@ WORKDIR /var/www/html
 
 COPY public_html/index.php ./
 COPY public_html/bin ./bin
-COPY public_html/vendor ./vendor
 COPY public_html/config ./config
 COPY nginx.conf /etc/nginx/sites-available/default
+COPY public_html/composer.json ./
+COPY public_html/composer.lock ./
 
-RUN cakeLogsDir=/var/log/cake/logs \
+RUN COMPOSER_ALLOW_SUPERUSER=1 composer install -n \
+    # Define logsDir
+    && cakeLogsDir=/var/log/cake/logs \
     # Override app config with default
     cp ./config/app.default.php ./config/app.php \
     # Configure random salt (hashing value for cake)
