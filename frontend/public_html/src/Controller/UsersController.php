@@ -44,9 +44,6 @@ class UsersController extends AppController
             }
             $user->set('email', $email);
             $user->set('password', $password);
-            $created = date("Y-m-d H:i:s");
-            $user->set('created', $created);
-            $user->set('modified', $created);
             try {
                 if ($usersTable->save($user)) {
                     $confirmedTable = TableRegistry::get('UsersNotConfirmed');
