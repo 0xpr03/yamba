@@ -1,0 +1,28 @@
+# yamba daemon log configuration
+# Scan this file for changes every 30 seconds
+refresh_rate: 30 seconds
+
+appenders:
+  # An appender named "stdout" that writes to stdout
+  stdout:
+    kind: console
+
+  # An appender named "fileappender" that writes to a file with a custom pattern encoder
+  fileappender:
+    kind: file
+    path: "log/daemon.log"
+    encoder:
+      pattern: "{d(%d-%m-%Y %H:%M:%S)}	{l}	{f}:{L}  {m}{n}"
+
+# Set default to warn, lower for own module
+# prevents spam from other systems
+root:
+  level: warn
+  appenders:
+    - fileappender
+    - stdout
+
+loggers:
+  # Lower level for ourselfs
+  yamba_backend:
+    level: trace
