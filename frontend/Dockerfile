@@ -40,8 +40,6 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer install -n \
     && cakeLogsDir=/var/log/cake/logs \
     # Override app config with default
     cp ./config/app.default.php ./config/app.php \
-    # Configure random salt (hashing value for cake)
-    && sed -i -e "s/__SALT__/$(date +%s | sha256sum | base64 | head -c 64 ; echo)/" config/app.php \
     # Create and configure logs and tmp directory
     && mkdir -p cakeLogsDir tmp \
     && chgrp -R www-data cakeLogsDir tmp \
