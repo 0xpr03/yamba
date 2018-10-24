@@ -18,6 +18,7 @@ RUN apt-get update -q && apt-get install -qqy \
     php7.0-xml \
     php7.0-mysql \
     php7.0-zip \
+    php7.0-sqlite3 \
     # Install nginx
     nginx \
     # Delete apt cache

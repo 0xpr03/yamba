@@ -10,13 +10,15 @@ namespace App\Controller;
 
 use Cake\Event\Event;
 use Cake\ORM\TableRegistry;
+use Cake\Mailer\MailerAwareTrait;
+use Cake\Utility\Security;
 
 class UsersController extends AppController
 {
     public function beforeFilter(Event $event)
     {
         parent::beforeFilter($event);
-        $this->Auth->allow(['add', 'logout']);
+        $this->Auth->allow(['add', 'logout', 'verify']);
     }
 
     public function index()
@@ -24,15 +26,14 @@ class UsersController extends AppController
         return $this->redirect(['action' => 'login']);
     }
 
-    public function view($id)
-    {
-        $usersTable = TableRegistry::get('Users');
-        $user = $usersTable->get($id);
-        $this->set(compact('user'));
-    }
+    use MailerAwareTrait;
 
     public function add()
     {
+        if ($this->isLoggedIn()) {
+            return $this->redirect($this->Auth->redirectUrl());
+        }
+
         $usersTable = TableRegistry::get('Users');
         $user = $usersTable->newEntity();
         if ($this->request->is('post')) {
@@ -48,8 +49,18 @@ class UsersController extends AppController
             $user->set('modified', $created);
             try {
                 if ($usersTable->save($user)) {
-                    $this->Flash->success(__('The user has been saved.'));
-                    return $this->redirect(['action' => 'login']);
+                    $confirmedTable = TableRegistry::get('UsersNotConfirmed');
+                    $confirmed = $confirmedTable->newEntity();
+                    $confirmed->set('user_id', $user->get('id'));
+                    $confirmed->set('confirmationToken', Security::hash($user->get('id')));
+                    if($confirmedTable->save($confirmed)) {
+                        $this->getMailer('User')->send('welcome', [$user, $confirmed]);
+                        $this->Flash->success(__('An activation link has been sent to ') . $user->get('email'));
+                        return $this->redirect(['action' => 'login']);
+                    } else {
+                        $this->Flash->error(__('Unable to add the user.'));
+                        $usersTable->delete($user);
+                    }
                 } else {
                     $this->Flash->error(__('Unable to add the user.'));
                 }
@@ -62,6 +73,10 @@ class UsersController extends AppController
 
     public function login()
     {
+        if ($this->isLoggedIn()) {
+            return $this->redirect($this->Auth->redirectUrl());
+        }
+
         if ($this->request->is('post')) {
             $user = $this->Auth->identify();
             if ($user) {
@@ -75,5 +90,16 @@ class UsersController extends AppController
     public function logout()
     {
         return $this->redirect($this->Auth->logout());
+    }
+
+    public function isLoggedIn() {
+        return $this->request->getSession()->read('Auth.User');
+    }
+
+    public function verify($token) {
+        $confirmTable = TableRegistry::get('UsersNotConfirmed');
+        $confirmTable->delete($confirmTable->get($token));
+        $this->Flash->success(__('Your email has been verified!'));
+        return $this->redirect(['action' => 'login']);
     }
 }
