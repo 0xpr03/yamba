@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  yamba_frontend:
+    build: ./frontend
+    ports:
+      - 80:80
+    volumes:
+      - ./frontend/public_html:/var/www/html
+    env_file:
+      - ./secrets/frontend.env
+  # yamba_backend:
+
+  database:
+    image: mariadb:10.3.10-bionic
+    env_file:
+      - ./secrets/database.env
