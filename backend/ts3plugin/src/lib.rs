@@ -75,17 +75,16 @@ impl Plugin for MyTsPlugin {
     fn message(&mut self, api: &mut ::TsApi, server_id: ::ServerId, invoker: ::Invoker,
                target: ::MessageReceiver, message: String, ignored: bool) -> bool {
         if let Some(server) = api.get_server(server_id) {
+            let i_name = invoker.get_name();
+            let i_id = invoker.get_id();
+            let i_uid = invoker.get_uid();
 
-        let i_name = invoker.get_name();
-        let i_id = invoker.get_id();
-        let i_uid = invoker.get_uid();
-            
-        unsafe {
-            let raw = api.get_raw_api();
-            // Gather server group info
+            unsafe {
+                let raw = api.get_raw_api();
+                // Gather server group info
+                api.log_or_print(format!("{:?} {:?} {:?} \"{}\" ignored: {}", i_name, i_id, i_uid, message, ignored), PLUGIN_NAME_I, LogLevel::Debug);
+            }
         }
-
-        api.log_or_print(format!("{:?} {:?} {:?} \"{}\" ignored: {}", i_name, i_id, i_uid, message, ignored), PLUGIN_NAME_I, LogLevel::Debug);
 
         return false;
     }
