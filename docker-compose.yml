@@ -7,6 +7,7 @@ services:
       - 80:80
     volumes:
       - ./frontend/public_html:/var/www/html
+      - ./downloads:/var/yamba/downloads
     env_file:
       - ./secrets/frontend.env
       - ./secrets/database.env
