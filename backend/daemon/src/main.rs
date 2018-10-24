@@ -22,12 +22,7 @@ extern crate failure_derive;
 extern crate vlc;
 #[macro_use]
 extern crate clap;
-#[macro_use]
-extern crate slog;
-extern crate slog_scope;
-extern crate slog_stdlog;
-extern crate slog_term;
-extern crate slog_async;
+extern crate log4rs;
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -53,44 +48,25 @@ mod http;
 
 use clap::{Arg,App,SubCommand};
 use failure::Fallible;
-use slog::Drain;
 
-use std::fs::{OpenOptions,DirBuilder};
+use std::fs::{File,OpenOptions,DirBuilder,metadata};
+use std::io::Write;
 use std::thread;
 use std::time::Duration;
 use std::path::PathBuf;
 
 const DEFAULT_CONFIG_NAME: &'static str = "00-config.toml";
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const LOG_PATH: &'static str = "conf/daemon_log.yml";
 
 lazy_static! {
 	static ref SETTINGS: config::ConfigRoot = config::init_settings().unwrap();
 }
 
 fn main() -> Fallible<()> {
-    println!("YAMBA BACKEND");
-    
-    let mut log_path = PathBuf::from("log");
-    DirBuilder::new()
-        .recursive(true)
-        .create(&log_path).unwrap();
-    log_path.push("backend.log");
-    let file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(log_path)
-        .unwrap();
+    println!("Starting yamba daemon {}, switching to logger.",VERSION);
 
-    let decorator = slog_term::PlainDecorator::new(file);
-    let drain = slog_term::FullFormat::new(decorator).build().fuse();
-    let drain = slog_async::Async::new(drain).build().fuse();
-
-    let _log = slog::Logger::root(drain, o!());
-    
-    let _guard = slog_scope::set_global_logger(_log);
-    
-    slog_stdlog::init().unwrap();
+    init_log()?;
     
     info!("Startup");
 
@@ -162,7 +138,7 @@ fn main() -> Fallible<()> {
             info!("finished, waiting..");
             thread::sleep(Duration::from_millis(5000));
             info!("Finished");
-        }
+        },
         (c,_) => {
             warn!("Unknown command: {}",c);
         }
@@ -176,6 +152,26 @@ fn validator_path(input: String) -> Result<(),String> {
         Ok(_) => Ok(()),
         Err(e) => Err(e)
     }
+}
+
+/// Init log system
+/// Creating a default log file if not existing
+fn init_log() -> Fallible<()> {
+    let log_path = std::env::current_dir()?.join(LOG_PATH);
+    let mut log_dir = log_path.clone();
+    log_dir.pop();
+    DirBuilder::new()
+    .recursive(true)
+    .create(log_dir)?;
+    
+    if !metadata(&log_path).is_ok() {
+        let config = include_str!("../default_log.yml");
+        let mut file = File::create(&log_path)?;
+        file.write_all(config.as_bytes())?;
+        file.flush()?;
+    }
+    log4rs::init_file(log_path, Default::default())?;
+    Ok(())
 }
 
 /// Get path for input if possible
