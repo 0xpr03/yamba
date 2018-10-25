@@ -18,7 +18,7 @@ class UsersController extends AppController
     public function beforeFilter(Event $event)
     {
         parent::beforeFilter($event);
-        $this->Auth->allow(['add', 'logout', 'verify']);
+        $this->Auth->allow(['add', 'index', 'logout', 'verify']);
     }
 
     public function index()
