@@ -1,22 +1,15 @@
 <?php
 namespace App\Mailer\Preview;
 
+use Cake\ORM\TableRegistry;
 use DebugKit\Mailer\MailPreview;
 
 class UserMailPreview extends MailPreview
 {
     public function welcome()
     {
-        $email = 'tristan.schoenhals@mni.thm.de';
+        $user = TableRegistry::get('Users')->find()->first();
         return $this->getMailer('User')
-            ->setSubject('Yamba Email Verification')
-            ->setLayout('default')
-            ->setTemplate('welcome')
-            ->setEmailFormat('html')
-            ->setTo($email)
-            ->setViewVars([
-                'email' => $email,
-                'token' => '109238102983',
-            ]);
+            ->welcome($user, TableRegistry::get('UsersNotConfirmed')->find('all', ['conditions' => ['user_id' => $user['id']]])->first());
     }
 }
