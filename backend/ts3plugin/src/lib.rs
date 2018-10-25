@@ -6,22 +6,23 @@ extern crate lazy_static;
 extern crate jsonrpc_client_core;
 extern crate jsonrpc_client_http;
 
+use std::sync::mpsc::{Sender,channel};
 use std::sync::Mutex;
-use std::{thread, time};
+use std::time::Duration;
+use std::thread;
 use ts3plugin::TsApi;
 use ts3plugin::*;
 use jsonrpc_client_http::HttpTransport;
 
-jsonrpc_client!(pub struct BackendRPCClient {
+jsonrpc_client!(
+    #[derive(Debug)]
+    pub struct BackendRPCClient {
     pub fn heartbeat(&mut self) -> RpcRequest<bool>;
 });
 
 #[derive(Debug)]
 struct MyTsPlugin {
-    app_path: String,
-    conf_path: String,
-    plugin_path: String,
-    ressources_path: String,
+    killer: Sender<()>,
 }
 
 const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
@@ -41,10 +42,10 @@ impl Plugin for MyTsPlugin {
         let client_mut = Mutex::from(client);
 
         api.log_or_print("Initializing ", PLUGIN_NAME_I, LogLevel::Debug);
-
+        let (sender, receiver) = channel();
         thread::spawn(move || {
             let mut failed_heartbeats = 0;
-            loop {
+            while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
                 if let Ok(mut client_lock) = client_mut.lock() {
                     match client_lock.heartbeat().call() {
                         Ok(res) => {
@@ -57,15 +58,11 @@ impl Plugin for MyTsPlugin {
                         }
                     }
                 }
-                thread::sleep(time::Duration::from_secs(1));
             }
         });
 
         let me = MyTsPlugin {
-            app_path: api.get_app_path(),
-            conf_path: api.get_config_path(),
-            plugin_path: api.get_plugin_path(),
-            ressources_path: api.get_resources_path(),
+            killer: sender
         };
 
         api.log_or_print(format!("{:?}", me), PLUGIN_NAME_I, LogLevel::Debug);
@@ -76,6 +73,7 @@ impl Plugin for MyTsPlugin {
     // Implement callbacks here
 
     fn shutdown(&mut self, api: &mut TsApi) {
+        self.killer.send(()).unwrap();
         api.log_or_print("Shutdown", PLUGIN_NAME_I, LogLevel::Info);
     }
 
