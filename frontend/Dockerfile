@@ -19,6 +19,7 @@ RUN apt-get update -q && apt-get install -qqy \
     # Install tools
     vim \
     composer \
+    net-tools \
     # Install nginx
     nginx \
     # Delete apt cache
