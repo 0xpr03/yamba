@@ -14,9 +14,9 @@ class UserMailer extends Mailer
 {
     public function welcome($user, $confirmed)
     {
-        $this
+        return $this
             ->setSubject('Yamba Email Verification')
-            ->setTransport('mailjet')
+            ->profile('smtp')
             ->setLayout('default')
             ->setTemplate('welcome')
             ->setEmailFormat('html')
