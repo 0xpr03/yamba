@@ -8,6 +8,7 @@
 
 namespace App\Controller;
 
+use Cake\Core\Configure;
 use Cake\Event\Event;
 use Cake\ORM\TableRegistry;
 use Cake\Mailer\MailerAwareTrait;
@@ -46,18 +47,7 @@ class UsersController extends AppController
             $user->set('password', $password);
             try {
                 if ($usersTable->save($user)) {
-                    $confirmedTable = TableRegistry::get('UsersNotConfirmed');
-                    $confirmed = $confirmedTable->newEntity();
-                    $confirmed->set('user_id', $user->get('id'));
-                    $confirmed->set('confirmationToken', Security::hash($user->get('id')));
-                    if($confirmedTable->save($confirmed)) {
-                        $this->getMailer('User')->send('welcome', [$user, $confirmed]);
-                        $this->Flash->success(__('An activation link has been sent to ') . $user->get('email'));
-                        return $this->redirect(['action' => 'login']);
-                    } else {
-                        $this->Flash->error(__('Unable to add the user.'));
-                        $usersTable->delete($user);
-                    }
+                    $this->sendEmail($usersTable, $user);
                 } else {
                     $this->Flash->error(__('Unable to add the user.'));
                 }
@@ -77,8 +67,13 @@ class UsersController extends AppController
         if ($this->request->is('post')) {
             $user = $this->Auth->identify();
             if ($user) {
-                $this->Auth->setUser($user);
-                return $this->redirect($this->Auth->redirectUrl());
+                if ($this->isVerifiedUser($user)) {
+                    $this->Auth->setUser($user);
+                    return $this->redirect($this->Auth->redirectUrl());
+                } else {
+                    $this->Flash->error(__('You need to verify your email before you can login!'));
+                    return;
+                }
             }
             $this->Flash->error(__('Invalid username or password, try again'));
         }
@@ -89,14 +84,40 @@ class UsersController extends AppController
         return $this->redirect($this->Auth->logout());
     }
 
-    public function isLoggedIn() {
-        return $this->request->getSession()->read('Auth.User');
-    }
-
     public function verify($token) {
         $confirmTable = TableRegistry::get('UsersNotConfirmed');
         $confirmTable->delete($confirmTable->get($token));
         $this->Flash->success(__('Your email has been verified!'));
         return $this->redirect(['action' => 'login']);
+    }
+
+    private function isLoggedIn() {
+        return $this->request->getSession()->read('Auth.User');
+    }
+
+    private function sendEmail(\Cake\ORM\Table $usersTable, \Cake\Datasource\EntityInterface $user) {
+        if (Configure::read('emailVerification')) {
+            $confirmedTable = TableRegistry::get('UsersNotConfirmed');
+            $confirmed = $confirmedTable->newEntity();
+            $confirmed->set('user_id', $user->get('id'));
+            $confirmed->set('confirmationToken', Security::hash($user->get('id')));
+            if($confirmedTable->save($confirmed)) {
+                $this->getMailer('User')->send('welcome', [$user, $confirmed]);
+                $this->Flash->success(__('An activation link has been sent to ') . $user->get('email'));
+                return $this->redirect(['action' => 'login']);
+            } else {
+                $this->Flash->error(__('Unable to add the user.'));
+                $usersTable->delete($user);
+            }
+        } else {
+            $this->Auth->setUser($user);
+            return $this->redirect(['action' => 'login']);
+        }
+
+    }
+
+    private function isVerifiedUser($user) {
+        return Configure::read('emailVerification')
+                && !TableRegistry::get('UsersNotConfirmed')->find('all', ['conditions' => ['user_id' => $user['id']]])->first();
     }
 }
