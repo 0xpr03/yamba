@@ -27,6 +27,13 @@ struct MyTsPlugin {
 const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
 
 impl Plugin for MyTsPlugin {
+    fn name()        -> String { PLUGIN_NAME_I.into() }
+    fn version()     -> String { env!("CARGO_PKG_VERSION").into() }
+    fn author()      -> String { env! ("CARGO_PKG_AUTHORS").into() }
+    fn description() -> String { "yamba ts3 controller".into() }
+    fn autoload() -> bool { true }
+    fn configurable() -> ConfigureOffer { ConfigureOffer::No }
+
     fn new(api: &mut TsApi) -> Result<Box<MyTsPlugin>, InitError> {
         let transport = HttpTransport::new().standalone().unwrap();
         let transport_handle = transport.handle("http://localhost:1337/").unwrap();
@@ -74,20 +81,22 @@ impl Plugin for MyTsPlugin {
 
     fn message(&mut self, api: &mut ::TsApi, server_id: ::ServerId, invoker: ::Invoker,
                target: ::MessageReceiver, message: String, ignored: bool) -> bool {
-        if let Some(server) = api.get_server(server_id) {
-            let i_name = invoker.get_name();
-            let i_id = invoker.get_id();
-            let i_uid = invoker.get_uid();
-
-            unsafe {
-                let raw = api.get_raw_api();
-                // Gather server group info
-                api.log_or_print(format!("{:?} {:?} {:?} \"{}\" ignored: {}", i_name, i_id, i_uid, message, ignored), PLUGIN_NAME_I, LogLevel::Debug);
+        if let Some(server) = api.get_server(server_id){
+            if Ok(invoker.get_id()) == server.get_own_connection_id(){
+                return false;
+            }
+            if let Some(connection) = server.get_connection(invoker.get_id()) {
+                if let Ok(value) = api.get_string_client_properties(ClientProperties::Servergroups,&invoker.get_id(),&server_id) {
+                    let groups = value.to_owned_string_lossy();
+                    api.log_or_print(format!("groups: {}",&groups), PLUGIN_NAME_I, LogLevel::Debug);
+                    let _ = connection.send_message(groups);
+                } else {
+                    let _ = connection.send_message("Internal Error: Can't get server groups.");
+                }
             }
         }
-
         return false;
     }
 }
 
-create_plugin!(PLUGIN_NAME_I, env ! ("CARGO_PKG_VERSION"), env ! ("CARGO_PKG_AUTHORS"), "yamba ts3 controller", ConfigureOffer::No, true, MyTsPlugin);
+create_plugin!(MyTsPlugin);

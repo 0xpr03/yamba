@@ -879,8 +879,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "ts3plugin"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.3.0"
+source = "git+https://github.com/0xpr03/rust-ts3plugin.git#398cd86f558051988e042201c9666a249742a0bb"
 dependencies = [
  "chrono 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -987,7 +987,7 @@ dependencies = [
  "jsonrpc-client-core 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jsonrpc-client-http 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ts3plugin 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ts3plugin 0.3.0 (git+https://github.com/0xpr03/rust-ts3plugin.git)",
 ]
 
 [metadata]
@@ -1092,7 +1092,7 @@ dependencies = [
 "checksum tokio-udp 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "da941144b816d0dcda4db3a1ba87596e4df5e860a72b70783fe435891f80601c"
 "checksum tokio-uds 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "df195376b43508f01570bacc73e13a1de0854dc59e79d1ec09913e8db6dd2a70"
 "checksum try-lock 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ee2aa4715743892880f70885373966c83d73ef1b0838a664ef0c76fffd35e7c2"
-"checksum ts3plugin 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "99c06ceb0a373f31e4b53abc4df9be8cbdd7bac5fb800c4acb0af40b62257b2b"
+"checksum ts3plugin 0.3.0 (git+https://github.com/0xpr03/rust-ts3plugin.git)" = "<none>"
 "checksum ts3plugin-sys 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7cf5718ff432874f8f331c73ddb388062a056c4007b2fdaf15d93f514923a55d"
 "checksum unicase 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9d3218ea14b4edcaccfa0df0a64a3792a2c32cc706f1b336e48867f9d3147f90"
 "checksum unicode-width 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "882386231c45df4700b275c7ff55b6f3698780a650026380e72dabe76fa46526"
