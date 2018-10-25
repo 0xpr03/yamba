@@ -3,7 +3,13 @@ for file in /docker-entrypoint-initdb.d/schema/*.sql; do
     echo $file;
     mysql --user=root --password=$MYSQL_ROOT_PASSWORD < $file $MYSQL_DATABASE;
 done
-[[ $YAMBA_DEBUG == true ]] && mysql --user=root --password=$MYSQL_ROOT_PASSWORD -e "CREATE DATABASE debug_kit" $MYSQL_DATABASE;
+
+if [[ $YAMBA_DEBUG == true ]]; then
+    echo Creating debug_kit;
+    mysql --user=root --password=$MYSQL_ROOT_PASSWORD -e "CREATE DATABASE debug_kit" $MYSQL_DATABASE;
+fi
+
+echo Setting up backend user permissions;
 mysql --user=root --password=$MYSQL_ROOT_PASSWORD -e "
 REVOKE ALL PRIVILEGES ON ${MYSQL_DATABASE}.* FROM $MYSQL_USER;
 GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.streams TO $MYSQL_USER;
