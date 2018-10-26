@@ -30,8 +30,8 @@ a.footer-icon:hover, a.footer-icon:active {
     color: #dddddd !important;
 }
 
-.divider {
-    padding: 1px;
+li:not(:last-child).divider {
+    border-right: 2px solid #2c3840;
 }
 
 div.flash {
