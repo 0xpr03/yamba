@@ -8,10 +8,17 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `permissions` (
+  `id` char(36) NOT NULL,
+  `permission` varchar(50) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `users_to_permissions` (
   `user_id` char(36) NOT NULL,
-  `privilege` varchar(50) NOT NULL,
-  PRIMARY KEY (`user_id`, `privilege`),
-  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
+  `permission_id` char(36) NOT NULL,
+  PRIMARY KEY (`user_id`, `permission_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`),
+  FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `users_not_confirmed` (
