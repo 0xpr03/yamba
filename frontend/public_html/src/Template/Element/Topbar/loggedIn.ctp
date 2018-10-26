@@ -9,7 +9,7 @@
             <li><?= $this->Html->link(
                 'Logout',
                 ['controller' => 'Users', 'action' => 'logout'],
-                ['class' => 'button']);
+                ['class' => 'button', 'title' => 'Logout']);
                 ?>
             </li>
         </ul>
