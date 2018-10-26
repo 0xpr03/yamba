@@ -6,8 +6,6 @@
     </div>
     <div class="top-bar-right">
         <ul class="menu">
-            <li><a type="button" class="button" title="Start/Stop Yamba"><i class="fi-power"></i></a></li>
-            <li class="divider"></li>
             <li><?= $this->Html->link(
                 'Logout',
                 ['controller' => 'Users', 'action' => 'logout'],
