@@ -49,12 +49,13 @@ class UsersController extends AppController
                 if ($usersTable->save($user)) {
                     $this->sendEmail($usersTable, $user);
                 } else {
-                    $this->Flash->error(__('Unable to add the user.'));
+                    $this->Flash->error(__('Unable to add the user'));
                 }
             } catch (\PDOException $e) {
-                $this->Flash->error(__('This email address is assigned to another user!'));
+                $this->Flash->error(__('This email address is assigned to another user'));
             }
         }
+        $this->set('minlength', Configure::read('password_minlength'));
         $this->set('user', $user);
     }
 
@@ -71,12 +72,13 @@ class UsersController extends AppController
                     $this->Auth->setUser($user);
                     return $this->redirect($this->Auth->redirectUrl());
                 } else {
-                    $this->Flash->error(__('You need to verify your email before you can login!'));
+                    $this->Flash->error(__('You need to verify your email before you can login'));
                     return;
                 }
             }
             $this->Flash->error(__('Invalid username or password, try again'));
         }
+        $this->set('minlength', Configure::read('password_minlength'));
     }
 
     public function logout()
@@ -87,7 +89,7 @@ class UsersController extends AppController
     public function verify($token) {
         $confirmTable = TableRegistry::get('UsersNotConfirmed');
         $confirmTable->delete($confirmTable->get($token));
-        $this->Flash->success(__('Your email has been verified!'));
+        $this->Flash->success(__('Your email has been verified'));
         return $this->redirect(['action' => 'login']);
     }
 
@@ -106,7 +108,7 @@ class UsersController extends AppController
                 $this->Flash->success(__('An activation link has been sent to ') . $user->get('email'));
                 return $this->redirect(['action' => 'login']);
             } else {
-                $this->Flash->error(__('Unable to add the user.'));
+                $this->Flash->error(__('Unable to add the user'));
                 $usersTable->delete($user);
             }
         } else {
