@@ -49,3 +49,10 @@ label.required:after {
     content: ' *';
     display:inline;
 }
+
+.input.radius {
+    border-radius: 15px;
+}
+.button.radius {
+    border-radius: 5px;
+}
