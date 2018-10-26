@@ -41,9 +41,7 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
     }
 ?>
 <?= $this->Flash->render() ?>
-<div class="grid-container">
     <?= $this->fetch('content') ?>
-</div>
 <footer>
     <div class="row">
         <span class="footer-copyright">© 2018–<?= date('Y')?> Yamba Authors</span>
