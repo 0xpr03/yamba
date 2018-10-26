@@ -117,7 +117,7 @@ class UsersController extends AppController
     }
 
     private function isVerifiedUser($user) {
-        return Configure::read('emailVerification')
-                && !TableRegistry::get('UsersNotConfirmed')->find('all', ['conditions' => ['user_id' => $user['id']]])->first();
+        return !Configure::read('emailVerification')
+                || !TableRegistry::get('UsersNotConfirmed')->find('all', ['conditions' => ['user_id' => $user['id']]])->first();
     }
 }
