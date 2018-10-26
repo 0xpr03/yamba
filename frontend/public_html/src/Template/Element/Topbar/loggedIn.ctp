@@ -6,7 +6,12 @@
     </div>
     <div class="top-bar-right">
         <ul class="menu">
-            <li><?= $this->Html->link(
+            <li class="divider"><?= $this->Html->link(
+                '<i class="fi-widget"></i>',
+                ['controller' => 'Accounts', 'action' => 'settings'],
+                ['class' => 'button', 'title' => 'Account Settings', 'escapeTitle' => false]);
+                ?></li>
+            <li class="divider"><?= $this->Html->link(
                 'Logout',
                 ['controller' => 'Users', 'action' => 'logout'],
                 ['class' => 'button', 'title' => 'Logout']);
