@@ -70,6 +70,7 @@ try {
     Configure::load('app', 'default', false);
     Configure::load('database', 'default', false);
     Configure::load('email', 'default', false);
+    Configure::load('misc', 'default', false);
 } catch (\Exception $e) {
     exit($e->getMessage() . "\n");
 }
