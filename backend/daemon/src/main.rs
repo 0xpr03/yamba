@@ -32,7 +32,7 @@ extern crate reqwest;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate json;
+extern crate serde_json;
 extern crate sha2;
 
 use std::alloc::System;
