@@ -25,7 +25,7 @@ CREATE TABLE `playlists` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `songs2playlists` (
+CREATE TABLE `songs_to_playlists` (
   `song_id` char(32) NOT NULL,
   `playlist_id` char(32) NOT NULL,
   PRIMARY KEY (`song_id`, `playlist_id`),
