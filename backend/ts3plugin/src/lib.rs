@@ -118,6 +118,10 @@ impl Plugin for MyTsPlugin {
         let rpc_host: String;
         rpc_host = format!("http://localhost:{}/", PORT.to_string());
 
+        if ID.is_none() {
+            return Err(InitError::Failure);
+        }
+
         let transport = HttpTransport::new().standalone().unwrap();
         let transport_handle = transport.handle(&rpc_host).unwrap();
         let client = BackendRPCClient::new(transport_handle);
