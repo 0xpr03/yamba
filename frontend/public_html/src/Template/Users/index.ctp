@@ -1,3 +1,4 @@
+<?php
 /**
  *  This file is part of yamba.
  *
@@ -14,6 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
+?>
 
 <div class="users view">
     <?= print_r($users); ?>
