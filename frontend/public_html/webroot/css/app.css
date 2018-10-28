@@ -16,10 +16,10 @@
  */
 
 footer {
-    position: fixed;
+    position: absolute;
     left: 0;
     bottom: 0;
-    width: 100%;
+    right: 0;
     background-color: #0a0a0a;
     color: #fefefe;
     font-size: 1.25rem;
@@ -70,6 +70,7 @@ label.required:after {
 .input.radius {
     border-radius: 1em;
 }
+
 .button.radius {
     border-radius: 0.3em;
 }
@@ -93,4 +94,24 @@ a.header-font, a.header-font:visited {
 
 a.header-font:hover, a.header-font:active {
     color: #f5f5f5;
+}
+
+a.logo-font, a.logo-font:visited {
+    color: #f5f5f5;
+    height: 2em;
+    font-weight: bold;
+    padding-top: 0.45em !important;
+}
+
+a.logo-font:hover, a.logo-font:active {
+    color: #bdbdbd;
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    position: relative;
+    min-height: 100%;
 }

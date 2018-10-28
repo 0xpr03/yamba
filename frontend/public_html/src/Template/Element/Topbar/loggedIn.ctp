@@ -20,7 +20,7 @@
 <nav class="top-bar" data-topbar role="navigation">
     <div class="top-bar-left">
         <ul class="menu" data-dropdown-menu>
-            <li><a class="header-font" href="/">Yamba - <?= $this->fetch('title') ?></a></li>
+            <li><a class="logo-font" href="/">Yamba</a></li>
         </ul>
     </div>
     <div class="top-bar-right">
