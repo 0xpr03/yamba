@@ -55,6 +55,7 @@ use std::time::Duration;
 use std::path::PathBuf;
 
 const DEFAULT_CONFIG_NAME: &'static str = "00-config.toml";
+const CONF_DIR: &'static str = "conf";
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const LOG_PATH: &'static str = "conf/daemon_log.yml";
 

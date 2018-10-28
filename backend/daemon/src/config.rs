@@ -22,7 +22,7 @@ use std::fs::read_dir;
 use failure::Fallible;
 use config_rs::{File,Config};
 
-use ::DEFAULT_CONFIG_NAME;
+use ::{DEFAULT_CONFIG_NAME,CONF_DIR};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigRoot {
@@ -65,7 +65,7 @@ pub fn init_settings() -> Fallible<ConfigRoot> {
 /// Load full settings
 fn load_settings() -> Fallible<Config> {
     let mut settings = load_default()?;
-    let config_folder = current_dir()?;
+    let config_folder = current_dir()?.join(CONF_DIR);
     let config_files: Vec<_> = read_dir(config_folder)?.filter_map(|x| x.ok()).filter(|x| {
             match x.metadata() {
                 Ok(metadata) => metadata.is_file() && x.path().file_name() != Some(OsStr::new(DEFAULT_CONFIG_NAME))
@@ -74,6 +74,7 @@ fn load_settings() -> Fallible<Config> {
             }
         })
         .map(|x| File::from(x.path())).collect();
+    debug!("config_files {:?}",config_files);
     settings.merge(config_files)?;
     Ok(settings)
 }
