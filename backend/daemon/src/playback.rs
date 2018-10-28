@@ -16,7 +16,7 @@
  */
 use std::path::Path;
 
-use vlc::{self,Instance, Media, MediaPlayer};
+use vlc::{self,Instance, Media, MediaPlayer,MediaPlayerAudioEx};
 use failure::Fallible;
 
 #[derive(Fail, Debug)]
@@ -40,7 +40,7 @@ impl <'a>Player<'a> {
     pub fn create_instance() -> Fallible<Instance> {
         let mut args: Vec<String> = Vec::new();
         args.push("--no-video".to_string());
-        let instance = Instance::new(Some(args)).ok_or(PlaybackErr::Instance("can't create a new player instance"))?;
+        let instance = Instance::with_args(Some(args)).ok_or(PlaybackErr::Instance("can't create a new player instance"))?;
         Ok(instance)
     }
     /// Create new Player with given instance
@@ -55,8 +55,7 @@ impl <'a>Player<'a> {
 
     /// Set volume
     pub fn set_volume(&self, volume: i32) -> Fallible<()> {
-        self.player.set_volume(volume). ok_or(PlaybackErr::Player("can't set volume"))?;
-        Ok(())
+        Ok(self.player.set_volume(volume).map_err(|_| PlaybackErr::Player("can't set volume"))?)
     }
 
     /// Set url as media
@@ -112,7 +111,7 @@ mod tests {
     #[test]
     fn libvlc_minimal_playback() {
         // Create an instance
-        let instance = Instance::new(None).unwrap();
+        let instance = Instance::with_args(None).unwrap();
         // Create a media from a file
         //https://cdn.online-convert.com/example-file/audio/ogg/example.ogg
         let md = Media::new_path(&instance, "example.ogg").unwrap();
