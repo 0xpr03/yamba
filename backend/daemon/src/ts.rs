@@ -41,13 +41,20 @@ pub enum TSInstanceError {
 
 impl Drop for TSInstance {
     fn drop(&mut self) {
-        match self.kill() {
-            Ok(()) => (),
-            Err(e) => warn!("Couldn't kill instance on cleanup {}",e)
+        match self.is_running() {
+            Ok(true) | Err(_) => { // ignore error, otherwise run only if alive
+                match self.kill() {
+                    Ok(()) => (),
+                    Err(e) => warn!("Couldn't kill instance on cleanup {}",e)
+                }
+            },
+            _ => ()
         }
+        
     }
 }
 
+/// TS Instance, kills itself on drop
 pub struct TSInstance{
     id: i32,
     process: Child
@@ -87,7 +94,7 @@ impl TSInstance {
         Ok(self.process.kill()?)
     }
 
-    pub fn is_running(&self) -> bool {
-        false//TODO
+    pub fn is_running(&mut self) -> Fallible<bool> {
+        Ok(self.process.try_wait()?.is_none())
     }
 }
