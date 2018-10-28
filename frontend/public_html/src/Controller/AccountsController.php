@@ -108,7 +108,7 @@ class AccountsController extends AppController
             } else {
                 $this->Flash->error(__('Wrong password'));
             }
-            return $this->redirect(['action' => 'settings']);
         }
+        return $this->redirect(['action' => 'settings']);
     }
 }
