@@ -39,18 +39,16 @@ class EmailComponent extends Component
      */
     public function registerMail(\Cake\ORM\Table $usersTable, \Cake\Datasource\EntityInterface $user)
     {
-        $flashes = [
-            /*new user*/
-            '1' => [
-                'couldntSave' => __('Unable to add the user'),
-                'success' => __('Successfully registered'),
-            ],
-            /*known user*/
-            '0' => [
-                'couldntSave' => __('Unable to change email'),
-                'success' => __('Successfully changed email')
-            ],
+        $flashesNew = [
+            'couldntSave' => __('Unable to add the user'),
+            'success' => __('Successfully registered'),
         ];
+        $flashesOld = [
+            'couldntSave' => __('Unable to change email'),
+            'success' => __('Successfully changed email'),
+        ];
+
+        $newUser = $user->isNew();
         if (!$usersTable->find('all', ['conditions' => ['email' => $user['email']]])->first()) {
             if ($usersTable->save($user)) {
                 if (Configure::read('emailVerification')) {
@@ -63,15 +61,15 @@ class EmailComponent extends Component
                         $this->Flash->success(__('An activation link has been sent to ') . $user->get('email'));
                         return $user;
                     } else {
-                        $this->Flash->error($flashes[$user->isNew()]['couldntSave']);
+                        $this->Flash->error($newUser ? $flashesNew['couldntSave'] : $flashesOld['couldntSave']);
                         $usersTable->delete($user);
                     }
                 } else {
-                    $this->Flash->success($flashes[$user->isNew()]['success']);
+                    $this->Flash->success($newUser ? $flashesNew['success'] : $flashesOld['success']);
                     return $user;
                 }
             } else {
-                $this->Flash->error($flashes[$user['new']]['couldntSave']);
+                $this->Flash->error($newUser ? $flashesNew['couldntSave'] : $flashesOld['couldntSave']);
             }
         } else {
             $this->Flash->error(__('This email address is assigned to another user'));
