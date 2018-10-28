@@ -1,4 +1,4 @@
-# This file is part of yamba which is released under <GPL3>. See file LICENSE or go to https://www.gnu.org/licenses/gpl.html for full license details.
+-- This file is part of yamba which is released under <GPL3>. See file LICENSE or go to https://www.gnu.org/licenses/gpl.html for full license details.
 
 CREATE TABLE `users` (
   `id` char(36) NOT NULL,
