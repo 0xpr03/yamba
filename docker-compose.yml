@@ -13,6 +13,7 @@ services:
     - ./database:/var/lib/mysql
     env_file:
     - ./secrets/database.env
+    - ./secrets/database_root.env
 
   frontend:
     build: ./frontend
@@ -24,4 +25,5 @@ services:
     env_file:
       - ./secrets/frontend.env
       - ./secrets/database.env
+      - ./secrets/database_root.env
   # yamba_backend:
