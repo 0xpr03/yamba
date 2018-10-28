@@ -77,7 +77,7 @@ lazy_static! {
         .parse::<u16>()
         .unwrap_or(1337);
     pub static ref ID: Option<i32> = env::var("ID_YAMBA")
-        .unwrap_or("1337".to_string())
+        .unwrap_or("".to_string())
         .parse::<i32>()
         .map(|v| Some(v))
         .unwrap_or(None);
@@ -136,19 +136,19 @@ impl Plugin for MyTsPlugin {
                                 TsApi::static_log_or_print(format!("Server responded with {}", res),
                                     PLUGIN_NAME_I,LogLevel::Debug,);
                             }
-                            Err(_) => {
+                            Err(e) => {
                                 failed_heartbeats += 1;
                                 #[cfg_attr(rustfmt, rustfmt_skip)]
-                                TsApi::static_log_or_print(format!("Backend server did not respond {} times!",
-                                        failed_heartbeats),PLUGIN_NAME_I,LogLevel::Debug,);
+                                TsApi::static_log_or_print(format!("Backend server did not respond {} times! {}",
+                                        failed_heartbeats,e),PLUGIN_NAME_I,LogLevel::Warning);
                             }
                         }
                     }
                 }
             } else {
                 #[cfg_attr(rustfmt, rustfmt_skip)]
-                TsApi::static_log_or_print(format!("Backend server did not respond {} times!",failed_heartbeats),
-                    PLUGIN_NAME_I,LogLevel::Debug,);
+                TsApi::static_log_or_print(format!("No instance ID!"),
+                    PLUGIN_NAME_I,LogLevel::Critical,);
             }
         });
 
@@ -163,7 +163,14 @@ impl Plugin for MyTsPlugin {
     }
 
     fn shutdown(&mut self, api: &mut TsApi) {
-        self.killer.send(()).unwrap();
+        match self.killer.send(()) {
+            Ok(_) => (),
+            Err(e) => api.log_or_print(
+                format!("Unable to stop heartbeat, already dead ? {}", e),
+                PLUGIN_NAME_I,
+                LogLevel::Error,
+            ),
+        }
         api.log_or_print("Shutdown", PLUGIN_NAME_I, LogLevel::Info);
     }
 
