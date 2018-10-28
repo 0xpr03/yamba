@@ -54,12 +54,24 @@ const DEFAULT_CALLBACK_PORT: &str = "1337";
 const DEFAULT_ID: &str = "NO-ID";
 
 impl Plugin for MyTsPlugin {
-    fn name()        -> String { PLUGIN_NAME_I.into() }
-    fn version()     -> String { env!("CARGO_PKG_VERSION").into() }
-    fn author()      -> String { env! ("CARGO_PKG_AUTHORS").into() }
-    fn description() -> String { "yamba ts3 controller".into() }
-    fn autoload() -> bool { true }
-    fn configurable() -> ConfigureOffer { ConfigureOffer::No }
+    fn name() -> String {
+        PLUGIN_NAME_I.into()
+    }
+    fn version() -> String {
+        env!("CARGO_PKG_VERSION").into()
+    }
+    fn author() -> String {
+        env!("CARGO_PKG_AUTHORS").into()
+    }
+    fn description() -> String {
+        "yamba ts3 controller".into()
+    }
+    fn autoload() -> bool {
+        true
+    }
+    fn configurable() -> ConfigureOffer {
+        ConfigureOffer::No
+    }
 
     fn new(api: &mut TsApi) -> Result<Box<MyTsPlugin>, InitError> {
         let transport = HttpTransport::new().standalone().unwrap();
