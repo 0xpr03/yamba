@@ -1,3 +1,4 @@
+<?php
 /**
  *  This file is part of yamba.
  *
@@ -14,6 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
+?>
 
 <div class="row" style="box-sizing:inherit;margin:0;padding:0">
     <h1 style="box-sizing:inherit;color:inherit;font-family:'Helvetica Neue',Helvetica,Roboto,Arial,sans-serif;font-size:1.5rem;font-style:normal;font-weight:400;line-height:1.4;margin:0;margin-bottom:.5rem;margin-top:0;padding:0;text-rendering:optimizeLegibility">Verifying your account</h1>
