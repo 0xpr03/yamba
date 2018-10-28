@@ -74,13 +74,45 @@ impl Plugin for MyTsPlugin {
     }
 
     fn new(api: &mut TsApi) -> Result<Box<MyTsPlugin>, InitError> {
+        api.log_or_print("Initializing ", PLUGIN_NAME_I, LogLevel::Debug);
+
+        let callback_port: String;
+        let id: String;
+        let rpc_host: String;
+        match env::var("CALLBACK_YAMBA") {
+            Ok(val) => callback_port = val,
+            Err(e) => {
+                callback_port = String::from(DEFAULT_CALLBACK_PORT);
+                api.log_or_print(
+                    format!(
+                        "RPC Callback port not specified. Using default \"{}\"",
+                        DEFAULT_CALLBACK_PORT
+                    ),
+                    PLUGIN_NAME_I,
+                    LogLevel::Debug,
+                );
+            }
+        }
+        match env::var("ID_YAMBA") {
+            Ok(val) => id = val,
+            Err(e) => {
+                id = String::from(DEFAULT_ID);
+                api.log_or_print(
+                    format!("ID not specified. Using default \"{}\"", DEFAULT_ID),
+                    PLUGIN_NAME_I,
+                    LogLevel::Debug,
+                );
+            }
+        }
+        rpc_host = format!("http://localhost:{}/", callback_port);
+
         let transport = HttpTransport::new().standalone().unwrap();
-        let transport_handle = transport.handle("http://localhost:1337/").unwrap();
+        let transport_handle = transport.handle(&rpc_host).unwrap();
         let client = BackendRPCClient::new(transport_handle);
         let client_mut = Mutex::from(client);
 
-        api.log_or_print("Initializing ", PLUGIN_NAME_I, LogLevel::Debug);
         let (sender, receiver) = channel();
+
         thread::spawn(move || {
             let mut failed_heartbeats = 0;
             while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
@@ -88,11 +120,22 @@ impl Plugin for MyTsPlugin {
                     match client_lock.heartbeat(id).call() {
                         Ok(res) => {
                             failed_heartbeats = 0;
-                            TsApi::static_log_or_print(format!("Server responded with {}", res), PLUGIN_NAME_I, LogLevel::Debug);
+                            TsApi::static_log_or_print(
+                                format!("Server responded with {}", res),
+                                PLUGIN_NAME_I,
+                                LogLevel::Debug,
+                            );
                         }
                         Err(_) => {
                             failed_heartbeats += 1;
-                            TsApi::static_log_or_print(format!("Backend server did not respond {} times!", failed_heartbeats), PLUGIN_NAME_I, LogLevel::Debug);
+                            TsApi::static_log_or_print(
+                                format!(
+                                    "Backend server did not respond {} times!",
+                                    failed_heartbeats
+                                ),
+                                PLUGIN_NAME_I,
+                                LogLevel::Debug,
+                            );
                         }
                     }
                 }
@@ -118,16 +161,41 @@ impl Plugin for MyTsPlugin {
         api.log_or_print("Shutdown", PLUGIN_NAME_I, LogLevel::Info);
     }
 
-    fn message(&mut self, api: &mut ::TsApi, server_id: ::ServerId, invoker: ::Invoker,
-               target: ::MessageReceiver, message: String, ignored: bool) -> bool {
-        if let Some(server) = api.get_server(server_id){
-            if Ok(invoker.get_id()) == server.get_own_connection_id(){
+    fn message(
+        &mut self,
+        api: &mut ::TsApi,
+        server_id: ::ServerId,
+        invoker: ::Invoker,
+        target: ::MessageReceiver,
+        message: String,
+        ignored: bool,
+    ) -> bool {
+        if let Some(server) = api.get_server(server_id) {
+            if Ok(invoker.get_id()) == server.get_own_connection_id() {
                 return false;
             }
+
             if let Some(connection) = server.get_connection(invoker.get_id()) {
-                if let Ok(value) = api.get_string_client_properties(ClientProperties::Servergroups,&invoker.get_id(),&server_id) {
+                let r_vol = RegexSet::new(&[r"^!v ", r"^!vol ", r"^!volume "]).unwrap();
+
+                if r_vol.is_match(&message) {
+
+                } else {
+                    let _ = connection
+                        .send_message("Sorry, I didn't get  that... Have you tried !help yet?");
+                }
+
+                if let Ok(value) = api.get_string_client_properties(
+                    ClientProperties::Servergroups,
+                    &invoker.get_id(),
+                    &server_id,
+                ) {
                     let groups = value.to_owned_string_lossy();
-                    api.log_or_print(format!("groups: {}",&groups), PLUGIN_NAME_I, LogLevel::Debug);
+                    api.log_or_print(
+                        format!("groups: {}", &groups),
+                        PLUGIN_NAME_I,
+                        LogLevel::Debug,
+                    );
                     let _ = connection.send_message(groups);
                 } else {
                     let _ = connection.send_message("Internal Error: Can't get server groups.");
