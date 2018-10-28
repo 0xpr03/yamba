@@ -16,7 +16,7 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 ?>
-
+<?php $this->assign('title', $title); ?>
 <?= $this->Form->create() ?>
 <div class="grid-container">
     <fieldset class="fieldset">

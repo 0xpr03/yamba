@@ -17,6 +17,7 @@
  */
 ?>
 
+<?php $this->assign('title', $title); ?>
 <?= $this->Form->create($user) ?>
 <div class="grid-container">
     <fieldset class="fieldset">

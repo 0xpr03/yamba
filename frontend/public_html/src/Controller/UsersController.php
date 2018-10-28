@@ -67,6 +67,7 @@ class UsersController extends AppController
                 return $this->redirect(['action' => 'login']);
             }
         }
+        $this->set('title', 'Register');
         $this->set('minlength', Configure::read('password_minlength'));
         $this->set('user', $user);
         return null;
@@ -92,6 +93,7 @@ class UsersController extends AppController
             }
         }
         $this->set('minlength', Configure::read('password_minlength'));
+        $this->set('title', 'Login');
         return null;
     }
 
