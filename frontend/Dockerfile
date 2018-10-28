@@ -1,3 +1,5 @@
+# This file is part of yamba which is released under <GPL3>. See file LICENSE or go to https://www.gnu.org/licenses/gpl.html for full license details.
+
 FROM debian:stable-slim
 
 LABEL maintainers="Aron Heinecke <Ox0p54r36@t-online.de>, \
