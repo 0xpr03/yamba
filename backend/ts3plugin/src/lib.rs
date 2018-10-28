@@ -33,20 +33,25 @@ use std::thread;
 use std::time::Duration;
 use ts3plugin::TsApi;
 use ts3plugin::*;
-use jsonrpc_client_http::HttpTransport;
 
 jsonrpc_client!(
     #[derive(Debug)]
     pub struct BackendRPCClient {
-    pub fn heartbeat(&mut self) -> RpcRequest<bool>;
+    pub fn heartbeat(&mut self, id : String) -> RpcRequest<bool>;
+    // pub fn setVolume(&mut self, id : String, invokerName : String, invokerGroups : String, volume :f32) -> RpcRequest<bool>;
 });
 
 #[derive(Debug)]
 struct MyTsPlugin {
     killer: Sender<()>,
+    callback_port: String,
+    id: String,
+    rpc_host: String,
 }
 
 const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
+const DEFAULT_CALLBACK_PORT: &str = "1337";
+const DEFAULT_ID: &str = "NO-ID";
 
 impl Plugin for MyTsPlugin {
     fn name()        -> String { PLUGIN_NAME_I.into() }
@@ -68,7 +73,7 @@ impl Plugin for MyTsPlugin {
             let mut failed_heartbeats = 0;
             while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
                 if let Ok(mut client_lock) = client_mut.lock() {
-                    match client_lock.heartbeat().call() {
+                    match client_lock.heartbeat(id).call() {
                         Ok(res) => {
                             failed_heartbeats = 0;
                             TsApi::static_log_or_print(format!("Server responded with {}", res), PLUGIN_NAME_I, LogLevel::Debug);
@@ -83,7 +88,10 @@ impl Plugin for MyTsPlugin {
         });
 
         let me = MyTsPlugin {
-            killer: sender
+            killer: sender,
+            callback_port: String::from(callback_port),
+            id: String::from(id),
+            rpc_host: rpc_host,
         };
 
         api.log_or_print(format!("{:?}", me), PLUGIN_NAME_I, LogLevel::Debug);
