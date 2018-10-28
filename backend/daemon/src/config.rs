@@ -28,7 +28,15 @@ use ::{DEFAULT_CONFIG_NAME,CONF_DIR};
 pub struct ConfigRoot {
     pub main: ConfigMain,
     pub db: ConfigDB,
-    pub ytdl: ConfigYtDL
+    pub ytdl: ConfigYtDL,
+    pub ts: ConfigTS,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ConfigTS {
+    pub dir: String,
+    pub start_script: String,
+    pub additional_args: Vec<String>
 }
 
 #[derive(Serialize, Deserialize, Debug)]

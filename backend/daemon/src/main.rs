@@ -33,6 +33,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+extern crate serde_urlencoded;
 extern crate sha2;
 
 use std::alloc::System;
@@ -44,6 +45,7 @@ mod playback;
 mod config;
 mod ytdl;
 mod http;
+mod ts;
 
 use clap::{Arg,App,SubCommand};
 use failure::Fallible;

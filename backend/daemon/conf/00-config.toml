@@ -40,3 +40,11 @@ version_key = "latest"
 download_source="https://yt-dl.org/downloads/latest/youtube-dl"
 # timeout in seconds
 timeout_version=10
+
+[ts]
+# base folder of teamspeak executable
+dir = "ts"
+# start script/executable
+start_script = "bash"
+# additional arguments to pass at first
+additional_args = ["ts3client_runscript.sh"]
