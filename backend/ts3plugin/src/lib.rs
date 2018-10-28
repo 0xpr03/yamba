@@ -22,11 +22,15 @@ extern crate lazy_static;
 #[macro_use]
 extern crate jsonrpc_client_core;
 extern crate jsonrpc_client_http;
+extern crate regex;
 
-use std::sync::mpsc::{Sender,channel};
+use jsonrpc_client_http::HttpTransport;
+use regex::*;
+use std::env;
+use std::sync::mpsc::{channel, Sender};
 use std::sync::Mutex;
-use std::time::Duration;
 use std::thread;
+use std::time::Duration;
 use ts3plugin::TsApi;
 use ts3plugin::*;
 use jsonrpc_client_http::HttpTransport;
