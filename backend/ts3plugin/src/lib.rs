@@ -37,8 +37,38 @@ use ts3plugin::*;
 jsonrpc_client!(
     #[derive(Debug)]
     pub struct BackendRPCClient {
-    pub fn heartbeat(&mut self, id : Option<i32>) -> RpcRequest<bool>;
-    // pub fn setVolume(&mut self, id : String, invokerName : String, invokerGroups : String, volume :f32) -> RpcRequest<bool>;
+    // Return: allowed, message
+    pub fn heartbeat(&mut self, id : String) -> RpcRequest<(bool)>;
+    // Return: allowed, message, Volume [0 - 100]
+    pub fn volume_get(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, i32)>;
+    // Return: allowed, message, success
+    pub fn volume_set(&mut self, id : String, invokerName : String, invokerGroups : String, volume : i32) -> RpcRequest<(bool, String, bool)>;
+    // Return: allowed, message, success
+    pub fn volume_lock(&mut self, id : String, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
+
+    // Return: allowed, message, title
+    pub fn track_get(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
+    // Return: allowed, message, success
+    pub fn track_next(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    // Return: allowed, message, success
+    pub fn track_previous(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    // Return: allowed, message, success
+    pub fn track_resume(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    // Return: allowed, message, success
+    pub fn track_pause(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    // Return: allowed, message, success
+    pub fn track_stop(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+
+    // Return: allowed, message, name
+    pub fn playlist_get(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
+    // Return: allowed, message, success
+    pub fn playlist_clear(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    // Return: allowed, message, success
+    pub fn playlist_lock(&mut self, id : String, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
+    // Return: allowed, message, success
+    pub fn playlist_queue(&mut self, id : String, invokerName : String, invokerGroups : String, url : String) -> RpcRequest<(bool, String, bool)>;
+    // Return: allowed, message, success
+    pub fn playlist_load(&mut self, id : String, invokerName : String, invokerGroups : String, playlist_name : String) -> RpcRequest<(bool, String, bool)>;
 });
 
 lazy_static! {
@@ -133,8 +163,6 @@ impl Plugin for MyTsPlugin {
         Ok(Box::new(me))
     }
 
-    // Implement callbacks here
-
     fn shutdown(&mut self, api: &mut TsApi) {
         self.killer.send(()).unwrap();
         api.log_or_print("Shutdown", PLUGIN_NAME_I, LogLevel::Info);
@@ -155,9 +183,13 @@ impl Plugin for MyTsPlugin {
             }
 
             if let Some(connection) = server.get_connection(invoker.get_id()) {
-                let r_vol = RegexSet::new(&[r"^!v ", r"^!vol ", r"^!volume "]).unwrap();
+                let r_vol_set =
+                    RegexSet::new(&[r"^!v (\d)", r"^!vol (\d)", r"^!volume (\d)"]).unwrap();
+                let r_vol_get = RegexSet::new(&[r"^!v", r"^!vol", r"^!volume"]).unwrap();
 
-                if r_vol.is_match(&message) {
+                if r_vol_set.is_match(&message) {
+
+                } else if r_vol_get.is_match(&message) {
 
                 } else {
                     let _ = connection
