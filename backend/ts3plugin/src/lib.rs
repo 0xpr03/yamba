@@ -37,21 +37,29 @@ use ts3plugin::*;
 jsonrpc_client!(
     #[derive(Debug)]
     pub struct BackendRPCClient {
-    pub fn heartbeat(&mut self, id : String) -> RpcRequest<bool>;
+    pub fn heartbeat(&mut self, id : Option<i32>) -> RpcRequest<bool>;
     // pub fn setVolume(&mut self, id : String, invokerName : String, invokerGroups : String, volume :f32) -> RpcRequest<bool>;
 });
+
+lazy_static! {
+    static ref PORT: u16 = env::var("CALLBACK_YAMBA")
+        .unwrap_or("1337".to_string())
+        .parse::<u16>()
+        .unwrap_or(1337);
+    pub static ref ID: Option<i32> = env::var("ID_YAMBA")
+        .unwrap_or("1337".to_string())
+        .parse::<i32>()
+        .map(|v| Some(v))
+        .unwrap_or(None);
+}
 
 #[derive(Debug)]
 struct MyTsPlugin {
     killer: Sender<()>,
-    callback_port: String,
-    id: String,
     rpc_host: String,
 }
 
 const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
-const DEFAULT_CALLBACK_PORT: &str = "1337";
-const DEFAULT_ID: &str = "NO-ID";
 
 impl Plugin for MyTsPlugin {
     fn name() -> String {
@@ -76,35 +84,8 @@ impl Plugin for MyTsPlugin {
     fn new(api: &mut TsApi) -> Result<Box<MyTsPlugin>, InitError> {
         api.log_or_print("Initializing ", PLUGIN_NAME_I, LogLevel::Debug);
 
-        let callback_port: String;
-        let id: String;
         let rpc_host: String;
-        match env::var("CALLBACK_YAMBA") {
-            Ok(val) => callback_port = val,
-            Err(e) => {
-                callback_port = String::from(DEFAULT_CALLBACK_PORT);
-                api.log_or_print(
-                    format!(
-                        "RPC Callback port not specified. Using default \"{}\"",
-                        DEFAULT_CALLBACK_PORT
-                    ),
-                    PLUGIN_NAME_I,
-                    LogLevel::Debug,
-                );
-            }
-        }
-        match env::var("ID_YAMBA") {
-            Ok(val) => id = val,
-            Err(e) => {
-                id = String::from(DEFAULT_ID);
-                api.log_or_print(
-                    format!("ID not specified. Using default \"{}\"", DEFAULT_ID),
-                    PLUGIN_NAME_I,
-                    LogLevel::Debug,
-                );
-            }
-        }
-        rpc_host = format!("http://localhost:{}/", callback_port);
+        rpc_host = format!("http://localhost:{}/", PORT.to_string());
 
         let transport = HttpTransport::new().standalone().unwrap();
         let transport_handle = transport.handle(&rpc_host).unwrap();
@@ -112,12 +93,12 @@ impl Plugin for MyTsPlugin {
         let client_mut = Mutex::from(client);
 
         let (sender, receiver) = channel();
-
+        let id_copy = ID.clone();
         thread::spawn(move || {
             let mut failed_heartbeats = 0;
             while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
                 if let Ok(mut client_lock) = client_mut.lock() {
-                    match client_lock.heartbeat(id).call() {
+                    match client_lock.heartbeat(id_copy).call() {
                         Ok(res) => {
                             failed_heartbeats = 0;
                             TsApi::static_log_or_print(
@@ -144,8 +125,6 @@ impl Plugin for MyTsPlugin {
 
         let me = MyTsPlugin {
             killer: sender,
-            callback_port: String::from(callback_port),
-            id: String::from(id),
             rpc_host: rpc_host,
         };
 
