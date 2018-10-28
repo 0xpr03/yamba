@@ -141,23 +141,32 @@ impl Plugin for MyTsPlugin {
                         match client_lock.heartbeat(id).call() {
                             Ok(res) => {
                                 failed_heartbeats = 0;
-                                #[cfg_attr(rustfmt, rustfmt_skip)]
-                                TsApi::static_log_or_print(format!("Server responded with {}", res),
-                                    PLUGIN_NAME_I,LogLevel::Debug,);
+                                TsApi::static_log_or_print(
+                                    format!("Server responded with {}", res),
+                                    PLUGIN_NAME_I,
+                                    LogLevel::Debug,
+                                );
                             }
                             Err(e) => {
                                 failed_heartbeats += 1;
-                                #[cfg_attr(rustfmt, rustfmt_skip)]
-                                TsApi::static_log_or_print(format!("Backend server did not respond {} times! {}",
-                                        failed_heartbeats,e),PLUGIN_NAME_I,LogLevel::Warning);
+                                TsApi::static_log_or_print(
+                                    format!(
+                                        "Backend server did not respond {} times! {}",
+                                        failed_heartbeats, e
+                                    ),
+                                    PLUGIN_NAME_I,
+                                    LogLevel::Warning,
+                                );
                             }
                         }
                     }
                 }
             } else {
-                #[cfg_attr(rustfmt, rustfmt_skip)]
-                TsApi::static_log_or_print(format!("No instance ID!"),
-                    PLUGIN_NAME_I,LogLevel::Critical,);
+                TsApi::static_log_or_print(
+                    format!("No instance ID!"),
+                    PLUGIN_NAME_I,
+                    LogLevel::Critical,
+                );
             }
         });
 
