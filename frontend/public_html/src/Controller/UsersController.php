@@ -21,9 +21,10 @@ namespace App\Controller;
 use Cake\Core\Configure;
 use Cake\Event\Event;
 use Cake\ORM\TableRegistry;
-use Cake\Mailer\MailerAwareTrait;
-use Cake\Utility\Security;
 
+/**
+ * @property \App\Controller\Component\EmailComponent $Email
+ */
 class UsersController extends AppController
 {
     public function beforeFilter(Event $event)
@@ -32,12 +33,16 @@ class UsersController extends AppController
         $this->Auth->allow(['add', 'index', 'logout', 'verify']);
     }
 
+    public function initialize()
+    {
+        parent::initialize();
+        $this->loadComponent('Email');
+    }
+
     public function index()
     {
         return $this->redirect(['action' => 'login']);
     }
-
-    use MailerAwareTrait;
 
     public function add()
     {
@@ -55,18 +60,16 @@ class UsersController extends AppController
             }
             $user->set('email', $email);
             $user->set('password', $password);
-            try {
-                if ($usersTable->save($user)) {
-                    $this->sendEmail($usersTable, $user);
-                } else {
-                    $this->Flash->error(__('Unable to add the user'));
-                }
-            } catch (\PDOException $e) {
-                $this->Flash->error(__('This email address is assigned to another user'));
+
+            $user = $this->Email->registerMail($usersTable, $user);
+            if ($user) {
+                $this->Auth->setUser($user);
+                return $this->redirect(['action' => 'login']);
             }
         }
         $this->set('minlength', Configure::read('password_minlength'));
         $this->set('user', $user);
+        return null;
     }
 
     public function login()
@@ -96,40 +99,22 @@ class UsersController extends AppController
         return $this->redirect($this->Auth->logout());
     }
 
-    public function verify($token) {
+    public function verify($token)
+    {
         $confirmTable = TableRegistry::get('UsersNotConfirmed');
         $confirmTable->delete($confirmTable->get($token));
         $this->Flash->success(__('Your email has been verified'));
         return $this->redirect(['action' => 'login']);
     }
 
-    private function isLoggedIn() {
+    private function isLoggedIn()
+    {
         return $this->request->getSession()->read('Auth.User');
     }
 
-    private function sendEmail(\Cake\ORM\Table $usersTable, \Cake\Datasource\EntityInterface $user) {
-        if (Configure::read('emailVerification')) {
-            $confirmedTable = TableRegistry::get('UsersNotConfirmed');
-            $confirmed = $confirmedTable->newEntity();
-            $confirmed->set('user_id', $user->get('id'));
-            $confirmed->set('confirmationToken', Security::hash($user->get('id')));
-            if($confirmedTable->save($confirmed)) {
-                $this->getMailer('User')->send('welcome', [$user, $confirmed]);
-                $this->Flash->success(__('An activation link has been sent to ') . $user->get('email'));
-                return $this->redirect(['action' => 'login']);
-            } else {
-                $this->Flash->error(__('Unable to add the user'));
-                $usersTable->delete($user);
-            }
-        } else {
-            $this->Auth->setUser($user);
-            return $this->redirect(['action' => 'login']);
-        }
-
-    }
-
-    private function isVerifiedUser($user) {
+    private function isVerifiedUser($user)
+    {
         return !Configure::read('emailVerification')
-                || !TableRegistry::get('UsersNotConfirmed')->find('all', ['conditions' => ['user_id' => $user['id']]])->first();
+            || !TableRegistry::get('UsersNotConfirmed')->find('all', ['conditions' => ['user_id' => $user['id']]])->first();
     }
 }
