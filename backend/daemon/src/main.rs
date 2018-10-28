@@ -93,6 +93,22 @@ fn main() -> Fallible<()> {
                             .required(true)
                             .takes_value(true)
                             .help("media url")))
+                    .subcommand(SubCommand::with_name("test-ts")
+                        .about("Test ts instance start, for test use")
+                        .arg(Arg::with_name("host")
+                            .short("h")
+                            .required(true)
+                            .takes_value(true)
+                            .help("host address"))
+                        .arg(Arg::with_name("port")
+                            .short("p")
+                            .required(true)
+                            .takes_value(true)
+                            .help("port address"))
+                        .arg(Arg::with_name("cid")
+                            .required(false)
+                            .takes_value(true)
+                            .help("channel id")))
                     .get_matches();
     
     match app.subcommand() {
@@ -140,6 +156,20 @@ fn main() -> Fallible<()> {
             info!("finished, waiting..");
             thread::sleep(Duration::from_millis(5000));
             info!("Finished");
+        },
+        ("test-ts", Some(sub_m)) => {
+            info!("Testing ts instance start");
+            info!("Folder: {} Exec: {}",SETTINGS.ts.dir,SETTINGS.ts.start_script);
+            let addr = sub_m.value_of("host").unwrap();
+            let port = sub_m.value_of("port").unwrap().parse::<u16>().unwrap();
+            let cid = sub_m.value_of("cid").unwrap_or("-1").parse::<i32>().unwrap();
+
+            let mut instance = ts::TSInstance::spawn(0,addr,port,"", cid,"Test Bot Instance")?;
+
+            info!("Started, waiting for 5 seconds to kill");
+            thread::sleep(Duration::from_millis(5000));
+            instance.kill()?;
+            info!("Test ended");
         },
         (_,_) => {
             warn!("No params, entering daemon mode");
