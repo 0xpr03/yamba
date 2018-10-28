@@ -41,6 +41,19 @@
     <?= $this->Form->end() ?>
     <hr>
     <h3>Changing your email-address</h3>
+    <?= $this->Form->create($user, ['url' => ['action' => 'changeEmail']]) ?>
+        <div class="grid-x grid-padding-x">
+            <div class="medium-12 large-6 cell">
+                <?= $this->Form->control('password', ['minlength' => $minlength, 'class' => 'input radius', 'required' => true]) ?>
+            </div>
+            <div class="medium-12 large-6 cell">
+                <?= $this->Form->control('new_email', ['placeholder' => 'example@yamba.mail', 'class' => 'input radius', 'required' => true]) ?>
+            </div>
+            <div class="cell">
+                <?= $this->Form->button(__('Change Email'), ['class' => 'button expanded radius']); ?>
+            </div>
+        </div>
+    <?= $this->Form->end() ?>
     <hr>
     <h3>Deleting your account</h3>
 </div>

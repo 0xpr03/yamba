@@ -22,11 +22,20 @@ use Cake\Core\Configure;
 use Cake\Event\Event;
 use Cake\ORM\TableRegistry;
 
+/**
+ * @property \App\Controller\Component\EmailComponent $Email
+ */
 class AccountsController extends AppController
 {
     public function beforeFilter(Event $event)
     {
         parent::beforeFilter($event);
+    }
+
+    public function initialize()
+    {
+        parent::initialize();
+        $this->loadComponent('Email');
     }
 
     public function index() {
@@ -38,6 +47,30 @@ class AccountsController extends AppController
         $user = $usersTable->newEntity();
         $this->set('minlength', Configure::read('password_minlength'));
         $this->set('user', $user);
+    }
+
+    public function changeEmail() {
+        if ($this->request->is('post')) {
+            $password = $this->request->getData('password');
+            $email = $this->request->getData('new_email');
+            if (!isset($password, $email)) {
+                return $this->response->withStatus(400)->withStringBody('Bad request');
+            }
+            $this->request = $this->request->withData('email', $this->Auth->user('email'));
+            $user = $this->Auth->identify();
+            if ($user) {
+                $usersTable = TableRegistry::get('Users');
+                $user = $usersTable->get($user['id']);
+                $user->set('email', $email);
+                $user = $this->Email->registerMail($usersTable, $user);
+                if ($user) {
+                    $this->Auth->setUser($user);
+                }
+            } else {
+                $this->Flash->error(__('Wrong password'));
+            }
+        }
+        return $this->redirect(['action' => 'settings']);
     }
 
     public function changePassword() {
