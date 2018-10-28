@@ -20,6 +20,7 @@ services:
       - 9000:80
     volumes:
       - ./downloads:/var/yamba/downloads
+      - ./frontend/public_html:/var/www/html
     env_file:
       - ./secrets/frontend.env
       - ./secrets/database.env
