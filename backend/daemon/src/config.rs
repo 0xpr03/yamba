@@ -15,14 +15,14 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::ffi::OsStr;
 use std::env::current_dir;
+use std::ffi::OsStr;
 use std::fs::read_dir;
 
+use config_rs::{Config, File};
 use failure::Fallible;
-use config_rs::{File,Config};
 
-use ::{DEFAULT_CONFIG_NAME,CONF_DIR};
+use {CONF_DIR, DEFAULT_CONFIG_NAME};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigRoot {
@@ -36,12 +36,12 @@ pub struct ConfigRoot {
 pub struct ConfigTS {
     pub dir: String,
     pub start_script: String,
-    pub additional_args: Vec<String>
+    pub additional_args: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigMain {
-    pub user_agent: String
+    pub user_agent: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -50,7 +50,7 @@ pub struct ConfigDB {
     pub user: String,
     pub use_password: bool,
     pub password: String,
-    pub db: String
+    pub db: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -74,15 +74,21 @@ pub fn init_settings() -> Fallible<ConfigRoot> {
 fn load_settings() -> Fallible<Config> {
     let mut settings = load_default()?;
     let config_folder = current_dir()?.join(CONF_DIR);
-    let config_files: Vec<_> = read_dir(config_folder)?.filter_map(|x| x.ok()).filter(|x| {
-            match x.metadata() {
-                Ok(metadata) => metadata.is_file() && x.path().file_name() != Some(OsStr::new(DEFAULT_CONFIG_NAME))
-                    && x.path().extension() == Some(OsStr::new("toml")),
-                Err(e) => { warn!("can't handle {:?} during config loading: {}",x, e); false }
+    let config_files: Vec<_> = read_dir(config_folder)?
+        .filter_map(|x| x.ok())
+        .filter(|x| match x.metadata() {
+            Ok(metadata) => {
+                metadata.is_file()
+                    && x.path().file_name() != Some(OsStr::new(DEFAULT_CONFIG_NAME))
+                    && x.path().extension() == Some(OsStr::new("toml"))
             }
-        })
-        .map(|x| File::from(x.path())).collect();
-    debug!("config_files {:?}",config_files);
+            Err(e) => {
+                warn!("can't handle {:?} during config loading: {}", x, e);
+                false
+            }
+        }).map(|x| File::from(x.path()))
+        .collect();
+    debug!("config_files {:?}", config_files);
     settings.merge(config_files)?;
     Ok(settings)
 }
@@ -90,18 +96,18 @@ fn load_settings() -> Fallible<Config> {
 /// Load default config file
 fn load_default() -> Fallible<Config> {
     let mut settings = Config::default();
-    settings.merge(File::with_name(&format!("conf/{}",DEFAULT_CONFIG_NAME)))?;
+    settings.merge(File::with_name(&format!("conf/{}", DEFAULT_CONFIG_NAME)))?;
     Ok(settings)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_load() {
         let settings = load_settings().unwrap();
-        println!("{:?}",settings);
+        println!("{:?}", settings);
     }
 
     #[test]
@@ -112,8 +118,8 @@ mod tests {
     #[test]
     fn test_deserialization() {
         let settings = init_settings().unwrap();
-        assert_eq!("ytdl",settings.ytdl.dir);
-        assert_eq!(false,settings.db.use_password);
-        println!("{:?}",settings);
+        assert_eq!("ytdl", settings.ytdl.dir);
+        assert_eq!(false, settings.db.use_password);
+        println!("{:?}", settings);
     }
 }

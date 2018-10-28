@@ -15,13 +15,13 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use failure::{Fallible,ResultExt};
+use failure::{Fallible, ResultExt};
 use serde_urlencoded;
 
-use std::process::{Child,Command};
 use std::io;
+use std::process::{Child, Command};
 
-use ::SETTINGS;
+use SETTINGS;
 
 const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
 const TS_ENV_ID: &'static str = "ID_YAMBA";
@@ -30,59 +30,66 @@ const TS_ENV_ID: &'static str = "ID_YAMBA";
 pub enum TSInstanceError {
     #[fail(display = "IO Error {}", _0)]
     Io(#[cause] io::Error),
-    #[fail(display = "Instance spawn error {}",_0)]
+    #[fail(display = "Instance spawn error {}", _0)]
     SpawnError(#[cause] io::Error),
     #[fail(display = "Pipe error processing ytdl output {}", _0)]
     PipeError(String),
     #[fail(display = "Thread panicked at {}", _0)]
     ThreadPanic(String),
-
 }
 
 impl Drop for TSInstance {
     fn drop(&mut self) {
         match self.is_running() {
-            Ok(true) | Err(_) => { // ignore error, otherwise run only if alive
+            Ok(true) | Err(_) => {
+                // ignore error, otherwise run only if alive
                 match self.kill() {
                     Ok(()) => (),
-                    Err(e) => warn!("Couldn't kill instance on cleanup {}",e)
+                    Err(e) => warn!("Couldn't kill instance on cleanup {}", e),
                 }
-            },
-            _ => ()
+            }
+            _ => (),
         }
-        
     }
 }
 
 /// TS Instance, kills itself on drop
-pub struct TSInstance{
+pub struct TSInstance {
     id: i32,
-    process: Child
+    process: Child,
 }
 
 impl TSInstance {
     /// Create a new instance controller
     /// ID is used on callbacks
-    pub fn spawn(id: i32, address: &str, port: u16, password: &str, cid: i32, name: &str) -> Fallible<TSInstance> {
+    pub fn spawn(
+        id: i32,
+        address: &str,
+        port: u16,
+        password: &str,
+        cid: i32,
+        name: &str,
+    ) -> Fallible<TSInstance> {
         let ts_url = serde_urlencoded::to_string(vec![
-        ("port".to_owned(), port.to_string()),
-        ("nickname".to_owned(), name.to_string()),
-        ("password".to_owned(), password.to_string()),
-        ("cid".to_owned(), cid.to_string())
+            ("port".to_owned(), port.to_string()),
+            ("nickname".to_owned(), name.to_string()),
+            ("password".to_owned(), password.to_string()),
+            ("cid".to_owned(), cid.to_string()),
         ])?;
-        Ok(TSInstance{
+        Ok(TSInstance {
             id,
             process: Command::new(&SETTINGS.ts.start_script)
-            .current_dir(&SETTINGS.ts.dir)
-            .env("QT_PLUGIN_PATH",&SETTINGS.ts.dir)
-            .env("QTDIR",&SETTINGS.ts.dir)
-            .env("LD_LIBRARY_PATH",&SETTINGS.ts.dir)
-            .env(TS_ENV_ID,id.to_string())
-            .env(TS_ENV_CALLBACK,"")
-            .args(&SETTINGS.ts.additional_args)
-            .arg("-nosingleinstance")
-            .arg(format!("ts3server://{}?{}",address,ts_url))
-            .spawn().map_err(|e|TSInstanceError::SpawnError(e))?
+                .current_dir(&SETTINGS.ts.dir)
+                .env("QT_PLUGIN_PATH", &SETTINGS.ts.dir)
+                .env("QTDIR", &SETTINGS.ts.dir)
+                .env("LD_LIBRARY_PATH", &SETTINGS.ts.dir)
+                .env(TS_ENV_ID, id.to_string())
+                .env(TS_ENV_CALLBACK, "")
+                .args(&SETTINGS.ts.additional_args)
+                .arg("-nosingleinstance")
+                .arg(format!("ts3server://{}?{}", address, ts_url))
+                .spawn()
+                .map_err(|e| TSInstanceError::SpawnError(e))?,
         })
     }
 

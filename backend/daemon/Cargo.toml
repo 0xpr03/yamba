@@ -20,6 +20,9 @@ serde_derive = "1.0"
 serde_json = "1.0"
 sha2 = "0.8"
 serde_urlencoded = "0.5"
+tokio = "0.1"
+tokio-io = "0.1"
+tokio-jsonrpc = "0.9"
 
 [dependencies.vlc-rs]
 git = "https://github.com/0xpr03/vlc-rs"
