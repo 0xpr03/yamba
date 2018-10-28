@@ -38,37 +38,37 @@ jsonrpc_client!(
     #[derive(Debug)]
     pub struct BackendRPCClient {
     // Return: allowed, message
-    pub fn heartbeat(&mut self, id : String) -> RpcRequest<(bool)>;
+    pub fn heartbeat(&mut self, id : i32) -> RpcRequest<(bool)>;
     // Return: allowed, message, Volume [0 - 100]
-    pub fn volume_get(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, i32)>;
+    pub fn volume_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, i32)>;
     // Return: allowed, message, success
-    pub fn volume_set(&mut self, id : String, invokerName : String, invokerGroups : String, volume : i32) -> RpcRequest<(bool, String, bool)>;
+    pub fn volume_set(&mut self, id : i32, invokerName : String, invokerGroups : String, volume : i32) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
-    pub fn volume_lock(&mut self, id : String, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
+    pub fn volume_lock(&mut self, id : i32, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
 
     // Return: allowed, message, title
-    pub fn track_get(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
+    pub fn track_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
     // Return: allowed, message, success
-    pub fn track_next(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_next(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
-    pub fn track_previous(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_previous(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
-    pub fn track_resume(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_resume(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
-    pub fn track_pause(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_pause(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
-    pub fn track_stop(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_stop(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
 
     // Return: allowed, message, name
-    pub fn playlist_get(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
+    pub fn playlist_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
     // Return: allowed, message, success
-    pub fn playlist_clear(&mut self, id : String, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn playlist_clear(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
-    pub fn playlist_lock(&mut self, id : String, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
+    pub fn playlist_lock(&mut self, id : i32, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
-    pub fn playlist_queue(&mut self, id : String, invokerName : String, invokerGroups : String, url : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn playlist_queue(&mut self, id : i32, invokerName : String, invokerGroups : String, url : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
-    pub fn playlist_load(&mut self, id : String, invokerName : String, invokerGroups : String, playlist_name : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn playlist_load(&mut self, id : i32, invokerName : String, invokerGroups : String, playlist_name : String) -> RpcRequest<(bool, String, bool)>;
 });
 
 lazy_static! {
@@ -126,30 +126,29 @@ impl Plugin for MyTsPlugin {
         let id_copy = ID.clone();
         thread::spawn(move || {
             let mut failed_heartbeats = 0;
-            while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
-                if let Ok(mut client_lock) = client_mut.lock() {
-                    match client_lock.heartbeat(id_copy).call() {
-                        Ok(res) => {
-                            failed_heartbeats = 0;
-                            TsApi::static_log_or_print(
-                                format!("Server responded with {}", res),
-                                PLUGIN_NAME_I,
-                                LogLevel::Debug,
-                            );
-                        }
-                        Err(_) => {
-                            failed_heartbeats += 1;
-                            TsApi::static_log_or_print(
-                                format!(
-                                    "Backend server did not respond {} times!",
-                                    failed_heartbeats
-                                ),
-                                PLUGIN_NAME_I,
-                                LogLevel::Debug,
-                            );
+            if let Some(id) = id_copy {
+                while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
+                    if let Ok(mut client_lock) = client_mut.lock() {
+                        match client_lock.heartbeat(id).call() {
+                            Ok(res) => {
+                                failed_heartbeats = 0;
+                                #[cfg_attr(rustfmt, rustfmt_skip)]
+                                TsApi::static_log_or_print(format!("Server responded with {}", res),
+                                    PLUGIN_NAME_I,LogLevel::Debug,);
+                            }
+                            Err(_) => {
+                                failed_heartbeats += 1;
+                                #[cfg_attr(rustfmt, rustfmt_skip)]
+                                TsApi::static_log_or_print(format!("Backend server did not respond {} times!",
+                                        failed_heartbeats),PLUGIN_NAME_I,LogLevel::Debug,);
+                            }
                         }
                     }
                 }
+            } else {
+                #[cfg_attr(rustfmt, rustfmt_skip)]
+                TsApi::static_log_or_print(format!("Backend server did not respond {} times!",failed_heartbeats),
+                    PLUGIN_NAME_I,LogLevel::Debug,);
             }
         });
 
