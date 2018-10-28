@@ -37,8 +37,9 @@ use ts3plugin::*;
 jsonrpc_client!(
     #[derive(Debug)]
     pub struct BackendRPCClient {
-    // Return: allowed, message
-    pub fn heartbeat(&mut self, id : i32) -> RpcRequest<(bool)>;
+    // Return: message
+    pub fn heartbeat(&mut self, id : i32) -> RpcRequest<(String)>;
+
     // Return: allowed, message, Volume [0 - 100]
     pub fn volume_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, i32)>;
     // Return: allowed, message, success
