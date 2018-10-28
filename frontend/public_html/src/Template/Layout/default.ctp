@@ -40,8 +40,10 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
         echo $this->element('Topbar/default');
     }
 ?>
-<?= $this->Flash->render() ?>
+<div class="body">
+    <?= $this->Flash->render() ?>
     <?= $this->fetch('content') ?>
+</div>
 <footer>
     <div class="row">
         <span class="footer-copyright">© 2018–<?= date('Y')?> Yamba Authors</span>
