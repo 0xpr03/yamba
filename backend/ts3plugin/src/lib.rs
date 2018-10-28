@@ -28,6 +28,7 @@ use jsonrpc_client_http::HttpTransport;
 use regex::*;
 use std::env;
 use std::sync::mpsc::{channel, Sender};
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
@@ -88,6 +89,7 @@ lazy_static! {
 struct MyTsPlugin {
     killer: Sender<()>,
     rpc_host: String,
+    client_mut: Arc<Mutex<BackendRPCClient<jsonrpc_client_http::HttpHandle>>>,
 }
 
 const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
@@ -125,7 +127,9 @@ impl Plugin for MyTsPlugin {
         let transport = HttpTransport::new().standalone().unwrap();
         let transport_handle = transport.handle(&rpc_host).unwrap();
         let client = BackendRPCClient::new(transport_handle);
-        let client_mut = Mutex::from(client);
+        let client_mut_arc = Arc::new(Mutex::from(client));
+        let client_mut_heartbeat = client_mut_arc.clone();
+        let client_mut_self = client_mut_arc.clone();
 
         let (sender, receiver) = channel();
         let id_copy = ID.clone();
@@ -133,7 +137,7 @@ impl Plugin for MyTsPlugin {
             let mut failed_heartbeats = 0;
             if let Some(id) = id_copy {
                 while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
-                    if let Ok(mut client_lock) = client_mut.lock() {
+                    if let Ok(mut client_lock) = client_mut_heartbeat.lock() {
                         match client_lock.heartbeat(id).call() {
                             Ok(res) => {
                                 failed_heartbeats = 0;
@@ -160,6 +164,7 @@ impl Plugin for MyTsPlugin {
         let me = MyTsPlugin {
             killer: sender,
             rpc_host: rpc_host,
+            client_mut: client_mut_self,
         };
 
         api.log_or_print(format!("{:?}", me), PLUGIN_NAME_I, LogLevel::Debug);
@@ -188,39 +193,47 @@ impl Plugin for MyTsPlugin {
         message: String,
         ignored: bool,
     ) -> bool {
+        let id: i32 = *ID.as_ref().unwrap();
+        let invoker_name: String = invoker.get_name().to_string();
+        let invoker_groups: String;
+
         if let Some(server) = api.get_server(server_id) {
             if Ok(invoker.get_id()) == server.get_own_connection_id() {
                 return false;
             }
 
             if let Some(connection) = server.get_connection(invoker.get_id()) {
-                let r_vol_set =
-                    RegexSet::new(&[r"^!v (\d)", r"^!vol (\d)", r"^!volume (\d)"]).unwrap();
-                let r_vol_get = RegexSet::new(&[r"^!v", r"^!vol", r"^!volume"]).unwrap();
-
-                if r_vol_set.is_match(&message) {
-
-                } else if r_vol_get.is_match(&message) {
-
-                } else {
-                    let _ = connection
-                        .send_message("Sorry, I didn't get  that... Have you tried !help yet?");
-                }
-
                 if let Ok(value) = api.get_string_client_properties(
                     ClientProperties::Servergroups,
                     &invoker.get_id(),
                     &server_id,
                 ) {
-                    let groups = value.to_owned_string_lossy();
-                    api.log_or_print(
-                        format!("groups: {}", &groups),
-                        PLUGIN_NAME_I,
-                        LogLevel::Debug,
-                    );
-                    let _ = connection.send_message(groups);
+                    invoker_groups = value.to_owned_string_lossy();
+
+                    let r_vol_lock = RegexSet::new(&[r"^!lock volume"]).unwrap();
+                    let r_vol_unlock = RegexSet::new(&[r"^!unlock volume"]).unwrap();
+                    let r_vol_set =
+                        RegexSet::new(&[r"^!v (\d)", r"^!vol (\d)", r"^!volume (\d)"]).unwrap();
+                    let r_vol_get = RegexSet::new(&[r"^!v", r"^!vol", r"^!volume"]).unwrap();
+
+                    if let Ok(mut client_lock) = self.client_mut.lock() {
+                        if r_vol_lock.is_match(&message) {
+                            client_lock.volume_lock(id, invoker_name, invoker_groups, true);
+                        } else if r_vol_unlock.is_match(&message) {
+                            client_lock.volume_lock(id, invoker_name, invoker_groups, false);
+                        } else if r_vol_set.is_match(&message) {
+                            client_lock.volume_set(id, invoker_name, invoker_groups, -1);
+                        } else if r_vol_get.is_match(&message) {
+                            client_lock.volume_get(id, invoker_name, invoker_groups);
+                        } else {
+                            let _ = connection.send_message(
+                                "Sorry, I didn't get  that... Have you tried !help yet?",
+                            );
+                        }
+                    }
                 } else {
-                    let _ = connection.send_message("Internal Error: Can't get server groups.");
+                    let _ =
+                        connection.send_message("Internal Error: Couldn't get your server groups!");
                 }
             }
         }
