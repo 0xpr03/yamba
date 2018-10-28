@@ -20,7 +20,7 @@
 <nav class="top-bar" data-topbar role="navigation">
     <div class="top-bar-left">
         <ul class="menu" data-dropdown-menu>
-            <li class="menu-text menu-text-top"><?= $this->fetch('title') ?></li>
+            <li><a class="header-font" href="/">Yamba - <?= $this->fetch('title') ?></a></li>
         </ul>
     </div>
     <div class="top-bar-right">
@@ -28,12 +28,12 @@
             <li class="divider"><?= $this->Html->link(
                 '<i class="fi-widget"></i>',
                 ['controller' => 'Accounts', 'action' => 'settings'],
-                ['class' => 'button', 'title' => 'Account Settings', 'escapeTitle' => false]);
+                ['class' => 'header-font', 'title' => 'Account Settings', 'escapeTitle' => false]);
                 ?></li>
             <li class="divider"><?= $this->Html->link(
                 'Logout',
                 ['controller' => 'Users', 'action' => 'logout'],
-                ['class' => 'button', 'title' => 'Logout']);
+                ['class' => 'header-font', 'title' => 'Logout']);
                 ?>
             </li>
         </ul>
