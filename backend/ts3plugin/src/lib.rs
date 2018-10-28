@@ -227,13 +227,37 @@ impl Plugin for MyTsPlugin {
 
                     if let Ok(mut client_lock) = self.client_mut.lock() {
                         if r_vol_lock.is_match(&message) {
-                            client_lock.volume_lock(id, invoker_name, invoker_groups, true);
+                            match client_lock
+                                .volume_lock(id, invoker_name, invoker_groups, true)
+                                .call()
+                            {
+                                Ok(res) => {}
+                                Err(e) => {}
+                            }
                         } else if r_vol_unlock.is_match(&message) {
-                            client_lock.volume_lock(id, invoker_name, invoker_groups, false);
+                            match client_lock
+                                .volume_lock(id, invoker_name, invoker_groups, false)
+                                .call()
+                            {
+                                Ok(res) => {}
+                                Err(e) => {}
+                            }
                         } else if r_vol_set.is_match(&message) {
-                            client_lock.volume_set(id, invoker_name, invoker_groups, -1);
+                            match client_lock
+                                .volume_set(id, invoker_name, invoker_groups, -1)
+                                .call()
+                            {
+                                Ok(res) => {}
+                                Err(e) => {}
+                            }
                         } else if r_vol_get.is_match(&message) {
-                            client_lock.volume_get(id, invoker_name, invoker_groups);
+                            match client_lock
+                                .volume_get(id, invoker_name, invoker_groups)
+                                .call()
+                            {
+                                Ok(res) => {}
+                                Err(e) => {}
+                            }
                         } else {
                             let _ = connection.send_message(
                                 "Sorry, I didn't get  that... Have you tried !help yet?",
