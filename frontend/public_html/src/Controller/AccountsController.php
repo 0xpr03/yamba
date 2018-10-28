@@ -30,6 +30,7 @@ class AccountsController extends AppController
     public function beforeFilter(Event $event)
     {
         parent::beforeFilter($event);
+        $this->Auth->allow(['goodbye']);
     }
 
     public function initialize()
@@ -47,6 +48,24 @@ class AccountsController extends AppController
         $user = $usersTable->newEntity();
         $this->set('minlength', Configure::read('password_minlength'));
         $this->set('user', $user);
+    }
+
+    public function deleteAccount() {
+        if ($this->request->is('post')) {
+            $email = $this->request->getData('email');
+            if (!isset($email)) {
+                return $this->response->withStatus(400)->withStringBody('Bad request');
+            }
+            if ($email === $this->Auth->user('email')) {
+                $usersTable = TableRegistry::get('Users');
+                $usersTable->delete($usersTable->get($this->Auth->user('id')));
+                $this->Auth->logout();
+                return $this->redirect(['action' => 'goodbye']);
+            } else {
+                $this->Flash->error(__('Please enter the email associated with your account'));
+            }
+        }
+        return $this->redirect(['action' => 'settings']);
     }
 
     public function changeEmail() {
@@ -110,5 +129,9 @@ class AccountsController extends AppController
             }
         }
         return $this->redirect(['action' => 'settings']);
+    }
+
+    public function goodbye() {
+
     }
 }

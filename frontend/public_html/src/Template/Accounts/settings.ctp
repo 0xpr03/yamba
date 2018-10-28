@@ -58,4 +58,14 @@
     <?= $this->Form->end() ?>
     <hr>
     <h3>Deleting your account</h3>
+    <?= $this->Form->create($user, ['url' => ['action' => 'deleteAccount']]) ?>
+        <div class="grid-x grid-padding-x">
+            <div class="cell">
+                <?= $this->Form->control('email', ['class' => 'input radius', 'required' => true]) ?>
+            </div>
+            <div class="cell">
+                <?= $this->Form->button(__('Delete Account'), ['class' => 'button alert expanded radius']); ?>
+            </div>
+        </div>
+    <?= $this->Form->end() ?>
 </div>
