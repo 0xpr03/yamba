@@ -63,6 +63,10 @@ jsonrpc_client!(
 
     // Return: allowed, message, name
     pub fn playlist_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
+    // n <= 0: return all tracks
+    // n > 0: return the next n tracks
+    // Return: allowed, message, tracklist
+    pub fn playlist_tracks(&mut self, id : i32, invokerName : String, invokerGroups : String, n : i32) -> RpcRequest<(bool, String, Vec<String>)>;
     // Return: allowed, message, success
     pub fn playlist_clear(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
@@ -232,6 +236,33 @@ impl Plugin for MyTsPlugin {
                         RegexSet::new(&[r"^!v (\d)", r"^!vol (\d)", r"^!volume (\d)"]).unwrap();
                     let r_vol_get = RegexSet::new(&[r"^!v", r"^!vol", r"^!volume"]).unwrap();
 
+                    let r_track_get = RegexSet::new(&[r"^!playing", r"^!p"]).unwrap();
+                    let r_track_next =
+                        RegexSet::new(&[r"^!next", r"^!nxt", r"^!n", r"^>>"]).unwrap();
+                    let r_track_previous =
+                        RegexSet::new(&[r"^!previous", r"^!prv", r"^!p", r"^<<"]).unwrap();
+                    let r_track_resume =
+                        RegexSet::new(&[r"^!resume", r"^!res", r"^!r", r"^>"]).unwrap();
+                    let r_track_pause = RegexSet::new(&[r"^!pause", r"^\|\|"]).unwrap();
+                    let r_track_stop = RegexSet::new(&[r"^!stop", r"^!stp", r"^!s"]).unwrap();
+
+                    let r_playlist_get = RegexSet::new(&[r"^!playlist"]).unwrap();
+                    let r_playlist_tracks_5 = RegexSet::new(&[r"^!t", r"^!tracks"]).unwrap();
+                    let r_playlist_tracks_n =
+                        RegexSet::new(&[r"^!t (\d)", r"^!tracks (\d)"]).unwrap();
+                    let r_playlist_tracks_all =
+                        RegexSet::new(&[r"^!t all", r"^!tracks all"]).unwrap();
+                    let r_playlist_clear = RegexSet::new(&[r"^!c", r"^!clear"]).unwrap();
+                    let r_playlist_lock =
+                        RegexSet::new(&[r"^!l playlist", r"^!lock playlist"]).unwrap();
+                    let r_playlist_unlock =
+                        RegexSet::new(&[r"^!ul playlist", r"^!unlock playlist"]).unwrap();
+                    let r_playlist_queue =
+                        RegexSet::new(&[r"^!q ([^ ]+://[^ ]+)", r"^!queue ([^ ]+://[^ ]+)"])
+                            .unwrap();
+                    let r_playlist_load =
+                        RegexSet::new(&[r"^!ld ([^ ]+)", r"^!load ([^ ]+)"]).unwrap();
+
                     if let Ok(mut client_lock) = self.client_mut.lock() {
                         if r_ignore.is_match(&message) {
                             // IGNORED MESSAGES
@@ -246,6 +277,23 @@ Hi! I'm YAMBA! This is how you can use me:
 !ul volume, !unlock volume → unlock the volume
 !v <volume>, !vol <volume>, !volume <volume> → set the volume to <volume>
 !v, !vol, !volume → return the current volume
+
+!p, !playing → return the currently playing track
+>>, !n, !nxt, !next → play the next track
+<<, !p, !prv, !previous → play the previous track
+>, !r, !res, !resume → resume the paused track
+||, !pause → pause the currently playing track
+!s, !stp, !stop → stop the currently playing track
+
+!playlist → return the currently playing playlist
+!t, !tracks → return the next 5 tracks in the currently playing playlist
+!t <n>, !tracks <n> → return the next <n> tracks in the currently playing playlist
+!t all, !tracks all → return all tracks in the currently playing playlist
+!c, !clear → clear the currently playing playlist
+!l playlist, !lock playlist → lock the currently playing playlist
+!ul playlist, !unlock playlist → unlock the currently playing playlist
+!q <url>, !queue <url> → add <url> to currently playing playlist
+!ld <playlist>, !load <playlist> → load and start playing the playlist <playlist>
 "#,
                             );
                         } else if r_vol_lock.is_match(&message) {
