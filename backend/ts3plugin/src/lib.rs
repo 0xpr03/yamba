@@ -151,7 +151,7 @@ impl Plugin for MyTsPlugin {
                                 failed_heartbeats += 1;
                                 TsApi::static_log_or_print(
                                     format!(
-                                        "Backend server did not respond {} times! {}",
+                                        "Backend server did not respond {} times!\nReason {}",
                                         failed_heartbeats, e
                                     ),
                                     PLUGIN_NAME_I,
@@ -185,7 +185,7 @@ impl Plugin for MyTsPlugin {
         match self.killer.send(()) {
             Ok(_) => (),
             Err(e) => api.log_or_print(
-                format!("Unable to stop heartbeat, already dead ? {}", e),
+                format!("Unable to stop heartbeat\nReason: {}", e),
                 PLUGIN_NAME_I,
                 LogLevel::Error,
             ),
@@ -254,7 +254,10 @@ Hi! I'm YAMBA! This is how you can use me:
                                 .call()
                             {
                                 Ok(res) => {}
-                                Err(e) => {}
+                                Err(e) => {
+                                    let _ = connection
+                                        .send_message(format!("RPC call failed\nReason {}", e));
+                                }
                             }
                         } else if r_vol_unlock.is_match(&message) {
                             match client_lock
@@ -262,7 +265,10 @@ Hi! I'm YAMBA! This is how you can use me:
                                 .call()
                             {
                                 Ok(res) => {}
-                                Err(e) => {}
+                                Err(e) => {
+                                    let _ = connection
+                                        .send_message(format!("RPC call failed\nReason {}", e));
+                                }
                             }
                         } else if r_vol_set.is_match(&message) {
                             match client_lock
@@ -270,7 +276,10 @@ Hi! I'm YAMBA! This is how you can use me:
                                 .call()
                             {
                                 Ok(res) => {}
-                                Err(e) => {}
+                                Err(e) => {
+                                    let _ = connection
+                                        .send_message(format!("RPC call failed\nReason {}", e));
+                                }
                             }
                         } else if r_vol_get.is_match(&message) {
                             match client_lock
@@ -278,7 +287,10 @@ Hi! I'm YAMBA! This is how you can use me:
                                 .call()
                             {
                                 Ok(res) => {}
-                                Err(e) => {}
+                                Err(e) => {
+                                    let _ = connection
+                                        .send_message(format!("RPC call failed\nReason {}", e));
+                                }
                             }
                         } else {
                             let _ = connection.send_message(
