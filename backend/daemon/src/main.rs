@@ -32,11 +32,14 @@ extern crate reqwest;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate futures;
+extern crate hyper;
+extern crate jsonrpc_lite;
+#[macro_use]
 extern crate serde_json;
 extern crate serde_urlencoded;
 extern crate sha2;
 extern crate tokio;
-extern crate tokio_jsonrpc;
 
 use std::alloc::System;
 
@@ -46,6 +49,7 @@ static GLOBAL: System = System;
 mod config;
 mod http;
 mod playback;
+mod rpc;
 mod ts;
 mod ytdl;
 
@@ -195,42 +199,7 @@ fn main() -> Fallible<()> {
         }
         (_, _) => {
             warn!("No params, entering daemon mode");
-            /*let mut core = Core::new().unwrap();
-            let handle = core.handle();
-
-            let listener = TcpListener::bind(&"127.0.0.1:2345".parse().unwrap(), &handle).unwrap();
-            let connections = listener.incoming();
-            let service = connections.for_each(|(stream, _)| {
-                let jsonized = stream.framed(LineCodec::new());
-                let (w, r) = jsonized.split();
-                let answers = r.filter_map(|message| {
-                    println!("A message received: {:?}", message);
-                    match message {
-                        Ok(Message::Request(ref req)) => {
-                            println!("Got method {}", req.method);
-                            if req.method == "echo" {
-                                Some(req.reply(json!([req.method, req.params])))
-                            } else {
-                                Some(req.error(RpcError::method_not_found(req.method.clone())))
-                            }
-                        }
-                        Ok(Message::Notification(Notification { ref method, .. })) => {
-                            println!("Got notification {}", method);
-                            None
-                        }
-                        Err(ref e) => Some(e.reply()),
-                        _ => None,
-                    }
-                });
-                let sent = w
-                    .send_all(answers)
-                    .map(|_| ())
-                    .map_err(|e| println!("{}", e));
-                // Do the sending in the background
-                handle.spawn(sent);
-                Ok(())
-            });
-            core.run(service).unwrap();*/
+            rpc::run_rpc_daemon();
         }
     }
     info!("Shutdown of yamba daemon");

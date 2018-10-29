@@ -22,7 +22,9 @@ sha2 = "0.8"
 serde_urlencoded = "0.5"
 tokio = "0.1"
 tokio-io = "0.1"
-tokio-jsonrpc = "0.9"
+hyper = "0.12"
+jsonrpc-lite = "0.5"
+futures = "0.1"
 
 [dependencies.vlc-rs]
 git = "https://github.com/0xpr03/vlc-rs"
