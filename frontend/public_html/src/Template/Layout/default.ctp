@@ -45,10 +45,8 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
     <?= $this->fetch('content') ?>
 </div>
 <footer>
-    <div class="row">
-        <span class="footer-copyright">© 2018–<?= date('Y')?> Yamba Authors</span>
-        <a class="footer-icon" href="https://github.com/0xpr03/yamba" target="_blank"><i class="fi-social-github"></i></a>
-    </div>
+    <span class="footer-copyright">© 2018–<?= date('Y')?> Yamba Authors</span>
+    <a class="footer-icon" href="https://github.com/0xpr03/yamba" target="_blank"><i class="fi-social-github"></i></a>
 </footer>
 <?= $this->Html->script('app'); ?>
 </body>
