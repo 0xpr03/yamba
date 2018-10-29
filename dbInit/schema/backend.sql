@@ -13,7 +13,6 @@ CREATE TABLE `songs` (
   `source` varchar(150) NOT NULL,
   `artist` varchar(50) NOT NULL,
   `length` varchar(50) NOT NULL,
-  `keep` bit NOT NULL,
   `downloaded` bit NOT NULL,
   `last_used` DATETIME NOT NULL,
   PRIMARY KEY (`id`)
@@ -22,6 +21,9 @@ CREATE TABLE `songs` (
 CREATE TABLE `playlists` (
   `id` char(36) NOT NULL,
   `name` varchar(50) NOT NULL,
+  `keep` bit DEFAULT 0 NOT NULL,
+  `created` DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  `modified` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
