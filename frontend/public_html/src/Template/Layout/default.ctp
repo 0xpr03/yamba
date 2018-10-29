@@ -23,7 +23,7 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
     <title>
         <?= $this->fetch('title') ?> - Yamba
     </title>
-    <?= $this->Html->meta('icon', 'img/favicon.ico', ['type'=>'icon']) ?>
+    <?= $this->Html->meta('icon', 'favicon.ico', ['type'=>'icon']) ?>
     <?= $this->fetch('meta') ?>
 
     <?= $this->Html->css(['app', 'foundation.min', 'foundation-icons/foundation-icons']); ?>
@@ -40,8 +40,8 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
         echo $this->element('Topbar/default');
     }
 ?>
-<?= $this->Flash->render() ?>
-<div class="grid-container">
+<div class="body">
+    <?= $this->Flash->render() ?>
     <?= $this->fetch('content') ?>
 </div>
 <footer>

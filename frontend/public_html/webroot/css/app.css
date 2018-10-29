@@ -1,13 +1,30 @@
+/**
+ *  This file is part of yamba.
+ *
+ *  yamba is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  yamba is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 footer {
-    position: fixed;
+    position: absolute;
     left: 0;
     bottom: 0;
-    width: 100%;
+    right: 0;
     background-color: #0a0a0a;
     color: #fefefe;
     font-size: 1.25rem;
     text-align: center;
-    padding: 1rem;
+    padding: 0.25rem;
 }
 
 .footer-copyright {
@@ -30,8 +47,8 @@ a.footer-icon:hover, a.footer-icon:active {
     color: #dddddd !important;
 }
 
-.divider {
-    padding: 1px;
+li:not(:last-child).divider {
+    border-right: 0.1em solid #7d7d7d;
 }
 
 div.flash {
@@ -48,4 +65,53 @@ label.required:after {
     color: #e32;
     content: ' *';
     display:inline;
+}
+
+.input.radius {
+    border-radius: 1em;
+}
+
+.button.radius {
+    border-radius: 0.3em;
+}
+
+div.body {
+    padding-bottom: 4em;
+    padding-top: 2em;
+}
+
+nav.top-bar {
+    position: fixed;
+    width: 100%;
+    height: 2em;
+}
+
+a.header-font, a.header-font:visited {
+    color: #bdbdbd;
+    height: 2em;
+    padding-top: 0.45em !important;
+}
+
+a.header-font:hover, a.header-font:active {
+    color: #f5f5f5;
+}
+
+a.logo-font, a.logo-font:visited {
+    color: #f5f5f5;
+    height: 2em;
+    font-weight: bold;
+    padding-top: 0.45em !important;
+}
+
+a.logo-font:hover, a.logo-font:active {
+    color: #bdbdbd;
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    position: relative;
+    min-height: 100%;
 }
