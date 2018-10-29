@@ -25,8 +25,8 @@ class UserMailPreview extends MailPreview
 {
     public function welcome()
     {
-        $user = TableRegistry::get('Users')->find()->first();
+        $user = TableRegistry::getTableLocator()->get('Users')->find()->first();
         return $this->getMailer('User')
-            ->welcome($user, TableRegistry::get('UsersNotConfirmed')->find('all', ['conditions' => ['user_id' => $user['id']]])->first());
+            ->welcome($user, TableRegistry::getTableLocator()->get('UsersNotConfirmed')->find('all', ['conditions' => ['user_id' => $user['id']]])->first());
     }
 }
