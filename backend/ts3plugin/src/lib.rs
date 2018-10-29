@@ -219,14 +219,36 @@ impl Plugin for MyTsPlugin {
                 ) {
                     invoker_groups = value.to_owned_string_lossy();
 
-                    let r_vol_lock = RegexSet::new(&[r"^!lock volume"]).unwrap();
-                    let r_vol_unlock = RegexSet::new(&[r"^!unlock volume"]).unwrap();
+                    let r_ignore =
+                        RegexSet::new(&[r"^Sorry, I didn't get that... Have you tried !help yet"])
+                            .unwrap();
+
+                    let r_help = RegexSet::new(&[r"^\?", r"^!h", r"^!help"]).unwrap();
+
+                    let r_vol_lock = RegexSet::new(&[r"^!l volume", r"^!lock volume"]).unwrap();
+                    let r_vol_unlock =
+                        RegexSet::new(&[r"^!ul volume", r"^!unlock volume"]).unwrap();
                     let r_vol_set =
                         RegexSet::new(&[r"^!v (\d)", r"^!vol (\d)", r"^!volume (\d)"]).unwrap();
                     let r_vol_get = RegexSet::new(&[r"^!v", r"^!vol", r"^!volume"]).unwrap();
 
                     if let Ok(mut client_lock) = self.client_mut.lock() {
-                        if r_vol_lock.is_match(&message) {
+                        if r_ignore.is_match(&message) {
+                            // IGNORED MESSAGES
+                        } else if r_help.is_match(&message) {
+                            let _ = connection.send_message(
+                                r#"
+Hi! I'm YAMBA! This is how you can use me:
+
+?, !h, !help → Display this help
+
+!l volume, !lock volume → lock the volume
+!ul volume, !unlock volume → unlock the volume
+!v <volume>, !vol <volume>, !volume <volume> → set the volume to <volume>
+!v, !vol, !volume → return the current volume
+"#,
+                            );
+                        } else if r_vol_lock.is_match(&message) {
                             match client_lock
                                 .volume_lock(id, invoker_name, invoker_groups, true)
                                 .call()
@@ -260,7 +282,7 @@ impl Plugin for MyTsPlugin {
                             }
                         } else {
                             let _ = connection.send_message(
-                                "Sorry, I didn't get  that... Have you tried !help yet?",
+                                "Sorry, I didn't get that... Have you tried !help yet?",
                             );
                         }
                     }
