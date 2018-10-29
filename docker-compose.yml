@@ -1,3 +1,5 @@
+# This file is part of yamba which is released under <GPL3>. See file LICENSE or go to https://www.gnu.org/licenses/gpl.html for full license details.
+
 version: '3'
 
 services:
@@ -11,15 +13,17 @@ services:
     - ./database:/var/lib/mysql
     env_file:
     - ./secrets/database.env
+    - ./secrets/database_root.env
 
   frontend:
     build: ./frontend
     ports:
       - 9000:80
     volumes:
-      - ./frontend/public_html:/var/www/html
       - ./downloads:/var/yamba/downloads
+      - ./frontend/public_html:/var/www/html
     env_file:
       - ./secrets/frontend.env
       - ./secrets/database.env
+      - ./secrets/database_root.env
   # yamba_backend:

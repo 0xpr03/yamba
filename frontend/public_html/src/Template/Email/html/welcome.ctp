@@ -1,3 +1,22 @@
+<?php
+/**
+ *  This file is part of yamba.
+ *
+ *  yamba is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  yamba is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
+ */
+?>
+
 <div class="row" style="box-sizing:inherit;margin:0;padding:0">
     <h1 style="box-sizing:inherit;color:inherit;font-family:'Helvetica Neue',Helvetica,Roboto,Arial,sans-serif;font-size:1.5rem;font-style:normal;font-weight:400;line-height:1.4;margin:0;margin-bottom:.5rem;margin-top:0;padding:0;text-rendering:optimizeLegibility">Verifying your account</h1>
     <p style="box-sizing:inherit;font-size:inherit;line-height:1.6;margin:0;margin-bottom:1rem;padding:0;text-rendering:optimizeLegibility">Hey there. Thank you for registering at Yamba!</p>

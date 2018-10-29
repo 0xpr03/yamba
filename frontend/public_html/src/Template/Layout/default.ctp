@@ -40,8 +40,8 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
         echo $this->element('Topbar/default');
     }
 ?>
-<?= $this->Flash->render() ?>
-<div class="grid-container">
+<div class="body">
+    <?= $this->Flash->render() ?>
     <?= $this->fetch('content') ?>
 </div>
 <footer>

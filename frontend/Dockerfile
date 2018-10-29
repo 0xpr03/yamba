@@ -1,3 +1,5 @@
+# This file is part of yamba which is released under <GPL3>. See file LICENSE or go to https://www.gnu.org/licenses/gpl.html for full license details.
+
 FROM debian:stable-slim
 
 LABEL maintainers="Aron Heinecke <Ox0p54r36@t-online.de>, \
@@ -19,6 +21,7 @@ RUN apt-get update -q && apt-get install -qqy \
     # Install tools
     vim \
     composer \
+    net-tools \
     # Install nginx
     nginx \
     # Delete apt cache
@@ -40,8 +43,6 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer install -n \
     && cakeLogsDir=/var/log/cake/logs \
     # Override app config with default
     cp ./config/app.default.php ./config/app.php \
-    # Configure random salt (hashing value for cake)
-    && sed -i -e "s/__SALT__/$(date +%s | sha256sum | base64 | head -c 64 ; echo)/" config/app.php \
     # Create and configure logs and tmp directory
     && mkdir -p cakeLogsDir tmp \
     && chgrp -R www-data cakeLogsDir tmp \

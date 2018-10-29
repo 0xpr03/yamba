@@ -1,3 +1,5 @@
+-- This file is part of yamba which is released under <GPL3>. See file LICENSE or go to https://www.gnu.org/licenses/gpl.html for full license details.
+
 CREATE TABLE `users` (
   `id` char(36) NOT NULL,
   `email` varchar(150) UNIQUE NOT NULL,
@@ -5,13 +7,6 @@ CREATE TABLE `users` (
   `created` DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
   `modified` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE `permissions` (
-  `user_id` char(36) NOT NULL,
-  `privilege` varchar(50) NOT NULL,
-  PRIMARY KEY (`user_id`, `privilege`),
-  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `users_not_confirmed` (
