@@ -285,6 +285,11 @@ impl Plugin for MyTsPlugin {
                     invoker_groups = value.to_owned_string_lossy();
 
                     if let Ok(mut client_lock) = self.client_mut.lock() {
+                        let mut is_rpc_error: bool = false;
+                        let mut rpc_error: jsonrpc_client_core::Error =
+                            jsonrpc_client_core::Error::from_kind(
+                                jsonrpc_client_core::ErrorKind::Msg(String::from("No error")),
+                            );
                         if R_IGNORE.is_match(&message) {
                             // IGNORED MESSAGES
                         } else if R_HELP.is_match(&message) {
@@ -296,8 +301,8 @@ impl Plugin for MyTsPlugin {
                             {
                                 Ok(res) => {}
                                 Err(e) => {
-                                    let _ = connection
-                                        .send_message(format!("RPC call failed\nReason {}", e));
+                                    is_rpc_error = true;
+                                    rpc_error = e;
                                 }
                             }
                         } else if R_VOL_UNLOCK.is_match(&message) {
@@ -307,8 +312,8 @@ impl Plugin for MyTsPlugin {
                             {
                                 Ok(res) => {}
                                 Err(e) => {
-                                    let _ = connection
-                                        .send_message(format!("RPC call failed\nReason {}", e));
+                                    is_rpc_error = true;
+                                    rpc_error = e;
                                 }
                             }
                         } else if R_VOL_SET.is_match(&message) {
@@ -318,8 +323,8 @@ impl Plugin for MyTsPlugin {
                             {
                                 Ok(res) => {}
                                 Err(e) => {
-                                    let _ = connection
-                                        .send_message(format!("RPC call failed\nReason {}", e));
+                                    is_rpc_error = true;
+                                    rpc_error = e;
                                 }
                             }
                         } else if R_VOL_GET.is_match(&message) {
@@ -329,14 +334,19 @@ impl Plugin for MyTsPlugin {
                             {
                                 Ok(res) => {}
                                 Err(e) => {
-                                    let _ = connection
-                                        .send_message(format!("RPC call failed\nReason {}", e));
+                                    is_rpc_error = true;
+                                    rpc_error = e;
                                 }
                             }
                         } else {
                             let _ = connection.send_message(
                                 "Sorry, I didn't get that... Have you tried !help yet?",
                             );
+                        }
+
+                        if is_rpc_error {
+                            let _ = connection
+                                .send_message(format!("RPC call failed\nReason {:?}", rpc_error));
                         }
                     }
                 } else {
