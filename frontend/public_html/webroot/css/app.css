@@ -115,3 +115,7 @@ body {
     position: relative;
     min-height: 100%;
 }
+
+.badge.badge-right {
+    float: right;
+}
