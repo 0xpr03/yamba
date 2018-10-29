@@ -87,6 +87,40 @@ lazy_static! {
         .parse::<i32>()
         .map(|v| Some(v))
         .unwrap_or(None);
+    pub static ref R_IGNORE: RegexSet =
+        RegexSet::new(&[r"^Sorry, I didn't get that... Have you tried !help yet"]).unwrap();
+    pub static ref R_HELP: RegexSet = RegexSet::new(&[r"^\?", r"^!h", r"^!help"]).unwrap();
+    pub static ref R_VOL_LOCK: RegexSet =
+        RegexSet::new(&[r"^!l volume", r"^!lock volume"]).unwrap();
+    pub static ref R_VOL_UNLOCK: RegexSet =
+        RegexSet::new(&[r"^!ul volume", r"^!unlock volume"]).unwrap();
+    pub static ref R_VOL_SET: RegexSet =
+        RegexSet::new(&[r"^!v (\d)", r"^!vol (\d)", r"^!volume (\d)"]).unwrap();
+    pub static ref R_VOL_GET: RegexSet = RegexSet::new(&[r"^!v", r"^!vol", r"^!volume"]).unwrap();
+    pub static ref R_TRACK_GET: RegexSet = RegexSet::new(&[r"^!playing", r"^!p"]).unwrap();
+    pub static ref R_TRACK_NEXT: RegexSet =
+        RegexSet::new(&[r"^!next", r"^!nxt", r"^!n", r"^>>"]).unwrap();
+    pub static ref R_TRACK_PREVIOUS: RegexSet =
+        RegexSet::new(&[r"^!previous", r"^!prv", r"^!p", r"^<<"]).unwrap();
+    pub static ref R_TRACK_RESUME: RegexSet =
+        RegexSet::new(&[r"^!resume", r"^!res", r"^!r", r"^>"]).unwrap();
+    pub static ref R_TRACK_PAUSE: RegexSet = RegexSet::new(&[r"^!pause", r"^\|\|"]).unwrap();
+    pub static ref R_TRACK_STOP: RegexSet = RegexSet::new(&[r"^!stop", r"^!stp", r"^!s"]).unwrap();
+    pub static ref R_PLAYLIST_GET: RegexSet = RegexSet::new(&[r"^!playlist"]).unwrap();
+    pub static ref R_PLAYLIST_TRACKS_5: RegexSet = RegexSet::new(&[r"^!t", r"^!tracks"]).unwrap();
+    pub static ref R_PLAYLIST_TRACKS_N: RegexSet =
+        RegexSet::new(&[r"^!t (\d)", r"^!tracks (\d)"]).unwrap();
+    pub static ref R_PLAYLIST_TRACKS_ALL: RegexSet =
+        RegexSet::new(&[r"^!t all", r"^!tracks all"]).unwrap();
+    pub static ref R_PLAYLIST_CLEAR: RegexSet = RegexSet::new(&[r"^!c", r"^!clear"]).unwrap();
+    pub static ref R_PLAYLIST_LOCK: RegexSet =
+        RegexSet::new(&[r"^!l playlist", r"^!lock playlist"]).unwrap();
+    pub static ref R_PLAYLIST_UNLOCK: RegexSet =
+        RegexSet::new(&[r"^!ul playlist", r"^!unlock playlist"]).unwrap();
+    pub static ref R_PLAYLIST_QUEUE: RegexSet =
+        RegexSet::new(&[r"^!q ([^ ]+://[^ ]+)", r"^!queue ([^ ]+://[^ ]+)"]).unwrap();
+    pub static ref R_PLAYLIST_LOAD: RegexSet =
+        RegexSet::new(&[r"^!ld ([^ ]+)", r"^!load ([^ ]+)"]).unwrap();
 }
 
 #[derive(Debug)]
@@ -97,6 +131,33 @@ struct MyTsPlugin {
 }
 
 const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
+const HELP: &str = r#"
+Hi! I'm YAMBA! This is how you can use me:
+
+?, !h, !help → Display this help
+
+!l volume, !lock volume → lock the volume
+!ul volume, !unlock volume → unlock the volume
+!v <volume>, !vol <volume>, !volume <volume> → set the volume to <volume>
+!v, !vol, !volume → return the current volume
+
+!p, !playing → return the currently playing track
+>>, !n, !nxt, !next → play the next track
+<<, !p, !prv, !previous → play the previous track
+>, !r, !res, !resume → resume the paused track
+||, !pause → pause the currently playing track
+!s, !stp, !stop → stop the currently playing track
+
+!playlist → return the currently playing playlist
+!t, !tracks → return the next 5 tracks in the currently playing playlist
+!t <n>, !tracks <n> → return the next <n> tracks in the currently playing playlist
+!t all, !tracks all → return all tracks in the currently playing playlist
+!c, !clear → clear the currently playing playlist
+!l playlist, !lock playlist → lock the currently playing playlist
+!ul playlist, !unlock playlist → unlock the currently playing playlist
+!q <url>, !queue <url> → add <url> to currently playing playlist
+!ld <playlist>, !load <playlist> → load and start playing the playlist <playlist>
+"#;
 
 impl Plugin for MyTsPlugin {
     fn name() -> String {
@@ -223,80 +284,12 @@ impl Plugin for MyTsPlugin {
                 ) {
                     invoker_groups = value.to_owned_string_lossy();
 
-                    let r_ignore =
-                        RegexSet::new(&[r"^Sorry, I didn't get that... Have you tried !help yet"])
-                            .unwrap();
-
-                    let r_help = RegexSet::new(&[r"^\?", r"^!h", r"^!help"]).unwrap();
-
-                    let r_vol_lock = RegexSet::new(&[r"^!l volume", r"^!lock volume"]).unwrap();
-                    let r_vol_unlock =
-                        RegexSet::new(&[r"^!ul volume", r"^!unlock volume"]).unwrap();
-                    let r_vol_set =
-                        RegexSet::new(&[r"^!v (\d)", r"^!vol (\d)", r"^!volume (\d)"]).unwrap();
-                    let r_vol_get = RegexSet::new(&[r"^!v", r"^!vol", r"^!volume"]).unwrap();
-
-                    let r_track_get = RegexSet::new(&[r"^!playing", r"^!p"]).unwrap();
-                    let r_track_next =
-                        RegexSet::new(&[r"^!next", r"^!nxt", r"^!n", r"^>>"]).unwrap();
-                    let r_track_previous =
-                        RegexSet::new(&[r"^!previous", r"^!prv", r"^!p", r"^<<"]).unwrap();
-                    let r_track_resume =
-                        RegexSet::new(&[r"^!resume", r"^!res", r"^!r", r"^>"]).unwrap();
-                    let r_track_pause = RegexSet::new(&[r"^!pause", r"^\|\|"]).unwrap();
-                    let r_track_stop = RegexSet::new(&[r"^!stop", r"^!stp", r"^!s"]).unwrap();
-
-                    let r_playlist_get = RegexSet::new(&[r"^!playlist"]).unwrap();
-                    let r_playlist_tracks_5 = RegexSet::new(&[r"^!t", r"^!tracks"]).unwrap();
-                    let r_playlist_tracks_n =
-                        RegexSet::new(&[r"^!t (\d)", r"^!tracks (\d)"]).unwrap();
-                    let r_playlist_tracks_all =
-                        RegexSet::new(&[r"^!t all", r"^!tracks all"]).unwrap();
-                    let r_playlist_clear = RegexSet::new(&[r"^!c", r"^!clear"]).unwrap();
-                    let r_playlist_lock =
-                        RegexSet::new(&[r"^!l playlist", r"^!lock playlist"]).unwrap();
-                    let r_playlist_unlock =
-                        RegexSet::new(&[r"^!ul playlist", r"^!unlock playlist"]).unwrap();
-                    let r_playlist_queue =
-                        RegexSet::new(&[r"^!q ([^ ]+://[^ ]+)", r"^!queue ([^ ]+://[^ ]+)"])
-                            .unwrap();
-                    let r_playlist_load =
-                        RegexSet::new(&[r"^!ld ([^ ]+)", r"^!load ([^ ]+)"]).unwrap();
-
                     if let Ok(mut client_lock) = self.client_mut.lock() {
-                        if r_ignore.is_match(&message) {
+                        if R_IGNORE.is_match(&message) {
                             // IGNORED MESSAGES
-                        } else if r_help.is_match(&message) {
-                            let _ = connection.send_message(
-                                r#"
-Hi! I'm YAMBA! This is how you can use me:
-
-?, !h, !help → Display this help
-
-!l volume, !lock volume → lock the volume
-!ul volume, !unlock volume → unlock the volume
-!v <volume>, !vol <volume>, !volume <volume> → set the volume to <volume>
-!v, !vol, !volume → return the current volume
-
-!p, !playing → return the currently playing track
->>, !n, !nxt, !next → play the next track
-<<, !p, !prv, !previous → play the previous track
->, !r, !res, !resume → resume the paused track
-||, !pause → pause the currently playing track
-!s, !stp, !stop → stop the currently playing track
-
-!playlist → return the currently playing playlist
-!t, !tracks → return the next 5 tracks in the currently playing playlist
-!t <n>, !tracks <n> → return the next <n> tracks in the currently playing playlist
-!t all, !tracks all → return all tracks in the currently playing playlist
-!c, !clear → clear the currently playing playlist
-!l playlist, !lock playlist → lock the currently playing playlist
-!ul playlist, !unlock playlist → unlock the currently playing playlist
-!q <url>, !queue <url> → add <url> to currently playing playlist
-!ld <playlist>, !load <playlist> → load and start playing the playlist <playlist>
-"#,
-                            );
-                        } else if r_vol_lock.is_match(&message) {
+                        } else if R_HELP.is_match(&message) {
+                            let _ = connection.send_message(HELP);
+                        } else if R_VOL_LOCK.is_match(&message) {
                             match client_lock
                                 .volume_lock(id, invoker_name, invoker_groups, true)
                                 .call()
@@ -307,7 +300,7 @@ Hi! I'm YAMBA! This is how you can use me:
                                         .send_message(format!("RPC call failed\nReason {}", e));
                                 }
                             }
-                        } else if r_vol_unlock.is_match(&message) {
+                        } else if R_VOL_UNLOCK.is_match(&message) {
                             match client_lock
                                 .volume_lock(id, invoker_name, invoker_groups, false)
                                 .call()
@@ -318,7 +311,7 @@ Hi! I'm YAMBA! This is how you can use me:
                                         .send_message(format!("RPC call failed\nReason {}", e));
                                 }
                             }
-                        } else if r_vol_set.is_match(&message) {
+                        } else if R_VOL_SET.is_match(&message) {
                             match client_lock
                                 .volume_set(id, invoker_name, invoker_groups, -1)
                                 .call()
@@ -329,7 +322,7 @@ Hi! I'm YAMBA! This is how you can use me:
                                         .send_message(format!("RPC call failed\nReason {}", e));
                                 }
                             }
-                        } else if r_vol_get.is_match(&message) {
+                        } else if R_VOL_GET.is_match(&message) {
                             match client_lock
                                 .volume_get(id, invoker_name, invoker_groups)
                                 .call()
