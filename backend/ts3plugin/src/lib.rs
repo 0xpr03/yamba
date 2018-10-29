@@ -290,6 +290,9 @@ impl Plugin for MyTsPlugin {
                             jsonrpc_client_core::Error::from_kind(
                                 jsonrpc_client_core::ErrorKind::Msg(String::from("No error")),
                             );
+                        let mut rpc_allowed: bool = true;
+                        let mut rpc_message: String = String::from("");
+
                         if R_IGNORE.is_match(&message) {
                             // IGNORED MESSAGES
                         } else if R_HELP.is_match(&message) {
@@ -299,7 +302,22 @@ impl Plugin for MyTsPlugin {
                                 .volume_lock(id, invoker_name, invoker_groups, true)
                                 .call()
                             {
-                                Ok(res) => {}
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = res.2;
+                                    if rpc_allowed {
+                                        if success {
+                                            let _ =
+                                                connection.send_message(format!("Volume locked"));
+                                        } else {
+                                            let _ = connection.send_message(format!(
+                                                "Volume not locked\nReason: {}",
+                                                rpc_message
+                                            ));
+                                        }
+                                    }
+                                }
                                 Err(e) => {
                                     is_rpc_error = true;
                                     rpc_error = e;
@@ -310,18 +328,50 @@ impl Plugin for MyTsPlugin {
                                 .volume_lock(id, invoker_name, invoker_groups, false)
                                 .call()
                             {
-                                Ok(res) => {}
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = res.2;
+                                    if rpc_allowed {
+                                        if success {
+                                            let _ =
+                                                connection.send_message(format!("Volume unlocked"));
+                                        } else {
+                                            let _ = connection.send_message(format!(
+                                                "Volume not unlocked\nReason: {}",
+                                                rpc_message
+                                            ));
+                                        }
+                                    }
+                                }
                                 Err(e) => {
                                     is_rpc_error = true;
                                     rpc_error = e;
                                 }
                             }
                         } else if R_VOL_SET.is_match(&message) {
+                            // TODO: parse volume
+                            let mut vol: i32 = -1;
                             match client_lock
-                                .volume_set(id, invoker_name, invoker_groups, -1)
+                                .volume_set(id, invoker_name, invoker_groups, vol)
                                 .call()
                             {
-                                Ok(res) => {}
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = res.2;
+                                    if rpc_allowed {
+                                        if success {
+                                            let _ = connection
+                                                .send_message(format!("Volume set to {}", vol));
+                                        } else {
+                                            let _ = connection.send_message(format!(
+                                                "Volume not set\nReason: {}",
+                                                rpc_message
+                                            ));
+                                        }
+                                    }
+                                }
                                 Err(e) => {
                                     is_rpc_error = true;
                                     rpc_error = e;
@@ -332,7 +382,15 @@ impl Plugin for MyTsPlugin {
                                 .volume_get(id, invoker_name, invoker_groups)
                                 .call()
                             {
-                                Ok(res) => {}
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let vol = res.2;
+                                    if rpc_allowed {
+                                        let _ =
+                                            connection.send_message(format!("Volume is {}", vol));
+                                    }
+                                }
                                 Err(e) => {
                                     is_rpc_error = true;
                                     rpc_error = e;
@@ -347,6 +405,11 @@ impl Plugin for MyTsPlugin {
                         if is_rpc_error {
                             let _ = connection
                                 .send_message(format!("RPC call failed\nReason {:?}", rpc_error));
+                        } else if !rpc_allowed {
+                            let _ = connection.send_message(format!(
+                                "Action not allowed!\nReason: {}",
+                                rpc_message
+                            ));
                         }
                     }
                 } else {
