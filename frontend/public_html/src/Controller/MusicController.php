@@ -47,7 +47,8 @@ class MusicController extends AppController
         return $this->response->withType('json')->withStringBody(json_encode($playlistTable->find('all')->contain(['songs_to_playlists'])->orderDesc('created')));
     }
 
-    public function deletePlaylist() {
+    public function deletePlaylist()
+    {
         $id = $this->request->getQuery('id');
         if (!isset($id) || mb_strlen($id) !== 36) {
             return $this->response->withStatus(400)->withStringBody('Bad request');
