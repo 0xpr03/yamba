@@ -29,13 +29,13 @@ CREATE TABLE `users_to_permission_groups` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `ts3_groups` (
-  `id` char(36) NOT NULL,
+  `id` char(32) NOT NULL,
   `name` varchar(50) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `ts3_groups_to_permission_groups` (
-  `ts3_group_id` char(36) NOT NULL,
+  `ts3_group_id` char(32) NOT NULL,
   `permission_group_id` char(36) NOT NULL,
   PRIMARY KEY (`ts3_group_id`, `permission_group_id`),
   FOREIGN KEY (`ts3_group_id`) REFERENCES `ts3_groups`(`id`),
