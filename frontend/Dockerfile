@@ -7,6 +7,7 @@ LABEL maintainers="Aron Heinecke <Ox0p54r36@t-online.de>, \
                    Tristan Schönhals <tristan.schoenhals@gmail.com>"
 
 EXPOSE 80
+EXPOSE 81
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -37,17 +38,17 @@ RUN apt-get update -q && apt-get install -qqy \
 
 WORKDIR /var/www/html
 
-# Add config files
-COPY public_html/index.php ./
-COPY public_html/bin ./bin
-COPY nginx.conf /etc/nginx/sites-available/default
+# Install composer dependencies
 COPY public_html/composer.json ./
 COPY public_html/composer.lock ./
+
+RUN COMPOSER_ALLOW_SUPERUSER=1 composer install -n
+
+# Configuration
 COPY public_html/config ./config
 
-RUN COMPOSER_ALLOW_SUPERUSER=1 composer install -n \
-    # Define logsDir
-    && cakeLogsDir=/var/log/cake/logs \
+# Define logsDir
+RUN cakeLogsDir=/var/log/cake/logs \
     # Override app config with default
     cp ./config/app.default.php ./config/app.php \
     # Create and configure logs and tmp directory
@@ -57,8 +58,11 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer install -n \
     && ln -s cakeLogsDir logs
 
 # Add source files
+COPY public_html/index.php ./
+COPY public_html/bin ./bin
+COPY nginx-default-sites.conf /etc/nginx/sites-available/default
 COPY public_html/src ./src
 COPY public_html/webroot ./webroot
 COPY public_html/copyEnvVars.sh .
 
-CMD /bin/bash -c ./copyEnvVars.sh && service php7.2-fpm start && nginx -g "daemon off;"
+CMD /bin/bash -c ./copyEnvVars.sh && service php7.2-fpm start && nginx && bin/cake websocket_server
