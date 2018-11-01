@@ -17,26 +17,10 @@
  */
 
 return [
-    'password_minlength' => env('PASSWORD_MINLENGTH', 3),
-    'Websocket' => [
-        'ssl' => false,
-        'host' => '127.0.0.1',
-        'externalHost' => 'cws.dev',
-        'port' => 8889,
-        'frontendPath' => [
-            'ssl' => [
-                'path' => '/wss/',
-                'usePort' => false
-            ],
-            'normal' => [
-                'path' => '/',
-                'usePort' => true
-            ]
-        ],
-        'sessionCookieName' => 'cws',
-        'Queue' => [
-            'name' => 'websocket',
-            'loopInterval' => 0.1,
+    'userDataUpdated' => [
+        'audience' => [
+            'includeAllNotAuthenticated' => false,
+            'includeAllAuthenticated' => true
         ]
     ]
 ];
