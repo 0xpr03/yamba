@@ -33,13 +33,7 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
     <?= $this->fetch('script') ?>
 </head>
 <body>
-<?php
-    if($this->request->getSession()->read('Auth.User')) {
-        echo $this->element('Topbar/loggedIn');
-    } else {
-        echo $this->element('Topbar/default');
-    }
-?>
+<?= $this->element('navbar'); ?>
 <div class="body">
     <?= $this->Flash->render() ?>
     <?= $this->fetch('content') ?>
