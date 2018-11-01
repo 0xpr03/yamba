@@ -30,13 +30,21 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
     <?= $this->fetch('css') ?>
 
     <?= $this->Html->script(['vendor/jquery', 'vendor/foundation.min', 'vendor/what-input']); ?>
+
+    <?php if(isset($this->FrontendBridge)) {
+    $this->FrontendBridge->init($frontendData);
+    echo $this->FrontendBridge->run();
+    } ?>
+    <?= $this->Html->script(['webroot/lib/websocket.js']); ?>
     <?= $this->fetch('script') ?>
 </head>
 <body>
 <?= $this->element('navbar'); ?>
 <div class="body">
     <?= $this->Flash->render() ?>
-    <?= $this->fetch('content') ?>
+    <div <?= $this->FrontendBridge->getControllerAttributes(['some', 'optional', 'css', 'classes']) ?>>
+        <?= $this->fetch('content') ?>
+    </div>
 </div>
 <footer>
     <span class="footer-copyright">© 2018–<?= date('Y')?> Yamba Authors</span>
