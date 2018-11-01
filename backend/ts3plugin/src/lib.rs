@@ -87,40 +87,28 @@ lazy_static! {
         .parse::<i32>()
         .map(|v| Some(v))
         .unwrap_or(None);
-    pub static ref R_IGNORE: RegexSet =
-        RegexSet::new(&[r"^Sorry, I didn't get that... Have you tried !help yet"]).unwrap();
-    pub static ref R_HELP: RegexSet = RegexSet::new(&[r"^\?", r"^!h", r"^!help"]).unwrap();
-    pub static ref R_VOL_LOCK: RegexSet =
-        RegexSet::new(&[r"^!l volume", r"^!lock volume"]).unwrap();
-    pub static ref R_VOL_UNLOCK: RegexSet =
-        RegexSet::new(&[r"^!ul volume", r"^!unlock volume"]).unwrap();
-    pub static ref R_VOL_SET: RegexSet =
-        RegexSet::new(&[r"^!v (\d)", r"^!vol (\d)", r"^!volume (\d)"]).unwrap();
-    pub static ref R_VOL_GET: RegexSet = RegexSet::new(&[r"^!v", r"^!vol", r"^!volume"]).unwrap();
-    pub static ref R_TRACK_GET: RegexSet = RegexSet::new(&[r"^!playing", r"^!p"]).unwrap();
-    pub static ref R_TRACK_NEXT: RegexSet =
-        RegexSet::new(&[r"^!next", r"^!nxt", r"^!n", r"^>>"]).unwrap();
-    pub static ref R_TRACK_PREVIOUS: RegexSet =
-        RegexSet::new(&[r"^!previous", r"^!prv", r"^!p", r"^<<"]).unwrap();
-    pub static ref R_TRACK_RESUME: RegexSet =
-        RegexSet::new(&[r"^!resume", r"^!res", r"^!r", r"^>"]).unwrap();
-    pub static ref R_TRACK_PAUSE: RegexSet = RegexSet::new(&[r"^!pause", r"^\|\|"]).unwrap();
-    pub static ref R_TRACK_STOP: RegexSet = RegexSet::new(&[r"^!stop", r"^!stp", r"^!s"]).unwrap();
-    pub static ref R_PLAYLIST_GET: RegexSet = RegexSet::new(&[r"^!playlist"]).unwrap();
-    pub static ref R_PLAYLIST_TRACKS_5: RegexSet = RegexSet::new(&[r"^!t", r"^!tracks"]).unwrap();
-    pub static ref R_PLAYLIST_TRACKS_N: RegexSet =
-        RegexSet::new(&[r"^!t (\d)", r"^!tracks (\d)"]).unwrap();
-    pub static ref R_PLAYLIST_TRACKS_ALL: RegexSet =
-        RegexSet::new(&[r"^!t all", r"^!tracks all"]).unwrap();
-    pub static ref R_PLAYLIST_CLEAR: RegexSet = RegexSet::new(&[r"^!c", r"^!clear"]).unwrap();
-    pub static ref R_PLAYLIST_LOCK: RegexSet =
-        RegexSet::new(&[r"^!l playlist", r"^!lock playlist"]).unwrap();
-    pub static ref R_PLAYLIST_UNLOCK: RegexSet =
-        RegexSet::new(&[r"^!ul playlist", r"^!unlock playlist"]).unwrap();
-    pub static ref R_PLAYLIST_QUEUE: RegexSet =
-        RegexSet::new(&[r"^!q ([^ ]+://[^ ]+)", r"^!queue ([^ ]+://[^ ]+)"]).unwrap();
-    pub static ref R_PLAYLIST_LOAD: RegexSet =
-        RegexSet::new(&[r"^!ld ([^ ]+)", r"^!load ([^ ]+)"]).unwrap();
+    pub static ref R_IGNORE: Regex =
+        Regex::new(r"^((Sorry, I didn't get that... Have you tried !help yet)").unwrap();
+    pub static ref R_HELP: Regex = Regex::new(r"^((\?)|(!h((e)?lp)?))").unwrap();
+    pub static ref R_VOL_LOCK: Regex = Regex::new(r"^(!l(ock)?( )?v(ol(ume)?)?)").unwrap();
+    pub static ref R_VOL_UNLOCK: Regex = Regex::new(r"^(!u(n)?l(ock)?( )?v(ol(ume)?)?)").unwrap();
+    pub static ref R_VOL_SET: Regex = Regex::new(r"^(!v(ol(ume)?)? (\d*))").unwrap();
+    pub static ref R_VOL_GET: Regex = Regex::new(r"^(!v(ol(ume)?)?").unwrap();
+    pub static ref R_TRACK_GET: Regex = Regex::new(r"^(!p(laying)?)").unwrap();
+    pub static ref R_TRACK_NEXT: Regex = Regex::new(r"^((!n((e)?xt)?)|>>)").unwrap();
+    pub static ref R_TRACK_PREVIOUS: Regex = Regex::new(r"^((!(p(re?v)?)|(previous))|<<)").unwrap();
+    pub static ref R_TRACK_RESUME: Regex = Regex::new(r"^((!r(es(ume)?)?)|>)").unwrap();
+    pub static ref R_TRACK_PAUSE: Regex = Regex::new(r"^((!pause)|(\|\|))").unwrap();
+    pub static ref R_TRACK_STOP: Regex = Regex::new(r"^!s(to?p)?").unwrap();
+    pub static ref R_PLAYLIST_GET: Regex = Regex::new(r"^!playlist").unwrap();
+    pub static ref R_PLAYLIST_TRACKS_5: Regex = Regex::new(r"^!t((rx)|(racks))?").unwrap();
+    pub static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^!t((rx)|(racks))? (\d*)").unwrap();
+    pub static ref R_PLAYLIST_TRACKS_ALL: Regex = Regex::new(r"^!t((rx)|(racks))? a(ll)?").unwrap();
+    pub static ref R_PLAYLIST_CLEAR: Regex = Regex::new("^!c(lear)?").unwrap();
+    pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck) playlist").unwrap();
+    pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!u(n)?l(ock)? playlist").unwrap();
+    pub static ref R_PLAYLIST_QUEUE: Regex = Regex::new(r"^!q(ueue)? ([^ ]+)").unwrap();
+    pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^!l(oa)?d ([^ ]+)").unwrap();
 }
 
 #[derive(Debug)]
@@ -305,17 +293,9 @@ impl Plugin for MyTsPlugin {
                                 Ok(res) => {
                                     rpc_allowed = res.0;
                                     rpc_message = res.1;
-                                    let success = res.2;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
                                     if rpc_allowed {
-                                        if success {
-                                            let _ =
-                                                connection.send_message(format!("Volume locked"));
-                                        } else {
-                                            let _ = connection.send_message(format!(
-                                                "Volume not locked\nReason: {}",
-                                                rpc_message
-                                            ));
-                                        }
+                                        let _ = connection.send_message(format!("{}", success));
                                     }
                                 }
                                 Err(e) => {
@@ -331,17 +311,9 @@ impl Plugin for MyTsPlugin {
                                 Ok(res) => {
                                     rpc_allowed = res.0;
                                     rpc_message = res.1;
-                                    let success = res.2;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
                                     if rpc_allowed {
-                                        if success {
-                                            let _ =
-                                                connection.send_message(format!("Volume unlocked"));
-                                        } else {
-                                            let _ = connection.send_message(format!(
-                                                "Volume not unlocked\nReason: {}",
-                                                rpc_message
-                                            ));
-                                        }
+                                        let _ = connection.send_message(format!("{}", success));
                                     }
                                 }
                                 Err(e) => {
@@ -350,8 +322,10 @@ impl Plugin for MyTsPlugin {
                                 }
                             }
                         } else if R_VOL_SET.is_match(&message) {
-                            // TODO: parse volume
-                            let mut vol: i32 = -1;
+                            let vol = R_VOL_SET.captures(&message).unwrap()[3]
+                                .parse::<i32>()
+                                .unwrap();
+
                             match client_lock
                                 .volume_set(id, invoker_name, invoker_groups, vol)
                                 .call()
@@ -359,17 +333,9 @@ impl Plugin for MyTsPlugin {
                                 Ok(res) => {
                                     rpc_allowed = res.0;
                                     rpc_message = res.1;
-                                    let success = res.2;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
                                     if rpc_allowed {
-                                        if success {
-                                            let _ = connection
-                                                .send_message(format!("Volume set to {}", vol));
-                                        } else {
-                                            let _ = connection.send_message(format!(
-                                                "Volume not set\nReason: {}",
-                                                rpc_message
-                                            ));
-                                        }
+                                        let _ = connection.send_message(format!("{}", success));
                                     }
                                 }
                                 Err(e) => {
@@ -387,8 +353,283 @@ impl Plugin for MyTsPlugin {
                                     rpc_message = res.1;
                                     let vol = res.2;
                                     if rpc_allowed {
-                                        let _ =
-                                            connection.send_message(format!("Volume is {}", vol));
+                                        let _ = connection.send_message(format!("{}", vol));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_TRACK_GET.is_match(&message) {
+                            match client_lock
+                                .track_get(id, invoker_name, invoker_groups)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let title = res.2;
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", title));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_TRACK_NEXT.is_match(&message) {
+                            match client_lock
+                                .track_next(id, invoker_name, invoker_groups)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", success));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_TRACK_PREVIOUS.is_match(&message) {
+                            match client_lock
+                                .track_previous(id, invoker_name, invoker_groups)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", success));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_TRACK_RESUME.is_match(&message) {
+                            match client_lock
+                                .track_resume(id, invoker_name, invoker_groups)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", success));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_TRACK_PAUSE.is_match(&message) {
+                            match client_lock
+                                .track_pause(id, invoker_name, invoker_groups)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", success));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_TRACK_STOP.is_match(&message) {
+                            match client_lock
+                                .track_stop(id, invoker_name, invoker_groups)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", success));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_PLAYLIST_GET.is_match(&message) {
+                            match client_lock
+                                .playlist_get(id, invoker_name, invoker_groups)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let name = res.2;
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", name));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_PLAYLIST_TRACKS_5.is_match(&message) {
+                            match client_lock
+                                .playlist_tracks(id, invoker_name, invoker_groups, 5)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let tracks = res.2;
+                                    if rpc_allowed {
+                                        // TODO: print tracklist
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_PLAYLIST_TRACKS_N.is_match(&message) {
+                            let n = R_VOL_SET.captures(&message).unwrap()[4]
+                                .parse::<i32>()
+                                .unwrap();
+                            match client_lock
+                                .playlist_tracks(id, invoker_name, invoker_groups, n)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let tracks = res.2;
+                                    if rpc_allowed {
+                                        // TODO: print tracklist
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_PLAYLIST_TRACKS_ALL.is_match(&message) {
+                            match client_lock
+                                .playlist_tracks(id, invoker_name, invoker_groups, -1)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let tracks = res.2;
+                                    if rpc_allowed {
+                                        // TODO: print tracks
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_PLAYLIST_CLEAR.is_match(&message) {
+                            match client_lock
+                                .playlist_clear(id, invoker_name, invoker_groups)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", success));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_PLAYLIST_LOCK.is_match(&message) {
+                            match client_lock
+                                .playlist_lock(id, invoker_name, invoker_groups, true)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", success));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_PLAYLIST_UNLOCK.is_match(&message) {
+                            match client_lock
+                                .playlist_lock(id, invoker_name, invoker_groups, false)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", success));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_PLAYLIST_QUEUE.is_match(&message) {
+                            let url = String::from(&R_VOL_SET.captures(&message).unwrap()[4]);
+                            match client_lock
+                                .playlist_queue(id, invoker_name, invoker_groups, url)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", success));
+                                    }
+                                }
+                                Err(e) => {
+                                    is_rpc_error = true;
+                                    rpc_error = e;
+                                }
+                            }
+                        } else if R_PLAYLIST_LOAD.is_match(&message) {
+                            let playlist_name =
+                                String::from(&R_VOL_SET.captures(&message).unwrap()[4]);
+                            match client_lock
+                                .playlist_load(id, invoker_name, invoker_groups, playlist_name)
+                                .call()
+                            {
+                                Ok(res) => {
+                                    rpc_allowed = res.0;
+                                    rpc_message = res.1;
+                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    if rpc_allowed {
+                                        let _ = connection.send_message(format!("{}", success));
                                     }
                                 }
                                 Err(e) => {
@@ -404,7 +645,7 @@ impl Plugin for MyTsPlugin {
 
                         if is_rpc_error {
                             let _ = connection
-                                .send_message(format!("RPC call failed\nReason {:?}", rpc_error));
+                                .send_message(format!("RPC call failed\nReason {}", rpc_error));
                         } else if !rpc_allowed {
                             let _ = connection.send_message(format!(
                                 "Action not allowed!\nReason: {}",
