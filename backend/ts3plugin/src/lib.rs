@@ -322,26 +322,27 @@ impl Plugin for MyTsPlugin {
                                 }
                             }
                         } else if R_VOL_SET.is_match(&message) {
-                            let vol = R_VOL_SET.captures(&message).unwrap()[3]
-                                .parse::<i32>()
-                                .unwrap();
-
-                            match client_lock
-                                .volume_set(id, invoker_name, invoker_groups, vol)
-                                .call()
+                            if let Ok(vol) = R_VOL_SET.captures(&message).unwrap()[3].parse::<i32>()
                             {
-                                Ok(res) => {
-                                    rpc_allowed = res.0;
-                                    rpc_message = res.1;
-                                    let success = if res.2 { "Ok" } else { "Failure" };
-                                    if rpc_allowed {
-                                        let _ = connection.send_message(format!("{}", success));
+                                match client_lock
+                                    .volume_set(id, invoker_name, invoker_groups, vol)
+                                    .call()
+                                {
+                                    Ok(res) => {
+                                        rpc_allowed = res.0;
+                                        rpc_message = res.1;
+                                        let success = if res.2 { "Ok" } else { "Failure" };
+                                        if rpc_allowed {
+                                            let _ = connection.send_message(format!("{}", success));
+                                        }
+                                    }
+                                    Err(e) => {
+                                        is_rpc_error = true;
+                                        rpc_error = e;
                                     }
                                 }
-                                Err(e) => {
-                                    is_rpc_error = true;
-                                    rpc_error = e;
-                                }
+                            } else {
+                                let _ = connection.send_message(format!("n not parseable"));
                             }
                         } else if R_VOL_GET.is_match(&message) {
                             match client_lock
@@ -497,7 +498,9 @@ impl Plugin for MyTsPlugin {
                                     rpc_message = res.1;
                                     let tracks = res.2;
                                     if rpc_allowed {
-                                        // TODO: print tracklist
+                                        tracks.into_iter().for_each(|track| {
+                                            let _ = connection.send_message(format!("{}", track));
+                                        });
                                     }
                                 }
                                 Err(e) => {
@@ -506,25 +509,29 @@ impl Plugin for MyTsPlugin {
                                 }
                             }
                         } else if R_PLAYLIST_TRACKS_N.is_match(&message) {
-                            let n = R_VOL_SET.captures(&message).unwrap()[4]
-                                .parse::<i32>()
-                                .unwrap();
-                            match client_lock
-                                .playlist_tracks(id, invoker_name, invoker_groups, n)
-                                .call()
-                            {
-                                Ok(res) => {
-                                    rpc_allowed = res.0;
-                                    rpc_message = res.1;
-                                    let tracks = res.2;
-                                    if rpc_allowed {
-                                        // TODO: print tracklist
+                            if let Ok(n) = R_VOL_SET.captures(&message).unwrap()[4].parse::<i32>() {
+                                match client_lock
+                                    .playlist_tracks(id, invoker_name, invoker_groups, n)
+                                    .call()
+                                {
+                                    Ok(res) => {
+                                        rpc_allowed = res.0;
+                                        rpc_message = res.1;
+                                        let tracks = res.2;
+                                        if rpc_allowed {
+                                            tracks.into_iter().for_each(|track| {
+                                                let _ =
+                                                    connection.send_message(format!("{}", track));
+                                            });
+                                        }
+                                    }
+                                    Err(e) => {
+                                        is_rpc_error = true;
+                                        rpc_error = e;
                                     }
                                 }
-                                Err(e) => {
-                                    is_rpc_error = true;
-                                    rpc_error = e;
-                                }
+                            } else {
+                                let _ = connection.send_message(format!("n not parseable"));
                             }
                         } else if R_PLAYLIST_TRACKS_ALL.is_match(&message) {
                             match client_lock
@@ -536,7 +543,9 @@ impl Plugin for MyTsPlugin {
                                     rpc_message = res.1;
                                     let tracks = res.2;
                                     if rpc_allowed {
-                                        // TODO: print tracks
+                                        tracks.into_iter().for_each(|track| {
+                                            let _ = connection.send_message(format!("{}", track));
+                                        });
                                     }
                                 }
                                 Err(e) => {
