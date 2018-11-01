@@ -720,9 +720,14 @@ impl Plugin for MyTsPlugin {
                                 }
                             }
                         } else {
-                            let _ = connection.send_message(
-                                "Sorry, I didn't get that... Have you tried !help yet?",
-                            );
+                            if match target {
+                                MessageReceiver::Connection(_) => true,
+                                _ => false,
+                            } {
+                                let _ = connection.send_message(
+                                    "Sorry, I didn't get that... Have you tried !help yet?",
+                                );
+                            }
                         }
 
                         if is_rpc_error {
