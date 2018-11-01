@@ -204,7 +204,14 @@ fn main() -> Fallible<()> {
         }
         (_, _) => {
             warn!("No params, entering daemon mode");
-            rpc::run_rpc_daemon();
+            if let Err(e) = rpc::check_config() {
+                error!("Invalid config for rpc daemon, aborting: {}", e);
+                return Err(e);
+            }
+
+            if let Err(e) = rpc::run_rpc_daemon() {
+                error!("Error running RPC daemon, aborting..\n{}", e);
+            }
         }
     }
     info!("Shutdown of yamba daemon");
