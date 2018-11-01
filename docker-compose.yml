@@ -34,4 +34,3 @@ services:
     env_file:
       - ./secrets/backend.env
       - ./secrets/database.env
-      - ./secrets/database_root.env
