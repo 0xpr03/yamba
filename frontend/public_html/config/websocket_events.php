@@ -19,7 +19,7 @@
 return [
     'userDataUpdated' => [
         'audience' => [
-            'includeAllNotAuthenticated' => false,
+            'includeAllNotAuthenticated' => true,
             'includeAllAuthenticated' => true
         ]
     ]

@@ -20,9 +20,9 @@ return [
     'password_minlength' => env('PASSWORD_MINLENGTH', 3),
     'Websocket' => [
         'ssl' => false,
-        'host' => '127.0.0.1',
-        'externalHost' => 'cws.dev',
-        'port' => 8889,
+        'host' => '0.0.0.0',
+        'externalHost' => env('SERVER_ADDR'),
+        'port' => 81,
         'frontendPath' => [
             'ssl' => [
                 'path' => '/wss/',
