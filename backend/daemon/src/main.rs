@@ -78,7 +78,7 @@ fn main() -> Fallible<()> {
 
     info!("Startup");
 
-    let app = App::new("Clantool")
+    let app = App::new("YAMBA")
         .version(VERSION)
         .author(crate_authors!(",\n"))
         .about("yamba backend, VoIP music bot")
