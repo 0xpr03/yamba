@@ -15,6 +15,7 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::collections::HashMap;
 use std::env::current_dir;
 use std::ffi::OsStr;
 use std::fs::{read_dir, DirBuilder, OpenOptions};
@@ -107,7 +108,8 @@ fn load_settings() -> Fallible<Config> {
         .collect();
     debug!("config_files {:?}", config_files);
     settings.merge(config_files)?;
-    settings.merge(Environment::with_prefix("yamba"))?;
+    settings.merge(Environment::with_prefix("yamba").separator("__"))?;
+    trace!("{:?}", println!("{:?}", settings));
     Ok(settings)
 }
 
