@@ -23,6 +23,5 @@ WORKDIR /var/yamba
 
 COPY ./daemon/target/release/yamba-backend ./
 COPY ./ts3plugin/target/release/libyamba_plugin.so ~/.ts3client/plugins/
-COPY ./ts3-start.sh ./
 
 CMD /var/yamba/yamba-backend test-ts -h ek.proctet.net -p 7998

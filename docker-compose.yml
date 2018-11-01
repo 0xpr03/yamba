@@ -34,3 +34,5 @@ services:
     env_file:
       - ./secrets/backend.env
       - ./secrets/database.env
+    volumes:
+      - ./ts3client:/opt/ts3client
