@@ -97,17 +97,17 @@ lazy_static! {
     pub static ref R_VOL_GET: Regex = Regex::new(r"^!v(ol(ume)?)?").unwrap();
     pub static ref R_TRACK_GET: Regex = Regex::new(r"^!p(laying)?").unwrap();
     pub static ref R_TRACK_NEXT: Regex = Regex::new(r"^((!n(e?xt)?)|(>>))").unwrap();
-    pub static ref R_TRACK_PREVIOUS: Regex = Regex::new(r"^((!(p(re?v)?)|(previous))|<<)").unwrap();
+    pub static ref R_TRACK_PREVIOUS: Regex = Regex::new(r"^((!(prv)|(previous))|<<)").unwrap();
     pub static ref R_TRACK_RESUME: Regex = Regex::new(r"^((!r(es(ume)?)?)|>)").unwrap();
     pub static ref R_TRACK_PAUSE: Regex = Regex::new(r"^((!pause)|(\|\|))").unwrap();
     pub static ref R_TRACK_STOP: Regex = Regex::new(r"^!s(to?p)?").unwrap();
-    pub static ref R_PLAYLIST_GET: Regex = Regex::new(r"^!playlist").unwrap();
+    pub static ref R_PLAYLIST_GET: Regex = Regex::new(r"^!((playlist)|(plst))").unwrap();
     pub static ref R_PLAYLIST_TRACKS_5: Regex = Regex::new(r"^!t((rx)|(racks))?").unwrap();
     pub static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^!t((rx)|(racks))? (\d*)").unwrap();
     pub static ref R_PLAYLIST_TRACKS_ALL: Regex = Regex::new(r"^!t((rx)|(racks))? a(ll)?").unwrap();
     pub static ref R_PLAYLIST_CLEAR: Regex = Regex::new("^!c(lear)?").unwrap();
-    pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck)?( )?p(laylist)?").unwrap();
-    pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!un?l(o?ck)?( )?p(laylist)?").unwrap();
+    pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck)?( )?p((laylist)|(lst))?").unwrap();
+    pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!un?l(o?ck)?( )?p((laylist)|(lst))?").unwrap();
     pub static ref R_PLAYLIST_QUEUE: Regex = Regex::new(r"^!q(ueue)? ([^ ]+)").unwrap();
     pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^!l(oa)?d (.+)").unwrap();
 }
@@ -121,31 +121,99 @@ struct MyTsPlugin {
 
 const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
 const HELP: &str = r#"
-Hi! I'm YAMBA! This is how you can use me:
+YAMBA HELP
 
-?, !h, !help → Display this help
+SHOW HELP: !help
 
-!l volume, !lock volume → lock the volume
-!ul volume, !unlock volume → unlock the volume
-!v <volume>, !vol <volume>, !volume <volume> → set the volume to <volume>
-!v, !vol, !volume → return the current volume
+GET VOLUME: !volume
+SET VOLUME TO <vol>: !volume <vol>
+LOCK VOLUME: !lock volume
+UNLOCK VOLUME: !unlock volume
 
-!p, !playing → return the currently playing track
->>, !n, !nxt, !next → play the next track
-<<, !p, !prv, !previous → play the previous track
->, !r, !res, !resume → resume the paused track
-||, !pause → pause the currently playing track
-!s, !stp, !stop → stop the currently playing track
+GET CURRENT TRACK: !playing
+PLAY NEXT TRACK: !next
+PLAY PREVIOUS TRACK: !previous
+RESUME TRACK: !resume
+PAUSE TRACK: !pause
+STOP TRACK: !stop
 
-!playlist → return the currently playing playlist
-!t, !tracks → return the next 5 tracks in the currently playing playlist
-!t <n>, !tracks <n> → return the next <n> tracks in the currently playing playlist
-!t all, !tracks all → return all tracks in the currently playing playlist
-!c, !clear → clear the currently playing playlist
-!l playlist, !lock playlist → lock the currently playing playlist
-!ul playlist, !unlock playlist → unlock the currently playing playlist
-!q <url>, !queue <url> → add <url> to currently playing playlist
-!ld <playlist>, !load <playlist> → load and start playing the playlist <playlist>
+GET PLAYLIST NAME: !playlist
+GET PLAYLIST TRACKLIST: !tracks all
+GET NEXT <n> TRACKS: !tracks <n>
+GET NEXT 5 TRACKS: !tracks
+CLEAR PLAYLIST: !clear
+LOCK PLAYLIST: !lock playlist
+UNLOCK PLAYLIST: !lock playlist
+ENQUEUE <url> IN PLAYLIST: !queue <url>
+LOAD PLAYLIST <playlist>: !load <playlist>
+"#;
+
+const _HELP_DETAILED: &str = r#"
+YAMBA HELP
+
+SHOW HELP:
+    Syntax: [ !help | !hlp | !h | ? ]
+    Example: !help
+
+GET VOLUME:
+    Syntax: [ !volume | !vol | !v ]
+    Example: !volume
+SET VOLUME TO <vol>:
+    Syntax: [ !volume | !vol | !v ] <vol>
+    Example: !volume 90
+LOCK VOLUME:
+    Syntax: [ !lock | !lck | !l ] [ !volume | !vol | !v ] <vol>
+    Example: !lock volume
+UNLOCK VOLUME:
+    Syntax: [ !unlock | !unlck | !unl | !ulock | !ulck | !ul ] [ !volume | !vol | !v ] <vol>
+    Example: !unlock volume
+
+GET CURRENT TRACK:
+    Syntax: [ !playing | !p ]
+    Example: !playing
+PLAY NEXT TRACK:
+    Syntax: [ !next | !nxt | !n | >> ]
+    Example: !next
+PLAY PREVIOUS TRACK:
+    Syntax: [ !previous | !prv | << ]
+    Example: !previous
+RESUME TRACK:
+    Syntax: [ !resume | !res | !r | > ]
+    Example: !resume
+PAUSE TRACK:
+    Syntax: [ !pause | || ]
+    Example: !pause
+STOP TRACK:
+    Syntax: [ !stop | !stp | !s ]
+    Example: !stop
+
+GET PLAYLIST NAME:
+    Syntax: [ !playlist | !plst ]
+    Example: !playlist
+GET PLAYLIST TRACKLIST:
+    Syntax: [ !tracks | !trx | !t ] [ all | a ]
+    Example: !tracks all
+GET NEXT <n> TRACKS:
+    Syntax: [ !tracks | !trx | !t ] <n>
+    Example: !tracks 2
+GET NEXT 5 TRACKS:
+    Syntax: [ !tracks | !trx | !t ]
+    Example: !tracks
+CLEAR PLAYLIST:
+    Syntax: [ !clear | !c ]
+    Example: !clear
+LOCK PLAYLIST:
+    Syntax: [ !lock | !lck | !l ] [ playlist | plst | p ]
+    Example: !lock playlist
+UNLOCK PLAYLIST:
+    Syntax: [ !unlock | !unlck | !unl | !ulock | !ulck | !ul ] [ playlist | plst | p ]
+    Example: !lock playlist
+ENQUEUE <url> IN PLAYLIST:
+    Syntax: [ !queue | !q ] <url>
+    Example: !queue https://www.youtube.com/watch?v=ZZ5LpwO-An4
+LOAD PLAYLIST <playlist>:
+    Syntax: [ !load | !ld ] <playlist>
+    Example: !load Awesome Mix v3
 "#;
 
 impl Plugin for MyTsPlugin {
