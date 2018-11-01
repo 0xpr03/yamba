@@ -216,6 +216,21 @@ LOAD PLAYLIST <playlist>:
     Example: !load Awesome Mix v3
 "#;
 
+pub fn print_tracks(connection: &ts3plugin::Connection, mut tracks: Vec<String>) {
+    let mut message = String::from("");
+    while let Some(track) = tracks.pop() {
+        if message.len() + track.len() + 1 >= 1024 {
+            let _ = connection.send_message(format!("{}", message));
+            message = String::from(format!("{}\n", track));
+        } else {
+            message = String::from(format!("{}{}\n", message, track));
+        }
+    }
+    if message.len() > 0 {
+        let _ = connection.send_message(format!("{}", message));
+    }
+}
+
 impl Plugin for MyTsPlugin {
     fn name() -> String {
         PLUGIN_NAME_I.into()
@@ -571,9 +586,7 @@ impl Plugin for MyTsPlugin {
                                     rpc_message = res.1;
                                     let tracks = res.2;
                                     if rpc_allowed {
-                                        tracks.into_iter().for_each(|track| {
-                                            let _ = connection.send_message(format!("{}", track));
-                                        });
+                                        print_tracks(connection, tracks);
                                     }
                                 }
                                 Err(e) => {
@@ -592,10 +605,7 @@ impl Plugin for MyTsPlugin {
                                         rpc_message = res.1;
                                         let tracks = res.2;
                                         if rpc_allowed {
-                                            tracks.into_iter().for_each(|track| {
-                                                let _ =
-                                                    connection.send_message(format!("{}", track));
-                                            });
+                                            print_tracks(connection, tracks);
                                         }
                                     }
                                     Err(e) => {
@@ -616,9 +626,7 @@ impl Plugin for MyTsPlugin {
                                     rpc_message = res.1;
                                     let tracks = res.2;
                                     if rpc_allowed {
-                                        tracks.into_iter().for_each(|track| {
-                                            let _ = connection.send_message(format!("{}", track));
-                                        });
+                                        print_tracks(connection, tracks);
                                     }
                                 }
                                 Err(e) => {
@@ -732,7 +740,7 @@ impl Plugin for MyTsPlugin {
 
                         if is_rpc_error {
                             let _ = connection
-                                .send_message(format!("RPC call failed\nReason {}", rpc_error));
+                                .send_message(format!("RPC call failed\nReason: {}", rpc_error));
                         } else if !rpc_allowed {
                             let _ = connection.send_message(format!(
                                 "Action not allowed!\nReason: {}",
