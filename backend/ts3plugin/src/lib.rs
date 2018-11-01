@@ -88,14 +88,15 @@ lazy_static! {
         .map(|v| Some(v))
         .unwrap_or(None);
     pub static ref R_IGNORE: Regex =
-        Regex::new(r"^((Sorry, I didn't get that... Have you tried !help yet)").unwrap();
-    pub static ref R_HELP: Regex = Regex::new(r"^((\?)|(!h((e)?lp)?))").unwrap();
-    pub static ref R_VOL_LOCK: Regex = Regex::new(r"^(!l(ock)?( )?v(ol(ume)?)?)").unwrap();
-    pub static ref R_VOL_UNLOCK: Regex = Regex::new(r"^(!u(n)?l(ock)?( )?v(ol(ume)?)?)").unwrap();
+        Regex::new(r"^((Sorry, I didn't get that... Have you tried !help yet)|(RPC call failed)|(n not parseable))")
+            .unwrap();
+    pub static ref R_HELP: Regex = Regex::new(r"^((\?)|(!h(e?lp)?))").unwrap();
+    pub static ref R_VOL_LOCK: Regex = Regex::new(r"^(!l(o?ck)?( )?v(ol(ume)?)?)").unwrap();
+    pub static ref R_VOL_UNLOCK: Regex = Regex::new(r"^(!un?l(o?ck)?( )?v(ol(ume)?)?)").unwrap();
     pub static ref R_VOL_SET: Regex = Regex::new(r"^(!v(ol(ume)?)? (\d*))").unwrap();
-    pub static ref R_VOL_GET: Regex = Regex::new(r"^(!v(ol(ume)?)?").unwrap();
-    pub static ref R_TRACK_GET: Regex = Regex::new(r"^(!p(laying)?)").unwrap();
-    pub static ref R_TRACK_NEXT: Regex = Regex::new(r"^((!n((e)?xt)?)|>>)").unwrap();
+    pub static ref R_VOL_GET: Regex = Regex::new(r"^!v(ol(ume)?)?").unwrap();
+    pub static ref R_TRACK_GET: Regex = Regex::new(r"^!p(laying)?").unwrap();
+    pub static ref R_TRACK_NEXT: Regex = Regex::new(r"^((!n(e?xt)?)|(>>))").unwrap();
     pub static ref R_TRACK_PREVIOUS: Regex = Regex::new(r"^((!(p(re?v)?)|(previous))|<<)").unwrap();
     pub static ref R_TRACK_RESUME: Regex = Regex::new(r"^((!r(es(ume)?)?)|>)").unwrap();
     pub static ref R_TRACK_PAUSE: Regex = Regex::new(r"^((!pause)|(\|\|))").unwrap();
@@ -105,10 +106,10 @@ lazy_static! {
     pub static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^!t((rx)|(racks))? (\d*)").unwrap();
     pub static ref R_PLAYLIST_TRACKS_ALL: Regex = Regex::new(r"^!t((rx)|(racks))? a(ll)?").unwrap();
     pub static ref R_PLAYLIST_CLEAR: Regex = Regex::new("^!c(lear)?").unwrap();
-    pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck) playlist").unwrap();
-    pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!u(n)?l(ock)? playlist").unwrap();
+    pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck)?( )?p(laylist)?").unwrap();
+    pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!un?l(o?ck)?( )?p(laylist)?").unwrap();
     pub static ref R_PLAYLIST_QUEUE: Regex = Regex::new(r"^!q(ueue)? ([^ ]+)").unwrap();
-    pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^!l(oa)?d ([^ ]+)").unwrap();
+    pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^!l(oa)?d (.+)").unwrap();
 }
 
 #[derive(Debug)]
@@ -271,7 +272,6 @@ impl Plugin for MyTsPlugin {
                     &server_id,
                 ) {
                     invoker_groups = value.to_owned_string_lossy();
-
                     if let Ok(mut client_lock) = self.client_mut.lock() {
                         let mut is_rpc_error: bool = false;
                         let mut rpc_error: jsonrpc_client_core::Error =
@@ -280,6 +280,12 @@ impl Plugin for MyTsPlugin {
                             );
                         let mut rpc_allowed: bool = true;
                         let mut rpc_message: String = String::from("");
+
+                        api.log_or_print(
+                            format!("\"{}\" from \"{}\"", message, invoker_name),
+                            PLUGIN_NAME_I,
+                            LogLevel::Info,
+                        );
 
                         if R_IGNORE.is_match(&message) {
                             // IGNORED MESSAGES
@@ -321,9 +327,8 @@ impl Plugin for MyTsPlugin {
                                     rpc_error = e;
                                 }
                             }
-                        } else if R_VOL_SET.is_match(&message) {
-                            if let Ok(vol) = R_VOL_SET.captures(&message).unwrap()[3].parse::<i32>()
-                            {
+                        } else if let Some(caps) = R_VOL_SET.captures(&message) {
+                            if let Ok(vol) = caps[4].parse::<i32>() {
                                 match client_lock
                                     .volume_set(id, invoker_name, invoker_groups, vol)
                                     .call()
@@ -488,9 +493,9 @@ impl Plugin for MyTsPlugin {
                                     rpc_error = e;
                                 }
                             }
-                        } else if R_PLAYLIST_TRACKS_5.is_match(&message) {
+                        } else if R_PLAYLIST_TRACKS_ALL.is_match(&message) {
                             match client_lock
-                                .playlist_tracks(id, invoker_name, invoker_groups, 5)
+                                .playlist_tracks(id, invoker_name, invoker_groups, -1)
                                 .call()
                             {
                                 Ok(res) => {
@@ -508,8 +513,8 @@ impl Plugin for MyTsPlugin {
                                     rpc_error = e;
                                 }
                             }
-                        } else if R_PLAYLIST_TRACKS_N.is_match(&message) {
-                            if let Ok(n) = R_VOL_SET.captures(&message).unwrap()[4].parse::<i32>() {
+                        } else if let Some(caps) = R_PLAYLIST_TRACKS_N.captures(&message) {
+                            if let Ok(n) = caps[4].parse::<i32>() {
                                 match client_lock
                                     .playlist_tracks(id, invoker_name, invoker_groups, n)
                                     .call()
@@ -533,9 +538,9 @@ impl Plugin for MyTsPlugin {
                             } else {
                                 let _ = connection.send_message(format!("n not parseable"));
                             }
-                        } else if R_PLAYLIST_TRACKS_ALL.is_match(&message) {
+                        } else if R_PLAYLIST_TRACKS_5.is_match(&message) {
                             match client_lock
-                                .playlist_tracks(id, invoker_name, invoker_groups, -1)
+                                .playlist_tracks(id, invoker_name, invoker_groups, 5)
                                 .call()
                             {
                                 Ok(res) => {
@@ -607,8 +612,8 @@ impl Plugin for MyTsPlugin {
                                     rpc_error = e;
                                 }
                             }
-                        } else if R_PLAYLIST_QUEUE.is_match(&message) {
-                            let url = String::from(&R_VOL_SET.captures(&message).unwrap()[4]);
+                        } else if let Some(caps) = R_PLAYLIST_QUEUE.captures(&message) {
+                            let url = String::from(&caps[2]);
                             match client_lock
                                 .playlist_queue(id, invoker_name, invoker_groups, url)
                                 .call()
@@ -662,6 +667,9 @@ impl Plugin for MyTsPlugin {
                             ));
                         }
                     }
+                /*
+                        
+                */
                 } else {
                     let _ =
                         connection.send_message("Internal Error: Couldn't get your server groups!");
