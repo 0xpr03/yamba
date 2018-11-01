@@ -42,7 +42,7 @@ return [
     'Queuesadilla' => [
         'default' => [
             'engine' => 'josegonzalez\Queuesadilla\Engine\MysqlEngine',
-            'database' => env('QUEUESADILLA_DATABASE', 'queuesadilla'),
+            'database' => 'queuesadilla',
             'host' => 'database',
             'user' => env('DATABASE_USERNAME', 'root'),
             'pass' => env('ROOT_PASSWORD', '1234fuenf'),
