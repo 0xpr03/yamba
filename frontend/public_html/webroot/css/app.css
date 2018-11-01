@@ -84,6 +84,7 @@ nav.top-bar {
     position: fixed;
     width: 100%;
     height: 2em;
+    z-index: 42;
 }
 
 a.header-font, a.header-font:visited {
