@@ -16,12 +16,16 @@
  */
 use jsonrpc_lite::{Error, Id, JsonRpc};
 
+use std::net::SocketAddr;
+
+use failure::Fallible;
 use futures::future;
 use hyper;
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use serde_json::{self, to_value};
+use SETTINGS;
 
 type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
@@ -50,14 +54,22 @@ fn echo(req: Request<Body>) -> BoxFut {
     }))
 }
 
+/// Parse socket address
+fn parse_socket_address() -> Fallible<SocketAddr> {
+    Ok(SocketAddr::new(
+        SETTINGS.main.rpc_bind_ip.parse()?,
+        SETTINGS.main.rpc_bind_port,
+    ))
+}
 /// Starts rpc daemon
-pub fn run_rpc_daemon() {
-    let addr = ([127, 0, 0, 1], 1337).into();
+pub fn run_rpc_daemon() -> Fallible<()> {
+    let addr = parse_socket_address()?;
 
-    let server = Server::bind(&addr)
+    let server = Server::try_bind(&addr)
         .serve(|| service_fn(echo))
         .map_err(|e| eprintln!("server error: {}", e));
 
     println!("Listening on http://{}", addr);
     hyper::rt::run(server);
+    Ok(())
 }

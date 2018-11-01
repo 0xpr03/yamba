@@ -127,6 +127,11 @@ fn main() -> Fallible<()> {
                 ),
         ).get_matches();
 
+    info!(
+        "RPC Binding: {}:{}",
+        SETTINGS.main.rpc_bind_ip, SETTINGS.main.rpc_bind_port
+    );
+
     match app.subcommand() {
         ("init", Some(_)) => {
             let downloader = ytdl::YtDL::new()?;
