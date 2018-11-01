@@ -26,4 +26,6 @@ services:
       - ./secrets/frontend.env
       - ./secrets/database.env
       - ./secrets/database_root.env
-  # yamba_backend:
+
+  backend:
+    build: ./backend
