@@ -200,24 +200,28 @@ fn main() -> Fallible<()> {
 
             let mut instance = ts::TSInstance::spawn(0, addr, port, "", cid, "Test Bot Instance")?;
 
-            info!("Started, waiting for 5 seconds to kill");
-            thread::sleep(Duration::from_millis(5000));
-            instance.kill()?;
+            info!("Started, starting RPC server..");
+            run_rpc_daemon()?;
             info!("Test ended");
         }
         (_, _) => {
             warn!("No params, entering daemon mode");
-            if let Err(e) = rpc::check_config() {
-                error!("Invalid config for rpc daemon, aborting: {}", e);
-                return Err(e);
-            }
-
-            if let Err(e) = rpc::run_rpc_daemon() {
-                error!("Error running RPC daemon, aborting..\n{}", e);
-            }
+            run_rpc_daemon()?;
         }
     }
     info!("Shutdown of yamba daemon");
+    Ok(())
+}
+
+fn run_rpc_daemon() -> Fallible<()> {
+    if let Err(e) = rpc::check_config() {
+        error!("Invalid config for rpc daemon, aborting: {}", e);
+        return Err(e);
+    }
+
+    if let Err(e) = rpc::run_rpc_daemon() {
+        error!("Error running RPC daemon, aborting..\n{}", e);
+    }
     Ok(())
 }
 
