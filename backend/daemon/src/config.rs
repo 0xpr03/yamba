@@ -17,12 +17,27 @@
 
 use std::env::current_dir;
 use std::ffi::OsStr;
-use std::fs::read_dir;
+use std::fs::{read_dir, DirBuilder, OpenOptions};
+use std::io::{self, Write};
 
-use config_rs::{Config, File};
+use config_rs::{Config, ConfigError as ConfigRSError, Environment, File as CFile, FileFormat};
 use failure::Fallible;
 
 use {CONF_DIR, DEFAULT_CONFIG_NAME};
+
+#[derive(Fail, Debug)]
+pub enum ConfigErr {
+    #[fail(display = "Unable to open default config {}", _0)]
+    DefaultConfigParseError(#[cause] ConfigRSError),
+    #[fail(display = "Unable to open default config {}", _0)]
+    DefaultConfigError(#[cause] io::Error),
+    #[fail(display = "Unable to write default config {}", _0)]
+    DefaultConfigWriteError(#[cause] io::Error),
+    #[fail(display = "Can't retrieve config")]
+    FolderError,
+    #[fail(display = "Unable to open default config {}", _0)]
+    FolderCreationError(#[cause] io::Error),
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigRoot {
@@ -88,17 +103,47 @@ fn load_settings() -> Fallible<Config> {
                 warn!("can't handle {:?} during config loading: {}", x, e);
                 false
             }
-        }).map(|x| File::from(x.path()))
+        }).map(|x| CFile::from(x.path()))
         .collect();
     debug!("config_files {:?}", config_files);
     settings.merge(config_files)?;
+    settings.merge(Environment::with_prefix("yamba"))?;
     Ok(settings)
 }
 
 /// Load default config file
 fn load_default() -> Fallible<Config> {
     let mut settings = Config::default();
-    settings.merge(File::with_name(&format!("conf/{}", DEFAULT_CONFIG_NAME)))?;
+    let path_config = current_dir()?.join(CONF_DIR).join(DEFAULT_CONFIG_NAME);
+    debug!("Config path: {:?}", path_config);
+    let existing = path_config.exists();
+    let mut config_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path_config)
+        .map_err(|e| ConfigErr::DefaultConfigError(e))?;
+    if !existing {
+        info!("Config not existing, creating default config & dirs");
+        DirBuilder::new()
+            .recursive(true)
+            .create(path_config.parent().ok_or(ConfigErr::FolderError)?)
+            .map_err(|e| ConfigErr::FolderCreationError(e))?;
+        let default_config = include_str!("../conf/00-config.toml");
+        config_file
+            .write_all(default_config.as_bytes())
+            .map_err(|e| ConfigErr::DefaultConfigWriteError(e))?;
+        config_file
+            .flush()
+            .map_err(|e| ConfigErr::DefaultConfigWriteError(e))?;
+    } else {
+        info!("Found default config");
+    }
+    drop(config_file);
+    settings
+        .merge(CFile::with_name(&path_config.to_string_lossy()))//(&format!("conf/{}", DEFAULT_CONFIG_NAME)))
+        .map_err(|e| ConfigErr::DefaultConfigParseError(e))?;
     Ok(settings)
 }
 

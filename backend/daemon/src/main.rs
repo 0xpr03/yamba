@@ -68,7 +68,10 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const LOG_PATH: &'static str = "conf/daemon_log.yml";
 
 lazy_static! {
-    static ref SETTINGS: config::ConfigRoot = config::init_settings().unwrap();
+    static ref SETTINGS: config::ConfigRoot = {
+        info!("Loading config..");
+        config::init_settings().unwrap()
+    };
 }
 
 fn main() -> Fallible<()> {
