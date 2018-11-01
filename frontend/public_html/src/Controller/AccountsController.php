@@ -44,7 +44,7 @@ class AccountsController extends AppController
     }
 
     public function settings() {
-        $usersTable = TableRegistry::get('Users');
+        $usersTable = TableRegistry::getTableLocator()->get('Users');
         $user = $usersTable->newEntity();
         $this->set('minlength', Configure::read('password_minlength'));
         $this->set('user', $user);
@@ -57,7 +57,7 @@ class AccountsController extends AppController
                 return $this->response->withStatus(400)->withStringBody('Bad request');
             }
             if ($email === $this->Auth->user('email')) {
-                $usersTable = TableRegistry::get('Users');
+                $usersTable = TableRegistry::getTableLocator()->get('Users');
                 $usersTable->delete($usersTable->get($this->Auth->user('id')));
                 $this->Auth->logout();
                 return $this->redirect(['action' => 'goodbye']);
@@ -78,7 +78,7 @@ class AccountsController extends AppController
             $this->request = $this->request->withData('email', $this->Auth->user('email'));
             $user = $this->Auth->identify();
             if ($user) {
-                $usersTable = TableRegistry::get('Users');
+                $usersTable = TableRegistry::getTableLocator()->get('Users');
                 $user = $usersTable->get($user['id']);
                 $user->set('email', $email);
                 $user = $this->Email->registerMail($usersTable, $user);
@@ -109,7 +109,7 @@ class AccountsController extends AppController
             if ($user) {
                 if ($old_password !== $new_password) {
                     if ($new_password === $new_password_repeat) {
-                        $usersTable = TableRegistry::get('Users');
+                        $usersTable = TableRegistry::getTableLocator()->get('Users');
                         $user = $usersTable->get($user['id']);
                         $user->set('password', $new_password);
                         if ($usersTable->save($user)) {

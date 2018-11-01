@@ -25,17 +25,20 @@
     </div>
     <div class="top-bar-right">
         <ul class="menu">
+            <?php if($this->request->getSession()->read('Auth.User')) { ?>
             <li class="divider"><?= $this->Html->link(
                 '<i class="fi-widget"></i>',
                 ['controller' => 'Accounts', 'action' => 'settings'],
                 ['class' => 'header-font', 'title' => 'Account Settings', 'escapeTitle' => false]);
-                ?></li>
+                ?>
+            </li>
             <li class="divider"><?= $this->Html->link(
                 'Logout',
                 ['controller' => 'Users', 'action' => 'logout'],
                 ['class' => 'header-font', 'title' => 'Logout']);
                 ?>
             </li>
+            <?php } ?>
         </ul>
     </div>
 </nav>

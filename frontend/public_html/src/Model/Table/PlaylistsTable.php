@@ -15,16 +15,23 @@
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
-?>
 
-<nav class="top-bar" data-topbar role="navigation">
-    <div class="top-bar-left">
-        <ul class="menu" data-dropdown-menu>
-            <li><a class="logo-font" href="/">Yamba</a></li>
-        </ul>
-    </div>
-    <div class="top-bar-right">
-        <ul class="menu">
-        </ul>
-    </div>
-</nav>
+namespace App\Model\Table;
+use Cake\ORM\Table;
+use Cake\Validation\Validator;
+class PlaylistsTable extends Table
+{
+    public function initialize(array $config)
+    {
+        parent::initialize($config);
+        $this->hasMany('songs_to_playlists', [
+            'dependent' => true
+        ]);
+    }
+
+    public function validationDefault(Validator $validator)
+    {
+        return $validator
+            ->notEmpty('name', 'Playlist must have a name!');
+    }
+}

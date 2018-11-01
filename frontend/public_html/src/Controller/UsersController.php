@@ -50,7 +50,7 @@ class UsersController extends AppController
             return $this->redirect($this->Auth->redirectUrl());
         }
 
-        $usersTable = TableRegistry::get('Users');
+        $usersTable = TableRegistry::getTableLocator()->get('Users');
         $user = $usersTable->newEntity();
         if ($this->request->is('post')) {
             $email = $this->request->getData('email');
@@ -104,7 +104,7 @@ class UsersController extends AppController
 
     public function verify($token)
     {
-        $confirmTable = TableRegistry::get('UsersNotConfirmed');
+        $confirmTable = TableRegistry::getTableLocator()->get('UsersNotConfirmed');
         $confirmTable->delete($confirmTable->get($token));
         $this->Flash->success(__('Your email has been verified'));
         return $this->redirect(['action' => 'login']);
@@ -118,6 +118,6 @@ class UsersController extends AppController
     private function isVerifiedUser($user)
     {
         return !Configure::read('emailVerification')
-            || !TableRegistry::get('UsersNotConfirmed')->find('all', ['conditions' => ['user_id' => $user['id']]])->first();
+            || !TableRegistry::getTableLocator()->get('UsersNotConfirmed')->find('all', ['conditions' => ['user_id' => $user['id']]])->first();
     }
 }

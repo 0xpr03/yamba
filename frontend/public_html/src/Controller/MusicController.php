@@ -19,9 +19,43 @@
 namespace App\Controller;
 
 
+use Cake\ORM\TableRegistry;
+
 class MusicController extends AppController
 {
-    public function index() {
+    public function index()
+    {
 
+    }
+
+    public function addPlaylist()
+    {
+        $name = $this->request->getQuery('name');
+        if (!isset($name) || mb_strlen($name) < 1) {
+            return $this->response->withStatus(400)->withStringBody('Bad request');
+        }
+        $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
+        $playlist = $playlistTable->newEntity();
+        $playlist->set('name', $name);
+        $playlistTable->save($playlist);
+        return $this->getPlaylists();
+    }
+
+    public function getPlaylists()
+    {
+        $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
+        return $this->response->withType('json')->withStringBody(json_encode($playlistTable->find('all')->contain(['songs_to_playlists'])->orderDesc('created')));
+    }
+
+    public function deletePlaylist()
+    {
+        $id = $this->request->getQuery('id');
+        if (!isset($id) || mb_strlen($id) !== 36) {
+            return $this->response->withStatus(400)->withStringBody('Bad request');
+        }
+        $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
+        $playlist = $playlistTable->get($id);
+        $playlistTable->delete($playlist);
+        return $this->getPlaylists();
     }
 }

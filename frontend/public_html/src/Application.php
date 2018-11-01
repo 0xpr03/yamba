@@ -16,6 +16,7 @@ namespace App;
 
 use Cake\Core\Configure;
 use Cake\Core\Exception\MissingPluginException;
+use Cake\Core\Plugin;
 use Cake\Error\Middleware\ErrorHandlerMiddleware;
 use Cake\Http\BaseApplication;
 use Cake\Http\Middleware\CsrfProtectionMiddleware;
@@ -55,6 +56,8 @@ class Application extends BaseApplication
         if (Configure::read('debug')) {
             $this->addPlugin(\DebugKit\Plugin::class);
         }
+
+        Plugin::load('Websocket', ['bootstrap' => true, 'routes' => true]);
     }
 
     /**

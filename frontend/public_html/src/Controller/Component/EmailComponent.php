@@ -52,7 +52,7 @@ class EmailComponent extends Component
         if (!$usersTable->find('all', ['conditions' => ['email' => $user['email']]])->first()) {
             if ($usersTable->save($user)) {
                 if (Configure::read('emailVerification')) {
-                    $confirmedTable = TableRegistry::get('UsersNotConfirmed');
+                    $confirmedTable = TableRegistry::getTableLocator()->get('UsersNotConfirmed');
                     $confirmed = $confirmedTable->newEntity();
                     $confirmed->set('user_id', $user->get('id'));
                     $confirmed->set('confirmationToken', Security::hash($user->get('id')));

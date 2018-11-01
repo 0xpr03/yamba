@@ -16,6 +16,8 @@
 namespace App\Controller;
 
 use Cake\Controller\Controller;
+use Cake\Event\Event;
+use Websocket\Lib\Websocket;
 
 /**
  * Application Controller
@@ -28,6 +30,7 @@ use Cake\Controller\Controller;
 class AppController extends Controller
 {
 
+    use \FrontendBridge\Lib\FrontendBridgeTrait;
     /**
      * Initialization hook method.
      *
@@ -74,6 +77,13 @@ class AppController extends Controller
          * see https://book.cakephp.org/3.0/en/controllers/components/security.html
          */
         //$this->loadComponent('Security');
+        $this->loadComponent('FrontendBridge.FrontendBridge');
+    }
+
+    public function beforeFilter(Event $event)
+    {
+        $this->FrontendBridge->setJson('websocketFrontendConfig', Websocket::getFrontendConfig());
+        return parent::beforeFilter($event);
     }
 
 }

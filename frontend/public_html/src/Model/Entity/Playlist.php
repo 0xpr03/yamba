@@ -16,27 +16,14 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-return [
-    'password_minlength' => env('PASSWORD_MINLENGTH', 3),
-    'Websocket' => [
-        'ssl' => false,
-        'host' => '127.0.0.1',
-        'externalHost' => 'cws.dev',
-        'port' => 8889,
-        'frontendPath' => [
-            'ssl' => [
-                'path' => '/wss/',
-                'usePort' => false
-            ],
-            'normal' => [
-                'path' => '/',
-                'usePort' => true
-            ]
-        ],
-        'sessionCookieName' => 'cws',
-        'Queue' => [
-            'name' => 'websocket',
-            'loopInterval' => 0.1,
-        ]
-    ]
-];
+namespace App\Model\Entity;
+use Cake\Auth\DefaultPasswordHasher;
+use Cake\ORM\Entity;
+class Playlist extends Entity
+{
+    // Make all fields mass assignable except for primary key field "id".
+    protected $_accessible = [
+        '*' => true,
+        'id' => false
+    ];
+}

@@ -11,19 +11,26 @@ EXPOSE 80
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -q && apt-get install -qqy \
-    # Install php
-    php7.0-fpm \
-    php7.0-mbstring \
-    php7.0-intl \
-    php7.0-xml \
-    php7.0-mysql \
-    php7.0-zip \
     # Install tools
     vim \
-    composer \
+    wget \
     net-tools \
+    apt-transport-https \
+    gnupg2 \
     # Install nginx
     nginx \
+    && wget -q https://packages.sury.org/php/apt.gpg -O- | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=DontWarn apt-key add - \
+    && echo "deb https://packages.sury.org/php/ stretch main" | tee /etc/apt/sources.list.d/php.list \
+    && apt-get update -q \
+    && apt-get install -qqy \
+    # Install php
+    php7.2-fpm \
+    php7.2-mbstring \
+    php7.2-intl \
+    php7.2-xml \
+    php7.2-mysql \
+    php7.2-zip \
+    composer \
     # Delete apt cache
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
@@ -54,4 +61,4 @@ COPY public_html/src ./src
 COPY public_html/webroot ./webroot
 COPY public_html/copyEnvVars.sh .
 
-CMD /bin/bash -c ./copyEnvVars.sh && service php7.0-fpm start && nginx -g "daemon off;"
+CMD /bin/bash -c ./copyEnvVars.sh && service php7.2-fpm start && nginx -g "daemon off;"

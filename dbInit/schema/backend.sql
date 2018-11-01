@@ -12,22 +12,24 @@ CREATE TABLE `songs` (
   `name` varchar(150) NOT NULL,
   `source` varchar(150) NOT NULL,
   `artist` varchar(50) NOT NULL,
-  `length` varchar(50) NOT NULL,
-  `keep` bit NOT NULL,
+  `length` int NOT NULL,
   `downloaded` bit NOT NULL,
-  `last_used` DATETIME NOT NULL,
+  `last_used` DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `playlists` (
-  `id` char(32) NOT NULL,
+  `id` char(36) NOT NULL,
   `name` varchar(50) NOT NULL,
+  `keep` bit DEFAULT 0 NOT NULL,
+  `created` DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  `modified` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `songs_to_playlists` (
   `song_id` char(32) NOT NULL,
-  `playlist_id` char(32) NOT NULL,
+  `playlist_id` char(36) NOT NULL,
   PRIMARY KEY (`song_id`, `playlist_id`),
   FOREIGN KEY (`song_id`) REFERENCES `songs`(`id`),
   FOREIGN KEY (`playlist_id`) REFERENCES `playlists`(`id`)
