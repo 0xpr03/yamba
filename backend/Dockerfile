@@ -16,6 +16,7 @@ RUN apt-get update -q && apt-get install -qqy \
     xvfb \
     vlc \
     python3 \
+    libnss3 \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
     
