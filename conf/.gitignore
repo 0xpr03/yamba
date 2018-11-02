@@ -1,4 +1,2 @@
-database.env
-database_root.env
-frontend.env
-/backend.env
+/*.env
+!/*.default.env
