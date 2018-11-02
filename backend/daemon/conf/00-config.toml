@@ -49,6 +49,8 @@ timeout_version=10
 # base folder of teamspeak executable
 dir = "ts"
 # start script/executable
-start_script = "bash"
-# additional arguments to pass at first
-additional_args = ["ts3client_runscript.sh"]
+start_binary = "ts3client_linux_amd64"
+# additional arguments to pass at first to xvfb
+additional_args_xvfb = ["--auto-servernum", "--server-args='-screen 0 640x480x24:32'"]
+# additional arguments to pass at first to the binary
+additional_args_binary= []

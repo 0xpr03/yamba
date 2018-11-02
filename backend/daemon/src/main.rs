@@ -188,7 +188,7 @@ fn main() -> Fallible<()> {
             info!("Testing ts instance start");
             info!(
                 "Folder: {} Exec: {}",
-                SETTINGS.ts.dir, SETTINGS.ts.start_script
+                SETTINGS.ts.dir, SETTINGS.ts.start_binary
             );
             let addr = sub_m.value_of("host").unwrap();
             let port = sub_m.value_of("port").unwrap().parse::<u16>().unwrap();
@@ -198,7 +198,15 @@ fn main() -> Fallible<()> {
                 .parse::<i32>()
                 .unwrap();
 
-            let mut instance = ts::TSInstance::spawn(0, addr, port, "", cid, "Test Bot Instance")?;
+            let mut instance = ts::TSInstance::spawn(
+                0,
+                addr,
+                port,
+                "",
+                cid,
+                "Test Bot Instance",
+                &SETTINGS.main.rpc_bind_port,
+            )?;
 
             info!("Started, starting RPC server..");
             run_rpc_daemon()?;

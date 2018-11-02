@@ -69,6 +69,7 @@ impl TSInstance {
         password: &str,
         cid: i32,
         name: &str,
+        rpc_port: &u16,
     ) -> Fallible<TSInstance> {
         let ts_url = serde_urlencoded::to_string(vec![
             ("port".to_owned(), port.to_string()),
@@ -78,14 +79,16 @@ impl TSInstance {
         ])?;
         Ok(TSInstance {
             id,
-            process: Command::new(&SETTINGS.ts.start_script)
+            process: Command::new("xvfb-run")
                 .current_dir(&SETTINGS.ts.dir)
                 .env("QT_PLUGIN_PATH", &SETTINGS.ts.dir)
                 .env("QTDIR", &SETTINGS.ts.dir)
                 .env("LD_LIBRARY_PATH", &SETTINGS.ts.dir)
                 .env(TS_ENV_ID, id.to_string())
-                .env(TS_ENV_CALLBACK, "")
-                .args(&SETTINGS.ts.additional_args)
+                .env(TS_ENV_CALLBACK, rpc_port.to_string())
+                .args(&SETTINGS.ts.additional_args_xvfb)
+                .arg(&SETTINGS.ts.start_binary)
+                .args(&SETTINGS.ts.additional_args_binary)
                 .arg("-nosingleinstance")
                 .arg(format!("ts3server://{}?{}", address, ts_url))
                 .spawn()

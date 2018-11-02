@@ -51,8 +51,9 @@ pub struct ConfigRoot {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigTS {
     pub dir: String,
-    pub start_script: String,
-    pub additional_args: Vec<String>,
+    pub start_binary: String,
+    pub additional_args_xvfb: Vec<String>,
+    pub additional_args_binary: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
