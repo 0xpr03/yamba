@@ -15,7 +15,6 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::collections::HashMap;
 use std::env::current_dir;
 use std::ffi::OsStr;
 use std::fs::{read_dir, DirBuilder, OpenOptions};

@@ -33,8 +33,6 @@ pub enum RPCErr {
 }
 
 fn rpc(req: Request<Body>) -> BoxFut {
-    let mut response = Response::new(Body::empty());
-
     Box::new(req.into_body().concat2().map(|b| {
         let response_rpc = if let Ok(rpc) = serde_json::from_slice::<JsonRpc>(&b) {
             trace!("rpc request: {:?}", rpc);

@@ -7,7 +7,7 @@ use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use serde_json::{self, to_value};
 use tokio::runtime;
 
-use daemon;
+use daemon::{self, BoxFut};
 use SETTINGS;
 
 #[derive(Fail, Debug)]
@@ -16,7 +16,7 @@ pub enum APIErr {
     BindError(#[cause] hyper::error::Error),
 }
 
-pub fn api(req: Request<Body>) -> BoxFut {
+fn api(req: Request<Body>) -> BoxFut {
     let mut response = Response::new(Body::empty());
 
     match (req.method(), req.uri().path()) {
@@ -53,18 +53,18 @@ pub fn api(req: Request<Body>) -> BoxFut {
 }
 
 pub fn check_config() -> Fallible<()> {
-    let _ = daemon::parse_socket_address(&SETTINGS.main.api_bind_ip, &SETTINGS.main.api_bind_port)?;
+    let _ = daemon::parse_socket_address(&SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port)?;
     Ok(())
 }
 
 /// Create api server, bind it & attach to runtime
 pub fn create_api_server(runtime: &mut runtime::Runtime) -> Fallible<()> {
     let addr =
-        daemon::parse_socket_address(&SETTINGS.main.api_bind_ip, &SETTINGS.main.api_bind_port)?;
+        daemon::parse_socket_address(&SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port)?;
 
     let server = Server::try_bind(&addr)
         .map_err(|e| APIErr::BindError(e))?
-        .serve(|| service_fn(rpc))
+        .serve(|| service_fn(api))
         .map_err(|e| eprintln!("server error: {}", e));
 
     info!("API Listening on http://{}", addr);

@@ -93,7 +93,8 @@ impl TSInstance {
             .args(&SETTINGS.ts.additional_args_binary)
             .arg("-nosingleinstance")
             .arg(format!("ts3server://{}?{}", address, ts_url));
-        println!("CMD: {:?}", cmd);
+        trace!("TS Workdir: {}", &SETTINGS.ts.dir);
+        trace!("CMD: {:?}", cmd);
         Ok(TSInstance {
             id,
             process: cmd.spawn().map_err(|e| TSInstanceError::SpawnError(e))?,
