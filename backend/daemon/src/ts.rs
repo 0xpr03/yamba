@@ -19,6 +19,7 @@ use failure::{Fallible, ResultExt};
 use serde_urlencoded;
 
 use std::io;
+use std::path::PathBuf;
 use std::process::{Child, Command};
 
 use SETTINGS;
@@ -77,22 +78,25 @@ impl TSInstance {
             ("password".to_owned(), password.to_string()),
             ("cid".to_owned(), cid.to_string()),
         ])?;
+        let path_binary = PathBuf::from(&SETTINGS.ts.dir);
+        let path_binary = path_binary.join(&SETTINGS.ts.start_binary);
+
+        let mut cmd = Command::new("xvfb-run");
+        cmd.current_dir(&SETTINGS.ts.dir)
+            .env("QT_PLUGIN_PATH", &SETTINGS.ts.dir)
+            .env("QTDIR", &SETTINGS.ts.dir)
+            .env("LD_LIBRARY_PATH", &SETTINGS.ts.dir)
+            .env(TS_ENV_ID, id.to_string())
+            .env(TS_ENV_CALLBACK, rpc_port.to_string())
+            .args(&SETTINGS.ts.additional_args_xvfb)
+            .arg(path_binary.to_string_lossy().to_mut())
+            .args(&SETTINGS.ts.additional_args_binary)
+            .arg("-nosingleinstance")
+            .arg(format!("ts3server://{}?{}", address, ts_url));
+        println!("CMD: {:?}", cmd);
         Ok(TSInstance {
             id,
-            process: Command::new("xvfb-run")
-                .current_dir(&SETTINGS.ts.dir)
-                .env("QT_PLUGIN_PATH", &SETTINGS.ts.dir)
-                .env("QTDIR", &SETTINGS.ts.dir)
-                .env("LD_LIBRARY_PATH", &SETTINGS.ts.dir)
-                .env(TS_ENV_ID, id.to_string())
-                .env(TS_ENV_CALLBACK, rpc_port.to_string())
-                .args(&SETTINGS.ts.additional_args_xvfb)
-                .arg(&SETTINGS.ts.start_binary)
-                .args(&SETTINGS.ts.additional_args_binary)
-                .arg("-nosingleinstance")
-                .arg(format!("ts3server://{}?{}", address, ts_url))
-                .spawn()
-                .map_err(|e| TSInstanceError::SpawnError(e))?,
+            process: cmd.spawn().map_err(|e| TSInstanceError::SpawnError(e))?,
         })
     }
 
