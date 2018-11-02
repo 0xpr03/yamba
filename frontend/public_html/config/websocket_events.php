@@ -17,7 +17,7 @@
  */
 
 return [
-    'userDataUpdated' => [
+    'playlistsUpdated' => [
         'audience' => [
             'includeAllNotAuthenticated' => true,
             'includeAllAuthenticated' => true
