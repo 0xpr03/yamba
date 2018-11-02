@@ -748,9 +748,6 @@ impl Plugin for MyTsPlugin {
                             ));
                         }
                     }
-                /*
-                        
-                */
                 } else {
                     let _ =
                         connection.send_message("Internal Error: Couldn't get your server groups!");
