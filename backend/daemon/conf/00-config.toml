@@ -20,6 +20,10 @@
 
 [main]
 user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:55.0) Gecko/20100101 Firefox/55.0"
+# rpc server binding socket
+rpc_bind_port = 1337
+rpc_bind_ip = "127.0.0.1"
+
 
 [db]
 port = 3306
@@ -45,6 +49,8 @@ timeout_version=10
 # base folder of teamspeak executable
 dir = "ts"
 # start script/executable
-start_script = "bash"
-# additional arguments to pass at first
-additional_args = ["ts3client_runscript.sh"]
+start_binary = "ts3client_linux_amd64"
+# additional arguments to pass at first to xvfb
+additional_args_xvfb = ["--auto-servernum", "--server-args='-screen 0 640x480x24:32'"]
+# additional arguments to pass at first to the binary
+additional_args_binary= []

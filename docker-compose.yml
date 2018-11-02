@@ -14,6 +14,8 @@ services:
     env_file:
     - ./secrets/database.env
     - ./secrets/database_root.env
+    logging:
+      driver: "none"
 
   frontend:
     build: ./frontend
@@ -29,3 +31,8 @@ services:
 
   backend:
     build: ./backend
+    env_file:
+      - ./secrets/backend.env
+      - ./secrets/database.env
+    volumes:
+      - ./backend/ts3client:/opt/ts3client

@@ -16,6 +16,7 @@ RUN apt-get update -q && apt-get install -qqy \
     xvfb \
     vlc \
     python3 \
+    libnss3 \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
     
@@ -23,6 +24,5 @@ WORKDIR /var/yamba
 
 COPY ./daemon/target/release/yamba-backend ./
 COPY ./ts3plugin/target/release/libyamba_plugin.so ~/.ts3client/plugins/
-COPY ./ts3-start.sh ./
 
-CMD /var/yamba/yamba-backend;
+CMD /var/yamba/yamba-backend

@@ -16,12 +16,22 @@
  */
 use jsonrpc_lite::{Error, Id, JsonRpc};
 
+use std::net::SocketAddr;
+
+use failure::Fallible;
 use futures::future;
 use hyper;
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use serde_json::{self, to_value};
+use SETTINGS;
+
+#[derive(Fail, Debug)]
+pub enum RPCErr {
+    #[fail(display = "RPC IO Error {}", _0)]
+    BindError(#[cause] hyper::error::Error),
+}
 
 type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
@@ -50,14 +60,29 @@ fn echo(req: Request<Body>) -> BoxFut {
     }))
 }
 
-/// Starts rpc daemon
-pub fn run_rpc_daemon() {
-    let addr = ([127, 0, 0, 1], 1337).into();
+/// Parse socket address
+fn parse_socket_address() -> Fallible<SocketAddr> {
+    Ok(SocketAddr::new(
+        SETTINGS.main.rpc_bind_ip.parse()?,
+        SETTINGS.main.rpc_bind_port,
+    ))
+}
 
-    let server = Server::bind(&addr)
+pub fn check_config() -> Fallible<()> {
+    let _ = parse_socket_address()?;
+    Ok(())
+}
+
+/// Starts rpc daemon
+pub fn run_rpc_daemon() -> Fallible<()> {
+    let addr = parse_socket_address()?;
+
+    let server = Server::try_bind(&addr)
+        .map_err(|e| RPCErr::BindError(e))?
         .serve(|| service_fn(echo))
         .map_err(|e| eprintln!("server error: {}", e));
 
-    println!("Listening on http://{}", addr);
+    info!("Listening on http://{}", addr);
     hyper::rt::run(server);
+    Ok(())
 }

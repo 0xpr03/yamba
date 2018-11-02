@@ -68,7 +68,10 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const LOG_PATH: &'static str = "conf/daemon_log.yml";
 
 lazy_static! {
-    static ref SETTINGS: config::ConfigRoot = config::init_settings().unwrap();
+    static ref SETTINGS: config::ConfigRoot = {
+        info!("Loading config..");
+        config::init_settings().unwrap()
+    };
 }
 
 fn main() -> Fallible<()> {
@@ -78,7 +81,7 @@ fn main() -> Fallible<()> {
 
     info!("Startup");
 
-    let app = App::new("Clantool")
+    let app = App::new("YAMBA")
         .version(VERSION)
         .author(crate_authors!(",\n"))
         .about("yamba backend, VoIP music bot")
@@ -126,6 +129,11 @@ fn main() -> Fallible<()> {
                         .help("channel id"),
                 ),
         ).get_matches();
+
+    info!(
+        "RPC Binding: {}:{}",
+        SETTINGS.main.rpc_bind_ip, SETTINGS.main.rpc_bind_port
+    );
 
     match app.subcommand() {
         ("init", Some(_)) => {
@@ -180,7 +188,7 @@ fn main() -> Fallible<()> {
             info!("Testing ts instance start");
             info!(
                 "Folder: {} Exec: {}",
-                SETTINGS.ts.dir, SETTINGS.ts.start_script
+                SETTINGS.ts.dir, SETTINGS.ts.start_binary
             );
             let addr = sub_m.value_of("host").unwrap();
             let port = sub_m.value_of("port").unwrap().parse::<u16>().unwrap();
@@ -190,19 +198,38 @@ fn main() -> Fallible<()> {
                 .parse::<i32>()
                 .unwrap();
 
-            let mut instance = ts::TSInstance::spawn(0, addr, port, "", cid, "Test Bot Instance")?;
+            let _instance = ts::TSInstance::spawn(
+                0,
+                addr,
+                port,
+                "",
+                cid,
+                "Test Bot Instance",
+                &SETTINGS.main.rpc_bind_port,
+            )?;
 
-            info!("Started, waiting for 5 seconds to kill");
-            thread::sleep(Duration::from_millis(5000));
-            instance.kill()?;
+            info!("Started, starting RPC server..");
+            run_rpc_daemon()?;
             info!("Test ended");
         }
         (_, _) => {
             warn!("No params, entering daemon mode");
-            rpc::run_rpc_daemon();
+            run_rpc_daemon()?;
         }
     }
     info!("Shutdown of yamba daemon");
+    Ok(())
+}
+
+fn run_rpc_daemon() -> Fallible<()> {
+    if let Err(e) = rpc::check_config() {
+        error!("Invalid config for rpc daemon, aborting: {}", e);
+        return Err(e);
+    }
+
+    if let Err(e) = rpc::run_rpc_daemon() {
+        error!("Error running RPC daemon, aborting..\n{}", e);
+    }
     Ok(())
 }
 
