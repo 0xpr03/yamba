@@ -198,7 +198,7 @@ fn main() -> Fallible<()> {
                 .parse::<i32>()
                 .unwrap();
 
-            let mut instance = ts::TSInstance::spawn(
+            let _instance = ts::TSInstance::spawn(
                 0,
                 addr,
                 port,
