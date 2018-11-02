@@ -17,12 +17,30 @@ RUN apt-get update -q && apt-get install -qqy \
     vlc \
     python3 \
     libnss3 \
+    curl \
+    sudo \
+    gcc \
+    libssl-dev \
+    pkg-config \
+    libvlc-dev \
     && apt-get autoremove \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -sf -L https://static.rust-lang.org/rustup.sh | sh
     
-WORKDIR /var/yamba
+# copy daemon
+COPY ./daemon/src /opt/yamba/daemon/src
+COPY ./daemon/conf /opt/yamba/daemon/conf
+COPY ./daemon/default_log.yml /opt/yamba/daemon/default_log.yml
+COPY ./daemon/Cargo.toml /opt/yamba/daemon/Cargo.toml
+WORKDIR /opt/yamba/daemon
+RUN cargo build --release
 
-COPY ./daemon/target/debug/yamba-backend ./
-COPY ./ts3plugin/target/release/libyamba_plugin.so ~/.ts3client/plugins/
+# copy ts3plugin
+COPY ./ts3plugin/src /opt/yamba/ts3plugin/src
+COPY ./ts3plugin/Cargo.toml /opt/yamba/ts3plugin/Cargo.toml
+WORKDIR /opt/yamba/ts3plugin
+RUN cargo build --release
 
-CMD /var/yamba/yamba-backend
+WORKDIR /opt/yamba/daemon/target/release
+
+CMD /opt/yamba/daemon/target/release/yamba-backend test-ts -h ek.proctet.net -p 7998
