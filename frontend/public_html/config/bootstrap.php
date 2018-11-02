@@ -43,6 +43,7 @@ use Cake\Log\Log;
 use Cake\Mailer\Email;
 use Cake\Utility\Inflector;
 use Cake\Utility\Security;
+use Josegonzalez\CakeQueuesadilla\Queue\Queue;
 
 /**
  * Uncomment block of code below if you want to use `.env` file during development.
@@ -71,6 +72,7 @@ try {
     Configure::load('database', 'default', false);
     Configure::load('email', 'default', false);
     Configure::load('misc', 'default', false);
+    Queue::setConfig(Configure::consume('Queuesadilla'));
 } catch (\Exception $e) {
     exit($e->getMessage() . "\n");
 }

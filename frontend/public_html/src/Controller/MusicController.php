@@ -20,6 +20,7 @@ namespace App\Controller;
 
 
 use Cake\ORM\TableRegistry;
+use Websocket\Lib\Websocket;
 
 class MusicController extends AppController
 {
@@ -30,6 +31,7 @@ class MusicController extends AppController
 
     public function addPlaylist()
     {
+        $this->autoRender = false;
         $name = $this->request->getQuery('name');
         if (!isset($name) || mb_strlen($name) < 1) {
             return $this->response->withStatus(400)->withStringBody('Bad request');
@@ -38,17 +40,24 @@ class MusicController extends AppController
         $playlist = $playlistTable->newEntity();
         $playlist->set('name', $name);
         $playlistTable->save($playlist);
-        return $this->getPlaylists();
+        $this->_updatePlaylists();
+        return null;
+    }
+
+    private function _playlistsJson()
+    {
+        $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
+        return json_encode($playlistTable->find('all')->contain(['songs_to_playlists'])->orderDesc('created'));
     }
 
     public function getPlaylists()
     {
-        $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
-        return $this->response->withType('json')->withStringBody(json_encode($playlistTable->find('all')->contain(['songs_to_playlists'])->orderDesc('created')));
+        return $this->response->withType('json')->withStringBody($this->_playlistsJson());
     }
 
     public function deletePlaylist()
     {
+        $this->autoRender = false;
         $id = $this->request->getQuery('id');
         if (!isset($id) || mb_strlen($id) !== 36) {
             return $this->response->withStatus(400)->withStringBody('Bad request');
@@ -56,6 +65,12 @@ class MusicController extends AppController
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
         $playlist = $playlistTable->get($id);
         $playlistTable->delete($playlist);
-        return $this->getPlaylists();
+        $this->_updatePlaylists();
+        return null;
+    }
+
+    private function _updatePlaylists()
+    {
+        Websocket::publishEvent('playlistsUpdated', ['json' => $this->_playlistsJson()]);
     }
 }

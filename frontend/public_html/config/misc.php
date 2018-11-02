@@ -20,9 +20,9 @@ return [
     'password_minlength' => env('PASSWORD_MINLENGTH', 3),
     'Websocket' => [
         'ssl' => false,
-        'host' => '127.0.0.1',
-        'externalHost' => 'cws.dev',
-        'port' => 8889,
+        'host' => '0.0.0.0',
+        'externalHost' => env('SERVER_ADDR'),
+        'port' => 81,
         'frontendPath' => [
             'ssl' => [
                 'path' => '/wss/',
@@ -38,5 +38,14 @@ return [
             'name' => 'websocket',
             'loopInterval' => 0.1,
         ]
-    ]
+    ],
+    'Queuesadilla' => [
+        'default' => [
+            'engine' => 'josegonzalez\Queuesadilla\Engine\MysqlEngine',
+            'database' => 'queuesadilla',
+            'host' => 'database',
+            'user' => env('DATABASE_USERNAME', 'root'),
+            'pass' => env('ROOT_PASSWORD', '1234fuenf'),
+        ],
+    ],
 ];
