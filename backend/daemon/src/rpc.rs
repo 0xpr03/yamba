@@ -16,26 +16,23 @@
  */
 use jsonrpc_lite::{Error, Id, JsonRpc};
 
-use std::net::SocketAddr;
-
+use daemon::{self, BoxFut};
 use failure::Fallible;
-use futures::future;
 use hyper;
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
-use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use hyper::{Body, Request, Response, Server};
 use serde_json::{self, to_value};
+use tokio::runtime;
 use SETTINGS;
 
 #[derive(Fail, Debug)]
 pub enum RPCErr {
-    #[fail(display = "RPC IO Error {}", _0)]
+    #[fail(display = "RPC bind error {}", _0)]
     BindError(#[cause] hyper::error::Error),
 }
 
-type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
-
-fn echo(req: Request<Body>) -> BoxFut {
+fn rpc(req: Request<Body>) -> BoxFut {
     let mut response = Response::new(Body::empty());
 
     Box::new(req.into_body().concat2().map(|b| {
@@ -60,29 +57,22 @@ fn echo(req: Request<Body>) -> BoxFut {
     }))
 }
 
-/// Parse socket address
-fn parse_socket_address() -> Fallible<SocketAddr> {
-    Ok(SocketAddr::new(
-        SETTINGS.main.rpc_bind_ip.parse()?,
-        SETTINGS.main.rpc_bind_port,
-    ))
-}
-
 pub fn check_config() -> Fallible<()> {
-    let _ = parse_socket_address()?;
+    let _ = daemon::parse_socket_address(&SETTINGS.main.rpc_bind_ip, SETTINGS.main.rpc_bind_port)?;
     Ok(())
 }
 
-/// Starts rpc daemon
-pub fn run_rpc_daemon() -> Fallible<()> {
-    let addr = parse_socket_address()?;
+/// Create rpc server, bind it & attach to runtime
+pub fn create_rpc_server(runtime: &mut runtime::Runtime) -> Fallible<()> {
+    let addr =
+        daemon::parse_socket_address(&SETTINGS.main.rpc_bind_ip, SETTINGS.main.rpc_bind_port)?;
 
     let server = Server::try_bind(&addr)
         .map_err(|e| RPCErr::BindError(e))?
-        .serve(|| service_fn(echo))
+        .serve(|| service_fn(rpc))
         .map_err(|e| eprintln!("server error: {}", e));
 
-    info!("Listening on http://{}", addr);
-    hyper::rt::run(server);
+    info!("RPC Listening on http://{}", addr);
+    runtime.spawn(server);
     Ok(())
 }

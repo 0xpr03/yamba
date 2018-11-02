@@ -46,7 +46,9 @@ use std::alloc::System;
 #[global_allocator]
 static GLOBAL: System = System;
 
+mod api;
 mod config;
+mod daemon;
 mod http;
 mod playback;
 mod rpc;
@@ -209,26 +211,28 @@ fn main() -> Fallible<()> {
             )?;
 
             info!("Started, starting RPC server..");
-            run_rpc_daemon()?;
+            check_runtime()?;
+            daemon::start_runtime()?;
             info!("Test ended");
         }
         (_, _) => {
             warn!("No params, entering daemon mode");
-            run_rpc_daemon()?;
+            check_runtime()?;
+            daemon::start_runtime()?;
         }
     }
     info!("Shutdown of yamba daemon");
     Ok(())
 }
 
-fn run_rpc_daemon() -> Fallible<()> {
+fn check_runtime() -> Fallible<()> {
     if let Err(e) = rpc::check_config() {
         error!("Invalid config for rpc daemon, aborting: {}", e);
         return Err(e);
     }
 
-    if let Err(e) = rpc::run_rpc_daemon() {
-        error!("Error running RPC daemon, aborting..\n{}", e);
+    if let Err(e) = api::check_config() {
+        error!("Invalid config for api daemon, aborting: {}", e);
     }
     Ok(())
 }
