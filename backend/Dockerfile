@@ -22,7 +22,7 @@ RUN apt-get update -q && apt-get install -qqy \
     
 WORKDIR /var/yamba
 
-COPY ./daemon/target/release/yamba-backend ./
+COPY ./daemon/target/debug/yamba-backend ./
 COPY ./ts3plugin/target/release/libyamba_plugin.so ~/.ts3client/plugins/
 
 CMD /var/yamba/yamba-backend
