@@ -30,7 +30,7 @@
                             <div class="grid-x grid-margin-x">
                                 <div class="large-6 cell">
                                     <?= $this->Form->control('name', ['label' => ['class' => 'required', 'text' => 'Name'],
-                                    'id' => 'new-playlist-name', 'class' => 'input radius', 'placeholder' => 'Name of new playlist', 'required']) ?>
+                                    'id' => 'new-playlist-name', 'class' => 'input radius', 'placeholder' => 'Name of new playlist', 'required', 'maxlength' => 50]) ?>
                                 </div>
                                 <div class="large-6 cell">
                                     <?= $this->Form->control('url', ['label' => ['text' => 'Url (optional)'], 'id' => 'new_playlist_url',
