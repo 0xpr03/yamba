@@ -40,6 +40,7 @@ extern crate serde_json;
 extern crate serde_urlencoded;
 extern crate sha2;
 extern crate tokio;
+extern crate tokio_signal;
 
 use std::alloc::System;
 

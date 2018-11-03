@@ -20,19 +20,16 @@ fn api(req: Request<Body>) -> BoxFut {
     let mut response = Response::new(Body::empty());
 
     match (req.method(), req.uri().path()) {
-        // Serve some instructions at /
         (&Method::GET, "/") => {
             *response.body_mut() = Body::from("Hello, this is part of an rest-like API, see docs");
             *response.status_mut() = StatusCode::IM_A_TEAPOT;
         }
 
-        // Simply echo the body back to the client.
         (&Method::POST, "/new/playlist") => {
             *response.body_mut() = req.into_body();
             *response.status_mut() = StatusCode::ACCEPTED;
         }
 
-        // Convert to uppercase before sending back to client.
         (&Method::GET, "/get/state") => {
             let mapping = req.into_body().map(|chunk| {
                 chunk
@@ -43,7 +40,6 @@ fn api(req: Request<Body>) -> BoxFut {
 
             *response.body_mut() = Body::wrap_stream(mapping);
         }
-        // The 404 Not Found route...
         _ => {
             *response.status_mut() = StatusCode::NOT_FOUND;
         }
