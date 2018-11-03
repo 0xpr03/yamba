@@ -15,3 +15,12 @@ CREATE TABLE `users_not_confirmed` (
   PRIMARY KEY (`confirmationToken`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `add_songs_jobs` (
+  `backend_token` INT UNSIGNED NOT NULL,
+  `playlist_id` char(36) NOT NULL,
+  `user_id` char(36) NOT NULL,
+  PRIMARY KEY (`backend_token`),
+  FOREIGN KEY (`playlist_id`) REFERENCES `playlists`(`id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
