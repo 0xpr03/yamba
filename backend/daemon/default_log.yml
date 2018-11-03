@@ -19,8 +19,8 @@ appenders:
 root:
   level: warn
   appenders:
-    - fileappender
     - stdout
+#    - fileappender
 
 loggers:
   # Lower level for ourselfs
