@@ -18,6 +18,7 @@
 use failure::{Fallible, ResultExt};
 use serde_urlencoded;
 
+use std::env;
 use std::io;
 use std::path::PathBuf;
 use std::process::{Child, Command};
@@ -80,12 +81,20 @@ impl TSInstance {
         ])?;
         let path_binary = PathBuf::from(&SETTINGS.ts.dir);
         let path_binary = path_binary.join(&SETTINGS.ts.start_binary);
+        let library_path = format!(
+            "{}:{}",
+            &SETTINGS.ts.dir,
+            env::var("LD_LIBRARY_PATH").unwrap()
+        );
 
         let mut cmd = Command::new("xvfb-run");
         cmd.current_dir(&SETTINGS.ts.dir)
             .env("QT_PLUGIN_PATH", &SETTINGS.ts.dir)
             .env("QTDIR", &SETTINGS.ts.dir)
-            .env("LD_LIBRARY_PATH", &SETTINGS.ts.dir)
+            .env("LD_LIBRARY_PATH", library_path)
+            .env("KDEDIR", "")
+            .env("KDEDIRS", "")
+            //.env("TS3_CONFIG_DIR", "/home/aron/Temp/ts_temp/")
             .env(TS_ENV_ID, id.to_string())
             .env(TS_ENV_CALLBACK, rpc_port.to_string())
             .args(&SETTINGS.ts.additional_args_xvfb)
