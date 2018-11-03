@@ -12,8 +12,8 @@ services:
     - ./dbInit:/docker-entrypoint-initdb.d
     - ./database:/var/lib/mysql
     env_file:
-    - ./secrets/database.env
-    - ./secrets/database_root.env
+    - ./config/database.env
+    - ./config/database_root.env
     logging:
       driver: "none"
 
@@ -25,14 +25,14 @@ services:
       - ./downloads:/var/yamba/downloads
       - ./frontend/public_html:/var/www/html
     env_file:
-      - ./secrets/frontend.env
-      - ./secrets/database.env
-      - ./secrets/database_root.env
+      - ./config/frontend.env
+      - ./config/database.env
+      - ./config/database_root.env
 
   backend:
     build: ./backend
     env_file:
-      - ./secrets/backend.env
-      - ./secrets/database.env
+      - ./config/backend.env
+      - ./config/database.env
     volumes:
       - ./backend/ts3client:/opt/ts3client
