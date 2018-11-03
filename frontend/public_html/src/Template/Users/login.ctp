@@ -19,24 +19,26 @@
 
 <?php $this->assign('title', $title); ?>
 <?= $this->Form->create() ?>
-<div class="grid-container">
+<div class="credentials-container">
     <fieldset class="fieldset">
         <legend><?= __('Please enter your username and password') ?></legend>
-        <div class="grid-x grid-margin-x">
-            <div class="large-6 cell">
+        <div class="row">
+            <div class="columns">
                 <?= $this->Form->control('email', ['class' => 'input radius']) ?>
             </div>
-            <div class="large-6 cell">
+            <div class="columns">
                 <?= $this->Form->control('password', ['class' => 'input radius']) ?>
             </div>
-            <div class="large-6 cell">
+        </div>
+        <div class="row">
+            <div class="columns">
                 <?= $this->Html->link(
                 'Don\'t have an account yet? Register here!',
                 ['controller' => 'Users', 'action' => 'add'],
                 ['class' => 'button expanded hollow alert radius', 'type' => 'button']);
                 ?>
             </div>
-            <div class="large-6 cell">
+            <div class="columns">
                 <?= $this->Form->button(__('Login'), ['class' => 'button expanded radius']); ?>
             </div>
         </div>

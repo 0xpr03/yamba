@@ -120,3 +120,17 @@ body {
 .badge.badge-right {
     float: right;
 }
+
+div.settings-container {
+    max-width: 90rem;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+div.credentials-container {
+    max-width: 75rem;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+}
