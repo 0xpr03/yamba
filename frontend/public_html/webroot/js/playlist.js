@@ -1,5 +1,4 @@
 function fillPlaylistTable(playlists) {
-    console.log(playlists);
     let tableBody = $('#playlist-table');
     tableBody.empty();
     playlists.forEach((playlist) => {
