@@ -54,7 +54,6 @@ class MusicController extends AppController
 
     public function addPlaylist()
     {
-        $this->autoRender = false;
         $name = $this->request->getQuery('name');
         if (!isset($name) || mb_strlen($name) < 1) {
             return $this->response->withStatus(400)->withStringBody('Bad request');
@@ -87,7 +86,7 @@ class MusicController extends AppController
         }
 
         $this->_updatePlaylists();
-        return null;
+        return $this->response->withStatus(200)->withStringBody('OK');
     }
 
     private function _playlistsJson()
@@ -103,7 +102,6 @@ class MusicController extends AppController
 
     public function deletePlaylist()
     {
-        $this->autoRender = false;
         $id = $this->request->getQuery('id');
         if (!isset($id) || mb_strlen($id) !== 36) {
             return $this->response->withStatus(400)->withStringBody('Bad request');
@@ -112,7 +110,7 @@ class MusicController extends AppController
         $playlist = $playlistTable->get($id);
         $playlistTable->delete($playlist);
         $this->_updatePlaylists();
-        return null;
+        return $this->response->withStatus(200)->withStringBody('OK');
     }
 
     private function _updatePlaylists()
