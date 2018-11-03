@@ -337,7 +337,7 @@ impl Plugin for MyTsPlugin {
         invoker: ::Invoker,
         target: ::MessageReceiver,
         message: String,
-        ignored: bool,
+        _ignored: bool,
     ) -> bool {
         let id: i32 = *ID.as_ref().unwrap();
         let invoker_name: String = invoker.get_name().to_string();
