@@ -51,6 +51,7 @@ pub fn start_runtime() -> Fallible<()> {
         }
         Ok(_) => (),
     };
+    info!("Daemon stopped");
     Ok(())
 }
 
