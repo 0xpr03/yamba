@@ -19,6 +19,7 @@
 namespace App\Controller;
 
 
+use Cake\Http\Client;
 use Cake\ORM\TableRegistry;
 use Websocket\Lib\Websocket;
 
@@ -29,6 +30,28 @@ class MusicController extends AppController
 
     }
 
+    public function addSongs()
+    {
+        $song_ids = json_decode($this->request->getData('song_ids'));
+        $token = $this->request->getData('token');
+        if (!isset($song_ids, $token)) {
+            return $this->response->withStatus(400)->withStringBody('Bad request');
+        }
+
+        $songsToPlaylistTable = TableRegistry::getTableLocator()->get('songs_to_playlists');
+        $addSongTable = TableRegistry::getTableLocator()->get('add_songs_jobs');
+        $addSong = $addSongTable->get($token);
+        foreach ($song_ids as $song_id) {
+            $songsToPlaylist = $songsToPlaylistTable->newEntity();
+            $songsToPlaylist->set('song_id', $song_id);
+            $songsToPlaylist->set('playlist_id', $addSong->get('playlist_id'));
+            $songsToPlaylistTable->save($songsToPlaylist);
+        }
+
+        $addSongTable->delete($addSong);
+        return $this->response->withStatus(200)->withStringBody('OK');
+    }
+
     public function addPlaylist()
     {
         $this->autoRender = false;
@@ -36,10 +59,33 @@ class MusicController extends AppController
         if (!isset($name) || mb_strlen($name) < 1) {
             return $this->response->withStatus(400)->withStringBody('Bad request');
         }
+
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
         $playlist = $playlistTable->newEntity();
         $playlist->set('name', $name);
-        $playlistTable->save($playlist);
+        $playlist = $playlistTable->save($playlist);
+        if ($playlist) {
+            $url = $this->request->getQuery('url');
+            if (isset($url) && mb_strlen($url) > 0) {
+                $http = new Client();
+                $response = $http->post('backend/new/playlist', json_encode(['url' => $url]));
+                if ($response->getStatusCode() === 202) {
+                    $addSongTable = TableRegistry::getTableLocator()->get('add_songs_jobs');
+                    $addSong = $addSongTable->newEntity();
+                    $addSong->set('backend_token', $response->body('json_decode'));
+                    $addSong->set('playlist_id', $playlist->get('id'));
+                    $addSong->set('user_id', $this->getRequest()->getSession()->read('User.id'));
+                    if ($addSongTable->save($addSong)) {
+                        $this->Flash->success(__('Your playlist is now in processing. You will be notified once it is fully loaded'));
+                    }
+                } else {
+                    $this->Flash->error(__('An error occurred while fetching the URL data'));
+                }
+            }
+        } else {
+            $this->Flash->error(__('Could not save the playlist'));
+        }
+
         $this->_updatePlaylists();
         return null;
     }
