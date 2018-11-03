@@ -14,7 +14,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
- */
+*/
 ?>
 
 <?php $this->assign('title', $title); ?>
@@ -24,10 +24,13 @@
         <legend><?= __('Register') ?></legend>
         <div class="row">
             <div class="columns">
-                <?= $this->Form->control('email', ['label' => ['class' => 'required', 'text' => 'Email'], 'placeholder' => 'example@yamba.mail', 'class' => 'input radius']) ?>
+                <?= $this->Form->control('email', ['label' => ['class' => 'required', 'text' => 'Email'],
+                'placeholder' => 'example@yamba.mail', 'class' => 'input radius']) ?>
             </div>
             <div class="columns">
-                <?= $this->Form->control('password', ['label' => ['class' => 'required', 'text' => 'Password'], 'minlength' => $minlength, 'placeholder' => 'Must have atleast ' . $minlength . ' characters', 'class' => 'input radius']) ?>
+                <?= $this->Form->control('password', ['label' => ['class' => 'required', 'text' => 'Password'],
+                'minlength' => $minlength, 'placeholder' => 'Must have atleast ' . $minlength . ' characters',
+                'class' => 'input radius']) ?>
             </div>
         </div>
         <div class="row">
