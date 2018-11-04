@@ -26,6 +26,8 @@ hyper = "0.12"
 jsonrpc-lite = "0.5"
 futures = "0.1"
 tokio-signal = "0.2"
+atomic = "0.4"
+
 
 [dependencies.vlc-rs]
 git = "https://github.com/0xpr03/vlc-rs"

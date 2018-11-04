@@ -37,6 +37,7 @@ extern crate hyper;
 extern crate jsonrpc_lite;
 #[macro_use]
 extern crate serde_json;
+extern crate atomic;
 extern crate serde_urlencoded;
 extern crate sha2;
 extern crate tokio;
