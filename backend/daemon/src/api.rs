@@ -114,9 +114,12 @@ pub fn create_api_server(runtime: &mut runtime::Runtime) -> Fallible<()> {
         serde_json::to_string(&NewPlaylist { url: "asd".into() }).unwrap()
     );
 
-    /*let api = API {
-        request_counter: Arc::new(Atomic::new(0)),
-    };*/
+    if Atomic::<u32>::is_lock_free() {
+        debug!("Passed atomic test");
+    } else {
+        warn!("Atomics test failed for platform!");
+    }
+
     let counter = Arc::new(Atomic::new(0));
 
     let server = Server::try_bind(&addr)
