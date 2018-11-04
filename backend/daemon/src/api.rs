@@ -5,6 +5,7 @@ use hyper;
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use serde::de::Deserialize;
 use serde_json::{self, to_value};
 use tokio::runtime;
 
@@ -19,7 +20,7 @@ pub enum APIErr {
     BindError(#[cause] hyper::error::Error),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 struct NewPlaylist {
     url: String,
 }
@@ -39,16 +40,7 @@ fn api(req: Request<Body>, counter: Arc<Atomic<u32>>) -> BoxFut {
             }
 
             (Method::POST, "/new/playlist") => {
-                let request_id = counter.fetch_add(1, Ordering::AcqRel);
-                response = match new_playlist(&b, request_id) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        warn!("Error processing {}", e);
-                        let mut response_ = Response::new(Body::empty());
-                        *response_.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-                        response_
-                    }
-                };
+                response = handle_request(counter, &b, new_playlist);
             }
             (_, v) => {
                 info!("Unknown API request {}", v);
@@ -60,23 +52,51 @@ fn api(req: Request<Body>, counter: Arc<Atomic<u32>>) -> BoxFut {
     }))
 }
 
-fn new_playlist(data: &[u8], request_id: u32) -> Fallible<Response<Body>> {
+/// Request abstraction, parses input json to struct, calls handler on the result
+fn handle_request<'a, T, F>(
+    req_counter: Arc<Atomic<u32>>,
+    data: &'a [u8],
+    mut handler: F,
+) -> Response<Body>
+where
+    F: FnMut(T, &mut Response<Body>, u32) -> Fallible<()>,
+    T: Deserialize<'a>,
+{
     let mut response = Response::new(Body::empty());
-    match serde_json::from_slice::<NewPlaylist>(data) {
+    match serde_json::from_slice::<T>(data) {
         Ok(v) => {
-            info!("URL: {}", v.url);
-            *response.status_mut() = StatusCode::ACCEPTED;
-            *response.body_mut() = to_value(json!({ "request id": request_id }))
-                .unwrap()
-                .to_string()
-                .into()
+            debug!("Parsed request");
+            let req_id = req_counter.fetch_add(1, Ordering::AcqRel);
+            let mut result = handler(v, &mut response, req_id);
+            if result.is_ok() {
+                trace!("Processed api call");
+                *response.status_mut() = StatusCode::ACCEPTED;
+            }
+            if let Err(e) = result {
+                info!("Error while processing request: {}", e);
+                *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                // wipe body ?
+            }
         }
         Err(e) => {
-            info!("API invalid request {}", e);
+            info!("Invalid request, parsing error: {}", e);
             *response.status_mut() = StatusCode::BAD_REQUEST;
         }
     }
-    Ok(response)
+    response
+}
+
+fn new_playlist(
+    playlist: NewPlaylist,
+    response: &mut Response<Body>,
+    request_id: u32,
+) -> Fallible<()> {
+    info!("URL: {}", playlist.url);
+    *response.status_mut() = StatusCode::ACCEPTED;
+    *response.body_mut() = serde_json::to_string(&json!({ "request id": request_id }))
+        .unwrap()
+        .into();
+    Ok(())
 }
 
 pub fn check_config() -> Fallible<()> {
@@ -88,6 +108,11 @@ pub fn check_config() -> Fallible<()> {
 pub fn create_api_server(runtime: &mut runtime::Runtime) -> Fallible<()> {
     let addr =
         daemon::parse_socket_address(&SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port)?;
+
+    debug!(
+        "{}",
+        serde_json::to_string(&NewPlaylist { url: "asd".into() }).unwrap()
+    );
 
     /*let api = API {
         request_counter: Arc::new(Atomic::new(0)),
