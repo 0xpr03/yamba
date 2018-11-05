@@ -39,5 +39,11 @@ function addPlaylist(form) {
             $('#close-add-playlist-modal').click();
             form.find('input[type=text]').val('');
         },
+        error: function (response) {
+            console.log(response);
+            let errordiv = $('#add-playlist-error-div');
+            errordiv.show();
+            errordiv.find('#add-playlist-error-span').text(response.responseText);
+        }
     });
 }

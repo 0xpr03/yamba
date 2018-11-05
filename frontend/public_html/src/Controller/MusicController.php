@@ -19,6 +19,7 @@
 namespace App\Controller;
 
 
+use Cake\Core\Exception\Exception;
 use Cake\Http\Client;
 use Cake\ORM\TableRegistry;
 use Websocket\Lib\Websocket;
@@ -67,7 +68,12 @@ class MusicController extends AppController
             $url = $this->request->getQuery('url');
             if (isset($url) && mb_strlen($url) > 0) {
                 $http = new Client();
-                $response = $http->post('backend/new/playlist', json_encode(['url' => $url]));
+                try {
+                    $response = $http->post('http://backend/new/playlist', json_encode(['url' => $url]));
+                } catch (Exception $e) {
+                    return $this->_error('Unable to connect to backend');
+                }
+
                 if ($response->getStatusCode() === 202) {
                     $addSongTable = TableRegistry::getTableLocator()->get('add_songs_jobs');
                     $addSong = $addSongTable->newEntity();
@@ -78,15 +84,20 @@ class MusicController extends AppController
                         $this->Flash->success(__('Your playlist is now in processing. You will be notified once it is fully loaded'));
                     }
                 } else {
-                    $this->Flash->error(__('An error occurred while fetching the URL data'));
+                    return $this->_error('Could not resolve URL');
                 }
             }
         } else {
-            $this->Flash->error(__('Could not save the playlist'));
+            return $this->_error('Could not save the playlist');
         }
 
         $this->_updatePlaylists();
         return $this->response->withStatus(200)->withStringBody('OK');
+    }
+
+    private function _error($message) {
+        $this->_updatePlaylists();
+        return $this->response->withStatus(500)->withStringBody(__('An error occurred during playlist creation: ') . __($message));
     }
 
     private function _playlistsJson()

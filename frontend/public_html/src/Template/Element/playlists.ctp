@@ -41,7 +41,7 @@
                     </div>
                     <div class="row">
                         <div class="columns shrink">
-                            <button id="close-add-playlist-modal" class="button hollow expanded secondary radius"
+                            <button id="close-add-playlist-modal" class="button hollow alert radius"
                                     data-close aria-label="Close modal" type="button">
                                 <span aria-hidden="true">Close</span>
                             </button>
@@ -49,6 +49,12 @@
                         <div class="columns">
                             <?= $this->Form->submit('Create Playlist', ['class' => 'button expanded radius']); ?>
                         </div>
+                    </div>
+                    <div id="add-playlist-error-div" class="row callout alert" style="display:none" data-closable>
+                        <span id="add-playlist-error-span"></span>
+                        <button class="close-button" aria-label="Dismiss alert" type="button" data-close>
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
                 </fieldset>
                 <?= $this->Form->end() ?>
