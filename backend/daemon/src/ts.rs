@@ -84,7 +84,10 @@ impl TSInstance {
         let library_path = format!(
             "{}:{}",
             &SETTINGS.ts.dir,
-            env::var("LD_LIBRARY_PATH").unwrap()
+            match env::var("LD_LIBRARY_PATH") {
+                Ok(ok) => ok,
+                Err(_) => "".to_string(),
+            }
         );
 
         let mut cmd = Command::new("xvfb-run");
