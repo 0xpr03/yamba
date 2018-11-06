@@ -54,6 +54,6 @@ dir = "ts"
 # start script/executable
 start_binary = "ts3client_linux_amd64"
 # additional arguments to pass at first to xvfb
-additional_args_xvfb = ["--auto-servernum", "--server-args='-screen 0 640x480x24:32'"]
+additional_args_xvfb = ["--auto-servernum", "--server-args=-screen 0 640x480x24:32"]
 # additional arguments to pass at first to the binary
 additional_args_binary= []
