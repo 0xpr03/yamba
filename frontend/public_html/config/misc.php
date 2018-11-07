@@ -21,7 +21,7 @@ return [
     'Websocket' => [
         'ssl' => false,
         'host' => '0.0.0.0',
-        'externalHost' => env('SERVER_ADDR'),
+        'externalHost' => parse_url(env('HTTP_HOST'), PHP_URL_HOST),
         'port' => 81,
         'frontendPath' => [
             'ssl' => [
