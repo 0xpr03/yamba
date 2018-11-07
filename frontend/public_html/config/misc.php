@@ -23,7 +23,7 @@ return [
     'password_minlength' => env('PASSWORD_MINLENGTH', 3),
     'Websocket' => [
         'ssl' => false,
-        'host' => '0.0.0.0',
+        'host' => '127.0.0.1',
         'externalHost' => parse_url(env('HTTP_HOST'), PHP_URL_HOST),
         'port' => $port,
         'frontendPath' => [
