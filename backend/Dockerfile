@@ -23,6 +23,8 @@ RUN apt-get update -q && apt-get install -qqy \
     libssl-dev \
     pkg-config \
     libvlc-dev \
+    sqlite3 \
+    libsqlite3-dev \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/* \
     && curl -sf -L https://static.rust-lang.org/rustup.sh | sh

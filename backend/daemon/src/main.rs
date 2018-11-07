@@ -38,6 +38,7 @@ extern crate jsonrpc_lite;
 #[macro_use]
 extern crate serde_json;
 extern crate atomic;
+extern crate rusqlite;
 extern crate serde_urlencoded;
 extern crate sha2;
 extern crate tokio;
@@ -52,6 +53,7 @@ mod api;
 mod config;
 mod daemon;
 mod http;
+mod models;
 mod playback;
 mod rpc;
 mod ts;
@@ -213,6 +215,9 @@ fn main() -> Fallible<()> {
             )?;
 
             info!("Started, starting RPC server..");
+
+            //thread::sleep(Duration::from_millis(10000));
+
             check_runtime()?;
             daemon::start_runtime()?;
             info!("Test ended");
