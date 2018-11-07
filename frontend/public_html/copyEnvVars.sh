@@ -4,8 +4,9 @@
 echo "clear_env = no" >> /etc/php/7.2/fpm/pool.d/www.conf;
 while read p;
 do
+    val=$(echo $p | sed -e 's/.*=//g');
     [[ $p == "YAMBA"* ]] || [[ $p == "MYSQL"* ]] && v=${p:6} && echo env[${v/=/] = \'}\' >> /etc/php/7.2/fpm/pool.d/www.conf;
-    [[ $p == "YAMBA_DATABASE_USERNAME"* ]] && sed -i -e "s/<root>/$(echo $p | sed -e 's/.*=//g')/g" ./config/misc.php
-    [[ $p == "MYSQL_ROOT_PASSWORD"* ]] && sed -i -e "s/<root-pw>/$(echo $p | sed -e 's/.*=//g')/g" ./config/misc.php
+    [[ $p == "YAMBA_DATABASE_USERNAME"* ]] && sed -i -e "s/<root>/${val}/g" ./config/misc.php;
+    [[ $p == "MYSQL_ROOT_PASSWORD"* ]] && sed -i -e "s/<root-pw>/${val}/g" ./config/misc.php;
 done < <(printenv);
 exit 0;
