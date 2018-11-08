@@ -27,3 +27,22 @@ CREATE TABLE `titles_to_playlists` (
   FOREIGN KEY (`title_id`) REFERENCES `titles`(`id`),
   FOREIGN KEY (`playlist_id`) REFERENCES `playlists`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `instances` (
+  `id` INT AUTO_INCREMENT NOT NULL,
+  `host` char(255) NOT NULL,
+  `port` INT(16) UNSIGNED,
+  `identity` char(255) NOT NULL,
+  `name` chaR(255) NOT NULL,
+  `autostart` bit NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `queues` (
+  `index` INT AUTO_INCREMENT NOT NULL,
+  `instance_id` INT NOT NULL,
+  `title_id` char(32) NOT NULL,
+  PRIMARY KEY (`index`, `instance_id`),
+  FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`),
+  FOREIGN KEY (`title_id`) REFERENCES `titles`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
