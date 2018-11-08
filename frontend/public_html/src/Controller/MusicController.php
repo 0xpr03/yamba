@@ -39,7 +39,7 @@ class MusicController extends AppController
             return $this->response->withStatus(400)->withStringBody('Bad request');
         }
 
-        $songsToPlaylistTable = TableRegistry::getTableLocator()->get('songs_to_playlists');
+        $songsToPlaylistTable = TableRegistry::getTableLocator()->get('titles_to_playlists');
         $addSongTable = TableRegistry::getTableLocator()->get('add_songs_jobs');
         $addSong = $addSongTable->get($token);
         foreach ($song_ids as $song_id) {
