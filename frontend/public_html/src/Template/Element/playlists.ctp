@@ -17,7 +17,7 @@
 */
 ?>
 
-<table class="hover playlist-table">
+<table id="playlist-table" class="hover playlist-table">
     <thead>
     <tr>
         <th colspan="3" style="font-weight: bold; padding: 0">
@@ -62,6 +62,15 @@
         </th>
     </tr>
     </thead>
-    <tbody id="playlist-table">
+    <tbody id="playlist-table-body">
     </tbody>
 </table>
+<script>
+    getPlaylists();
+    $('#playlist-table').foundation();
+    let form = $('#add-playlist-form');
+    form.submit(function (event) {
+        event.preventDefault();
+        addPlaylist(form);
+    });
+</script>

@@ -21,7 +21,7 @@
     <div class="top-bar-left">
         <ul class="menu" data-dropdown-menu>
             <li>
-                <a href="#" class="logo-font" onclick="fetchContent('/', 'content')">
+                <a href="#" class="logo-font" onclick="fetchContent('/', 'music')">
                     <img src="/img/logo-silhouette.svg">
                 </a>
             </li>
@@ -31,7 +31,7 @@
         <ul class="menu">
             <?php if($this->request->getSession()->read('Auth.User')) { ?>
             <li class="divider">
-                <a href="#" class="header-font" onclick="fetchContent('/Accounts/settings', 'accSettings')" title="Account Settings"><i class="fi-widget"></i></a>
+                <a href="#" class="header-font" onclick="fetchContent('/accounts/settings', 'account-settings')" title="Account Settings"><i class="fi-widget"></i></a>
             </li>
             <li class="divider"><?= $this->Html->link(
                 'Logout',

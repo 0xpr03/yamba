@@ -17,31 +17,26 @@
 
 $(function () {
     $(document).foundation();
-
-    let form = $('#add-playlist-form');
-    form.submit(function (event) {
-        event.preventDefault();
-        addPlaylist(form);
-    });
     App.Websocket.onEvent('playlistsUpdated', function (payload) {
         fillPlaylistTable(JSON.parse(payload.json));
     }.bind(this));
-    getPlaylists();
+    fetchContent('/', 'music');
 });
 
 function fetchContent(url, contentId) {
-    $.ajax({
-        method: 'get',
-        url: url,
-        success: function (response) {
-            let mainContentDiv = $('#content');
-            let contentDiv = $('#' + contentId);
-            mainContentDiv.parent().children().hide();
-            if (contentDiv.length) {
-                contentDiv.show();
-            } else {
-                mainContentDiv.after('<div id="' + contentId + '">' + response + '</div>')
-            }
-        },
-    });
+    let mainContentDiv = $('#content');
+    let contentDiv = $('#' + contentId);
+    mainContentDiv.children().hide();
+    if (contentDiv.length) {
+        contentDiv.show();
+    } else {
+        $.ajax({
+            method: 'get',
+            url: url,
+            success: function (response) {
+                mainContentDiv.append('<div id="' + contentId + '">' + response + '</div>');
+            },
+        });
+    }
+    window.history.pushState({},'',url);
 }

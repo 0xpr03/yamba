@@ -1,5 +1,5 @@
 function fillPlaylistTable(playlists) {
-    let tableBody = $('#playlist-table');
+    let tableBody = $('#playlist-table-body');
     let content = "";
     playlists.forEach((playlist) => {
         content +=
