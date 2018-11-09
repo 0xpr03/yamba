@@ -15,7 +15,6 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::collections::HashMap;
 use std::env::current_dir;
 use std::ffi::OsStr;
 use std::fs::{read_dir, DirBuilder, OpenOptions};
@@ -61,6 +60,8 @@ pub struct ConfigMain {
     pub user_agent: String,
     pub rpc_bind_port: u16,
     pub rpc_bind_ip: String,
+    pub api_bind_port: u16,
+    pub api_bind_ip: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

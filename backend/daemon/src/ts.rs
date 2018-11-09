@@ -18,25 +18,40 @@
 use failure::{Fallible, ResultExt};
 use serde_urlencoded;
 
-use std::io;
-use std::path::PathBuf;
+use std::env;
+use std::fs::{read_dir, DirBuilder, OpenOptions};
+use std::io::{self, Error};
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
+use std::thread;
+use std::time::Duration;
+
+use std::env::current_dir;
+
+use rusqlite::{self, Connection};
 
 use SETTINGS;
 
 const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
 const TS_ENV_ID: &'static str = "ID_YAMBA";
+const TS_SETTINGS_FILE: &'static str = "settings.db";
 
 #[derive(Fail, Debug)]
-pub enum TSInstanceError {
-    #[fail(display = "IO Error {}", _0)]
-    Io(#[cause] io::Error),
+pub enum TSInstanceErr {
+    #[fail(display = "Database Error on configuring instance {}", _0)]
+    Database(#[cause] rusqlite::Error),
     #[fail(display = "Instance spawn error {}", _0)]
     SpawnError(#[cause] io::Error),
     #[fail(display = "Pipe error processing ytdl output {}", _0)]
     PipeError(String),
     #[fail(display = "Thread panicked at {}", _0)]
     ThreadPanic(String),
+    #[fail(display = "TS Instance config creation error for IO {}", _0)]
+    ConfigCreationIOError(#[cause] io::Error),
+    #[fail(display = "TS Instance config creation error {}", _0)]
+    ConfigCreationError(String),
+    #[fail(display = "Couldn't kill instance, timeout")]
+    InstanceExitError,
 }
 
 impl Drop for TSInstance {
@@ -80,24 +95,100 @@ impl TSInstance {
         ])?;
         let path_binary = PathBuf::from(&SETTINGS.ts.dir);
         let path_binary = path_binary.join(&SETTINGS.ts.start_binary);
+        let library_path = format!(
+            ".:{}",
+            env::var("LD_LIBRARY_PATH").unwrap_or("".to_string())
+        );
+
+        let path = current_dir()?.join("ts").join(format!("{}", id));
+        DirBuilder::new()
+            .recursive(true)
+            .create(&path)
+            .map_err(|e| TSInstanceErr::ConfigCreationIOError(e))?;
+        debug!("TS Instance config path: {:?}", path);
 
         let mut cmd = Command::new("xvfb-run");
         cmd.current_dir(&SETTINGS.ts.dir)
             .env("QT_PLUGIN_PATH", &SETTINGS.ts.dir)
             .env("QTDIR", &SETTINGS.ts.dir)
-            .env("LD_LIBRARY_PATH", &SETTINGS.ts.dir)
+            .env("LD_LIBRARY_PATH", library_path)
+            .env("KDEDIR", "")
+            .env("KDEDIRS", "")
+            .env("TS3_CONFIG_DIR", path.to_string_lossy().into_owned())
             .env(TS_ENV_ID, id.to_string())
             .env(TS_ENV_CALLBACK, rpc_port.to_string())
-            .args(&SETTINGS.ts.additional_args_xvfb)
+            .args(&["--auto-servernum", "--server-args=-screen 0 640x480x24:32"])
             .arg(path_binary.to_string_lossy().to_mut())
             .args(&SETTINGS.ts.additional_args_binary)
             .arg("-nosingleinstance")
             .arg(format!("ts3server://{}?{}", address, ts_url));
-        println!("CMD: {:?}", cmd);
+        trace!("TS Workdir: {}", &SETTINGS.ts.dir);
+        trace!("CMD: {:?}", cmd);
+
+        let path = path.join(TS_SETTINGS_FILE);
+        debug!("TS Instance config path: {:?}", path);
+
+        if !path.exists() {
+            info!("Missing instance settings, creating..");
+            let mut child = cmd.spawn()?;
+            thread::sleep(Duration::from_millis(5000));
+            child.kill()?;
+            TSInstance::wait_for_child_timeout(1000, &mut child)?;
+            if !path.exists() {
+                warn!("Unable to create configuration, no db existing!");
+                return Err(TSInstanceErr::ConfigCreationError(
+                    "No settings db, creation failed!".into(),
+                ).into());
+            }
+            info!("Configuring..");
+            TSInstance::configure_settings(&path)?;
+        }
+
         Ok(TSInstance {
             id,
-            process: cmd.spawn().map_err(|e| TSInstanceError::SpawnError(e))?,
+            process: cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?,
         })
+    }
+
+    fn wait_for_child_timeout(sleep_ms: i32, child: &mut Child) -> Fallible<()> {
+        let mut returned = false;
+        let mut waited = 0;
+        while waited < sleep_ms || !returned {
+            if child.try_wait()?.is_some() {
+                returned = true;
+                break;
+            }
+            thread::sleep(Duration::from_millis(30));
+            waited += 30;
+        }
+
+        if returned {
+            Ok(())
+        } else {
+            Err(TSInstanceErr::InstanceExitError.into())
+        }
+    }
+
+    fn configure_settings(path: &Path) -> Fallible<()> {
+        let connection = Connection::open(path)?;
+        {
+            let mut stmt = connection
+                .prepare("INSERT INTO `General` (`timestamp`,`key`,`value`) SELECT MAX(`timestamp`),?,? FROM `General`")?;
+            let values = ["en", "true", "4"];
+            let keys = [
+                "LastShownLicenseLang",
+                "SyncOverviewShown",
+                "LastShownLicense",
+            ];
+
+            for (&k, &v) in keys.iter().zip(values.iter()) {
+                debug!("Inserting {}{}", k, v);
+                stmt.execute(&[k, v])?;
+            }
+        }
+        Ok(connection
+            .close()
+            .map_err(|(_, e)| TSInstanceErr::Database(e))?)
     }
 
     pub fn get_id(&self) -> i32 {

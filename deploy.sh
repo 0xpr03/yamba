@@ -4,7 +4,7 @@ cd backend
 
 echo Build backend...
 cd daemon
-RUST_BACKTRACE=1 cargo build --release
+RUST_BACKTRACE=1 cargo build
 cd ..
 cd ts3plugin
 RUST_BACKTRACE=1 cargo build --release
