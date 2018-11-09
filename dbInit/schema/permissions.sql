@@ -9,7 +9,9 @@ CREATE TABLE `permissions` (
 CREATE TABLE `permission_groups` (
   `id` char(36) NOT NULL,
   `name` varchar(50) NOT NULL,
-  PRIMARY KEY (`id`)
+  `instance_id` INT NOT NULL,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `permissions_to_permission_groups` (

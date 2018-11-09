@@ -1,9 +1,8 @@
 function fillPlaylistTable(playlists) {
-    console.log(playlists);
     let tableBody = $('#playlist-table');
     tableBody.empty();
     playlists.forEach((playlist) => {
-        tableBody.append('<tr><td><a href="#" onclick="deletePlaylist(\'' + playlist.id + '\')"><i style="color: red" class="fi-trash"></i></a></td><td>' + playlist.name + '<td><span class="badge badge-right">' + playlist.songs_to_playlists.length + '</span></td>' + '</td></tr>');
+        tableBody.append('<tr><td><a href="#" onclick="deletePlaylist(\'' + playlist.id + '\')"><i style="color: red" class="fi-trash"></i></a></td><td>' + playlist.name + '<td><span class="badge badge-right">' + playlist.titles_to_playlists.length + '</span></td>' + '</td></tr>');
     });
 }
 
@@ -40,5 +39,11 @@ function addPlaylist(form) {
             $('#close-add-playlist-modal').click();
             form.find('input[type=text]').val('');
         },
+        error: function (response) {
+            console.log(response);
+            let errordiv = $('#add-playlist-error-div');
+            errordiv.show();
+            errordiv.find('#add-playlist-error-span').text(response.responseText);
+        }
     });
 }

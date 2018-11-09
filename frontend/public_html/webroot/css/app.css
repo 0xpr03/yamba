@@ -15,6 +15,18 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*
+    Tag changes
+ */
+html {
+    height: 100%;
+}
+
+body {
+    position: relative;
+    min-height: 100%;
+}
+
 footer {
     position: absolute;
     left: 0;
@@ -27,7 +39,65 @@ footer {
     padding: 0.25rem;
 }
 
-.footer-copyright {
+/*
+    Main content
+ */
+.main {
+    padding-bottom: 4em;
+    padding-top: 2em;
+}
+
+
+/*
+    Foundation adjustments
+ */
+.menu, .top-bar {
+    background: #2c3840 !important;
+}
+
+.menu-text-top {
+    color: #dddddd !important;
+}
+
+/*
+    Navbar
+ */
+nav.top-bar {
+       position: fixed;
+       width: 100%;
+       height: 2em;
+       z-index: 42;
+   }
+
+.header-font, .header-font:visited {
+    color: #bdbdbd;
+    height: 2em;
+    padding-top: 0.45em !important;
+}
+
+.header-font:hover, .header-font:active {
+    color: #f5f5f5;
+}
+
+a.logo-font, a.logo-font:visited {
+    color: #f5f5f5;
+    height: 2em;
+    font-weight: bold;
+    padding-top: 0.45em !important;
+}
+
+a.logo-font:hover, a.logo-font:active {
+    color: #bdbdbd;
+}
+
+li:not(:last-child).divider {
+    border-right: 0.1em solid #7d7d7d;
+}
+
+/*
+    Footer
+ */
+span.footer-copyright {
     color: #cbcbcb;
 }
 
@@ -39,16 +109,28 @@ a.footer-icon:hover, a.footer-icon:active {
     color: #808080;
 }
 
-.menu, .top-bar {
-    background: #2c3840 !important;
+/*
+    Flex box sizing
+ */
+div.settings-container, div.credentials-container {
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
 }
 
-.menu-text-top {
-    color: #dddddd !important;
+div.settings-container {
+    max-width: 90rem;
 }
 
-li:not(:last-child).divider {
-    border-right: 0.1em solid #7d7d7d;
+div.credentials-container {
+    max-width: 75rem;
+}
+
+/*
+    Custom helper classes
+ */
+span.badge.badge-right {
+    float: right;
 }
 
 div.flash {
@@ -73,50 +155,4 @@ label.required:after {
 
 .button.radius {
     border-radius: 0.3em;
-}
-
-div.body {
-    padding-bottom: 4em;
-    padding-top: 2em;
-}
-
-nav.top-bar {
-    position: fixed;
-    width: 100%;
-    height: 2em;
-    z-index: 42;
-}
-
-a.header-font, a.header-font:visited {
-    color: #bdbdbd;
-    height: 2em;
-    padding-top: 0.45em !important;
-}
-
-a.header-font:hover, a.header-font:active {
-    color: #f5f5f5;
-}
-
-a.logo-font, a.logo-font:visited {
-    color: #f5f5f5;
-    height: 2em;
-    font-weight: bold;
-    padding-top: 0.45em !important;
-}
-
-a.logo-font:hover, a.logo-font:active {
-    color: #bdbdbd;
-}
-
-html {
-    height: 100%;
-}
-
-body {
-    position: relative;
-    min-height: 100%;
-}
-
-.badge.badge-right {
-    float: right;
 }

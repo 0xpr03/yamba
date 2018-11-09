@@ -40,10 +40,12 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
 </head>
 <body>
 <?= $this->element('navbar'); ?>
-<div class="body">
-    <?= $this->Flash->render() ?>
-    <div <?= $this->FrontendBridge->getControllerAttributes(['some', 'optional', 'css', 'classes']) ?>>
-        <?= $this->fetch('content') ?>
+<div<?= $this->FrontendBridge->getControllerAttributes() ?>>
+    <div class="main">
+        <?= $this->Flash->render() ?>
+        <div id="content">
+            <?= $this->fetch('content') ?>
+        </div>
     </div>
 </div>
 <footer>

@@ -16,20 +16,23 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+$port = parse_url(env('HTTP_HOST'), PHP_URL_PORT);
+if (empty($port)) $port = 81; //This needs to be the port specified in the nginx websocket proxy pass
+
 return [
     'password_minlength' => env('PASSWORD_MINLENGTH', 3),
     'Websocket' => [
         'ssl' => false,
-        'host' => '0.0.0.0',
-        'externalHost' => env('SERVER_ADDR'),
-        'port' => 81,
+        'host' => '127.0.0.1',
+        'externalHost' => parse_url(env('HTTP_HOST'), PHP_URL_HOST),
+        'port' => $port,
         'frontendPath' => [
             'ssl' => [
                 'path' => '/wss/',
                 'usePort' => false
             ],
             'normal' => [
-                'path' => '/',
+                'path' => '/socket/',
                 'usePort' => true
             ]
         ],

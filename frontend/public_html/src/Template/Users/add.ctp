@@ -14,29 +14,34 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
- */
+*/
 ?>
 
 <?php $this->assign('title', $title); ?>
 <?= $this->Form->create($user) ?>
-<div class="grid-container">
+<div class="credentials-container">
     <fieldset class="fieldset">
         <legend><?= __('Register') ?></legend>
-        <div class="grid-x grid-margin-x">
-            <div class="large-6 cell">
-                <?= $this->Form->control('email', ['label' => ['class' => 'required', 'text' => 'Email'], 'placeholder' => 'example@yamba.mail', 'class' => 'input radius']) ?>
+        <div class="row">
+            <div class="columns">
+                <?= $this->Form->control('email', ['label' => ['class' => 'required', 'text' => 'Email'],
+                'placeholder' => 'example@yamba.mail', 'class' => 'input radius']) ?>
             </div>
-            <div class="large-6 cell">
-                <?= $this->Form->control('password', ['label' => ['class' => 'required', 'text' => 'Password'], 'minlength' => $minlength, 'placeholder' => 'Must have atleast ' . $minlength . ' characters', 'class' => 'input radius']) ?>
+            <div class="columns">
+                <?= $this->Form->control('password', ['label' => ['class' => 'required', 'text' => 'Password'],
+                'minlength' => $minlength, 'placeholder' => 'Must have atleast ' . $minlength . ' characters',
+                'class' => 'input radius']) ?>
             </div>
-            <div class="large-6 cell">
+        </div>
+        <div class="row">
+            <div class="columns">
                 <?= $this->Html->link(
                 'Already have an account? Sign in!',
                 ['controller' => 'Users', 'action' => 'login'],
                 ['class' => 'button expanded hollow success radius', 'type' => 'button']);
                 ?>
             </div>
-            <div class="large-6 cell">
+            <div class="columns">
                 <?= $this->Form->button(__('Register'), ['class' => 'button expanded radius']); ?>
             </div>
         </div>

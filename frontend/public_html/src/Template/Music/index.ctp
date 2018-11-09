@@ -17,10 +17,11 @@
 */
 ?>
 
-<div class="grid-x">
-    <div class="large-2 cell">
-        <div class="grid-container">
-            <?= $this->element('playlists'); ?>
-        </div>
+<div class="row" style="margin-top: 2em;">
+    <div class="columns shrink">
+        <?= $this->element('playlists'); ?>
+    </div>
+    <div class="columns">
+
     </div>
 </div>

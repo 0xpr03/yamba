@@ -14,29 +14,36 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
- */
+*/
 ?>
 
-<div class="grid-container">
+<div class="settings-container">
     <h1>Managing your account</h1>
     <hr>
     <br>
     <h3>Changing your password</h3>
     <?= $this->Form->create($user, ['url' => ['action' => 'changePassword']]) ?>
-    <div class="grid-x grid-padding-x">
-        <div class="large-4 cell">
+    <div class="row">
+        <div class="columns">
             <?= $this->Form->label('password', 'Old Password') ?>
-            <?= $this->Form->password('password', ['minlength' => $minlength, 'class' => 'input radius', 'required' => true]) ?>
+            <?= $this->Form->password('password', ['minlength' => $minlength, 'class' => 'input radius', 'required'])
+            ?>
         </div>
-        <div class="large-4 cell">
+        <div class="columns">
             <?= $this->Form->label('new_password', 'New Password') ?>
-            <?= $this->Form->password('new_password', ['minlength' => $minlength, 'placeholder' => 'Must have atleast ' . $minlength . ' characters', 'class' => 'input radius', 'required' => true]) ?>
+            <?= $this->Form->password('new_password', ['minlength' => $minlength,
+            'placeholder' => 'Must have atleast ' . $minlength . ' characters', 'class' => 'input radius', 'required'])
+            ?>
         </div>
-        <div class="large-4 cell">
+        <div class="columns">
             <?= $this->Form->label('new_password_repeat', 'Repeat New password') ?>
-            <?= $this->Form->password('new_password_repeat', ['minlength' => $minlength, 'placeholder' => 'Must have atleast ' . $minlength . ' characters', 'class' => 'input radius', 'required' => true]) ?>
+            <?= $this->Form->password('new_password_repeat', ['minlength' => $minlength,
+            'placeholder' => 'Must have atleast ' . $minlength . ' characters', 'class' => 'input radius', 'required'])
+            ?>
         </div>
-        <div class="cell">
+    </div>
+    <div class="row">
+        <div class="columns">
             <?= $this->Form->button(__('Change Password'), ['class' => 'button expanded radius']); ?>
         </div>
     </div>
@@ -44,28 +51,33 @@
     <hr>
     <h3>Changing your email-address</h3>
     <?= $this->Form->create($user, ['url' => ['action' => 'changeEmail']]) ?>
-        <div class="grid-x grid-padding-x">
-            <div class="large-6 cell">
-                <?= $this->Form->control('password', ['minlength' => $minlength, 'class' => 'input radius', 'required' => true]) ?>
-            </div>
-            <div class="large-6 cell">
-                <?= $this->Form->control('new_email', ['placeholder' => 'example@yamba.mail', 'class' => 'input radius', 'required' => true]) ?>
-            </div>
-            <div class="cell">
-                <?= $this->Form->button(__('Change Email'), ['class' => 'button expanded radius']); ?>
-            </div>
+    <div class="row">
+        <div class="columns">
+            <?= $this->Form->control('password', ['minlength' => $minlength, 'class' => 'input radius', 'required']) ?>
         </div>
+        <div class="columns">
+            <?= $this->Form->control('new_email', ['placeholder' => 'example@yamba.mail', 'class' => 'input radius',
+            'required']) ?>
+        </div>
+    </div>
+    <div class="row">
+        <div class="columns">
+            <?= $this->Form->button(__('Change Email'), ['class' => 'button expanded radius']); ?>
+        </div>
+    </div>
     <?= $this->Form->end() ?>
     <hr>
     <h3>Deleting your account</h3>
     <?= $this->Form->create($user, ['url' => ['action' => 'deleteAccount']]) ?>
-        <div class="grid-x grid-padding-x">
-            <div class="cell">
-                <?= $this->Form->control('email', ['class' => 'input radius', 'required' => true]) ?>
-            </div>
-            <div class="cell">
-                <?= $this->Form->button(__('Delete Account'), ['class' => 'button alert expanded radius']); ?>
-            </div>
+    <div class="row">
+        <div class="columns">
+            <?= $this->Form->control('email', ['class' => 'input radius', 'required']) ?>
         </div>
+    </div>
+    <div class="row">
+        <div class="columns">
+            <?= $this->Form->button(__('Delete Account'), ['class' => 'button alert expanded radius']); ?>
+        </div>
+    </div>
     <?= $this->Form->end() ?>
 </div>
