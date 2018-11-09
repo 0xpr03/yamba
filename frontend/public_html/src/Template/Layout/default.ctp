@@ -40,12 +40,13 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
 </head>
 <body>
 <?= $this->element('navbar'); ?>
-<div class="main">
-    <?= $this->Flash->render() ?>
-    <div
-    <?= $this->FrontendBridge->getControllerAttributes() ?>>
-    <?= $this->fetch('content') ?>
-</div>
+<div<?= $this->FrontendBridge->getControllerAttributes() ?>>
+    <div class="main">
+        <?= $this->Flash->render() ?>
+        <div id="content">
+            <?= $this->fetch('content') ?>
+        </div>
+    </div>
 </div>
 <footer>
     <span class="footer-copyright">© 2018–<?= date('Y')?> Yamba Authors</span>
