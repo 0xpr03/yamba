@@ -33,16 +33,21 @@ use sha2::{Digest, Sha256};
 use http;
 use SETTINGS;
 
-const UPDATE_VERSION_KEY: &'static str = "latest"; // key in the json map
-const VERSIONS_KEY: &'static str = "versions"; // key for versions sub group
-const VERSION_BIN_KEY: &'static str = "bin"; // key for versions sub group
+const UPDATE_VERSION_KEY: &'static str = "latest";
+// key in the json map
+const VERSIONS_KEY: &'static str = "versions";
+// key for versions sub group
+const VERSION_BIN_KEY: &'static str = "bin";
+// key for versions sub group
 const VERSION_SHA_INDEX: usize = 1;
 const YTDL_NAME: &'static str = "youtube-dl"; // name of the python program file
 
 const KEY_LENGTH: &'static str = "duration";
 const KEY_TITLE: &'static str = "fulltitle";
-const KEY_FOMATS: &'static str = "formats"; // list of available formats
-const KEY_FORMAT: &'static str = "format"; // format name of entry
+const KEY_FOMATS: &'static str = "formats";
+// list of available formats
+const KEY_FORMAT: &'static str = "format";
+// format name of entry
 const KEY_FORMAT_URL: &'static str = "url";
 const KEY_FORMAT_CODEC_AUDIO: &'static str = "acodec";
 const KEY_FORMAT_CODEC_VIDEO: &'static str = "vcodec";
@@ -67,13 +72,55 @@ pub struct Track {
 pub struct Format {
     pub filesize: Option<i64>,
     pub format: String,
-    pub abr: Option<i64>, // audio bit rate
+    pub abr: Option<i64>,
+    // audio bit rate
     pub format_id: String,
     pub url: String,
     pub protocol: Option<String>,
     pub vcodec: Option<String>,
-    pub acodec: Option<String>, // audio codec
+    pub acodec: Option<String>,
+    // audio codec
     pub http_headers: HttpHeaders,
+}
+
+impl Track {
+    pub fn best_audio_only_format(&self) -> Option<&Format> {
+        let mut max_bitrate: i64 = -1;
+        let mut max_format: Option<&Format> = None;
+
+        self.audio_only_formats().iter().for_each(|format| {
+            if let Some(bitrate) = format.abr {
+                if max_bitrate < bitrate {
+                    max_bitrate = bitrate;
+                    max_format = Option::Some(format);
+                }
+            }
+        });
+
+        return max_format;
+    }
+
+    pub fn audio_only_formats(&self) -> Vec<&Format> {
+        return self.formats.iter().filter(|f| f.is_audio_only()).collect();
+    }
+}
+
+impl Format {
+    pub fn has_audio(&self) -> bool {
+        if let Some(ref ac) = self.acodec {
+            return ac != "none";
+        }
+        return false;
+    }
+    pub fn has_video(&self) -> bool {
+        if let Some(ref vc) = self.vcodec {
+            return vc != "none";
+        }
+        return false;
+    }
+    pub fn is_audio_only(&self) -> bool {
+        return !self.has_video() && self.has_audio();
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -373,7 +420,7 @@ mod test {
         // simplify downloader, perform startup_test just once, this also tests it on the fly
         static ref DOWNLOADER: Arc<YtDL> = {
             let downloader = YtDL::new().unwrap();
-            //assert!(downloader.startup_test());
+            // assert!(downloader.startup_test());
             Arc::new(downloader)
         };
     }
@@ -389,7 +436,32 @@ mod test {
             "HD SMPTE Color Bars & Tones 1920x1080 Test Pattern Jazz",
             output.title
         );
-        assert_eq!(Some("https".into()), output.protocol);
+        // assert_eq!(Some("https".into()), output.protocol);
+
+        print!("Formats supported:\n");
+        output.audio_only_formats().iter().for_each(|format| {
+            if let Some(ref codec) = format.acodec {
+                print!("Codec: {} \n", codec);
+            }
+            if let Some(ref bitrate) = format.abr {
+                print!("|-> Bitrate: {} \n", bitrate);
+            }
+            print!("|-> URL: {}\n", format.url);
+            print!("\n");
+        });
+
+        if let Some(best_format) = output.best_audio_only_format() {
+            print!("AND THE WINNER IS...\n\n");
+            if let Some(ref codec) = best_format.acodec {
+                print!("Codec: {} \n", codec);
+            }
+            if let Some(ref bitrate) = best_format.abr {
+                print!("|-> Bitrate: {} \n", bitrate);
+            }
+            print!("|-> URL: {}\n", best_format.url);
+        } else {
+            print!("No best format found... :(");
+        }
     }
 
     #[test]

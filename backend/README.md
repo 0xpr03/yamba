@@ -7,6 +7,7 @@ Requirements:
  - vlc addons (addons APT package under *debian) to run with codecs  
  - libssl-dev  
  - [python3](https://www.python.org/) to run  
+ - libpulse-dev
 
 ## Testing
 
