@@ -43,6 +43,8 @@ extern crate serde_urlencoded;
 extern crate sha2;
 extern crate tokio;
 extern crate tokio_signal;
+#[macro_use]
+extern crate mysql;
 
 use std::alloc::System;
 
@@ -52,6 +54,7 @@ static GLOBAL: System = System;
 mod api;
 mod config;
 mod daemon;
+mod db;
 mod http;
 mod models;
 mod playback;

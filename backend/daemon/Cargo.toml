@@ -28,6 +28,7 @@ futures = "0.1"
 tokio-signal = "0.2"
 atomic = "0.4"
 rusqlite="0.15"
+mysql="14.1"
 
 [dependencies.vlc-rs]
 git = "https://github.com/0xpr03/vlc-rs"
