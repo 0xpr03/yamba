@@ -42,9 +42,9 @@ return [
              * the following line and set the port accordingly
              */
             //'port' => 'non_standard_port_number',
-            'username' => env('DATABASE_USERNAME'),
-            'password' => env('ROOT_PASSWORD'),
-            'database' => env('DATABASE'),
+            'username' => env('YAMBA_DATABASE_USERNAME'),
+            'password' => env('MYSQL_ROOT_PASSWORD'),
+            'database' => env('MYSQL_DATABASE'),
             /*
              * You do not need to set this flag to use full utf-8 encoding (internal default since CakePHP 3.6).
              */
@@ -85,8 +85,8 @@ return [
             'persistent' => false,
             'host' => 'database',
             //'port' => 'nonstandard_port_number',
-            'username' => env('DATABASE_USERNAME', null),
-            'password' => env('ROOT_PASSWORD', null),
+            'username' => env('YAMBA_DATABASE_USERNAME', null),
+            'password' => env('MYSQL_ROOT_PASSWORD', null),
             'database' => 'debug_kit',
             'encoding' => 'utf8',
             'timezone' => 'UTC',
