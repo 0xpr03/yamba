@@ -7,13 +7,13 @@ services:
     image: mariadb:10.3.10-bionic
     restart: always
     ports:
-    - 3306:3306
+      - 3306:3306
     volumes:
-    - ./dbInit:/docker-entrypoint-initdb.d
-    - ./database:/var/lib/mysql
+      - ./dbInit:/docker-entrypoint-initdb.d
+      - ./database:/var/lib/mysql
     env_file:
-    - ./config/database.env
-    - ./config/database_root.env
+      - ./config/database.env
+      - ./config/database_root.env
 
   frontend:
     build: ./frontend
