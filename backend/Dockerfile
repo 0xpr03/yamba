@@ -45,6 +45,6 @@ WORKDIR /opt/yamba/ts3plugin
 RUN cargo update
 RUN cargo build --verbose
 
-WORKDIR /opt/yamba/daemon/target/release
+WORKDIR /opt/yamba/daemon/target/debug
 
-CMD /opt/yamba/daemon/target/release/yamba-backend test-ts -h ek.proctet.net -p 7998
+CMD /opt/yamba/daemon/target/debug/yamba-backend test-ts -h ek.proctet.net -p 7998
