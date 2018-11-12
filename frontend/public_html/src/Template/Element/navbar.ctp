@@ -20,7 +20,11 @@
 <nav class="top-bar" data-topbar role="navigation">
     <div class="top-bar-left">
         <ul class="menu" data-dropdown-menu>
-            <li><a href="#" class="logo-font" onclick="fetchContent('/', 'content')">Yamba</a></li>
+            <li>
+                <a href="#" class="logo-font" onclick="fetchContent('/', 'content')">
+                    <img src="/img/logo-silhouette.svg">
+                </a>
+            </li>
         </ul>
     </div>
     <div class="top-bar-right">
