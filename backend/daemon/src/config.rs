@@ -51,7 +51,6 @@ pub struct ConfigRoot {
 pub struct ConfigTS {
     pub dir: String,
     pub start_binary: String,
-    pub additional_args_xvfb: Vec<String>,
     pub additional_args_binary: Vec<String>,
 }
 
