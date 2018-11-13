@@ -25,6 +25,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::thread;
 use std::time::Duration;
+use std::vec::Vec;
 
 use std::env::current_dir;
 
@@ -70,6 +71,7 @@ impl Drop for TSInstance {
 }
 
 /// TS Instance, kills itself on drop
+#[derive(Debug)]
 pub struct TSInstance {
     id: i32,
     process: Child,
@@ -81,18 +83,22 @@ impl TSInstance {
     pub fn spawn(
         id: i32,
         address: &str,
-        port: u16,
+        port: Option<u16>,
         password: &str,
         cid: i32,
         name: &str,
         rpc_port: &u16,
     ) -> Fallible<TSInstance> {
-        let ts_url = serde_urlencoded::to_string(vec![
-            ("port".to_owned(), port.to_string()),
+        let mut params = Vec::new();
+        if let Some(v) = port {
+            params.push(("port".to_owned(), v.to_string()));
+        }
+        params.extend(vec![
             ("nickname".to_owned(), name.to_string()),
             ("password".to_owned(), password.to_string()),
             ("cid".to_owned(), cid.to_string()),
-        ])?;
+        ]);
+        let ts_url = serde_urlencoded::to_string(params)?;
         let path_binary = PathBuf::from(&SETTINGS.ts.dir);
         let path_binary = path_binary.join(&SETTINGS.ts.start_binary);
         let library_path = format!(

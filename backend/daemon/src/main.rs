@@ -128,7 +128,7 @@ fn main() -> Fallible<()> {
                 ).arg(
                     Arg::with_name("port")
                         .short("p")
-                        .required(true)
+                        .required(false)
                         .takes_value(true)
                         .help("port address"),
                 ).arg(
@@ -200,7 +200,7 @@ fn main() -> Fallible<()> {
                 SETTINGS.ts.dir, SETTINGS.ts.start_binary
             );
             let addr = sub_m.value_of("host").unwrap();
-            let port = sub_m.value_of("port").unwrap().parse::<u16>().unwrap();
+            let port = sub_m.value_of("port").map(|v| v.parse::<u16>().unwrap());
             let cid = sub_m
                 .value_of("cid")
                 .unwrap_or("-1")
