@@ -30,10 +30,12 @@ CREATE TABLE `titles_to_playlists` (
 
 CREATE TABLE `instances` (
   `id` INT AUTO_INCREMENT NOT NULL,
-  `host` char(255) NOT NULL,
+  `host` varchar(255) NOT NULL,
   `port` INT(16) UNSIGNED,
-  `identity` char(255) NOT NULL,
-  `name` chaR(255) NOT NULL,
+  `identity` varchar(255),
+  `cid` INT,
+  `name` varchar(255) NOT NULL,
+  `password` varchar(255),
   `autostart` bit NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
