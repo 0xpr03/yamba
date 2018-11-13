@@ -30,6 +30,7 @@ use api;
 use models::{Queue, TSSettings};
 use rpc;
 use ts::TSInstance;
+use ytdl;
 
 #[derive(Debug)]
 pub struct Instance {
@@ -50,6 +51,8 @@ pub type Instances = Arc<RwLock<HashMap<i32, Instance>>>;
 pub enum DaemonErr {
     #[fail(display = "Unable to open default config {}", _0)]
     RuntimeCreationError(#[cause] tokio::io::Error),
+    #[fail(display = "Unable initialize daemon {}", _0)]
+    InitializationError(String),
     #[fail(display = "Unable to create rpc server {}", _0)]
     RPCCreationError(#[cause] failure::Error),
     #[fail(display = "Unable to create api server {}", _0)]
@@ -60,7 +63,19 @@ pub enum DaemonErr {
 
 /// Start runtime
 pub fn start_runtime() -> Fallible<()> {
+    info!("Starting daemon..");
     let instances: Instances = Arc::new(RwLock::new(HashMap::new()));
+    let _ytdl = ytdl::YtDL::new()?;
+
+    info!("Performing ytdl startup check..");
+    match _ytdl.startup_test() {
+        true => debug!("Startup check success"),
+        false => {
+            return Err(DaemonErr::InitializationError(
+                "Startup check failed for ytdl engine!".into(),
+            ).into())
+        }
+    };
 
     let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
     rpc::create_rpc_server(&mut rt).map_err(|e| DaemonErr::RPCCreationError(e))?;
