@@ -203,21 +203,20 @@ fn main() -> Fallible<()> {
             );
             let addr = sub_m.value_of("host").unwrap();
             let port = sub_m.value_of("port").map(|v| v.parse::<u16>().unwrap());
-            let cid = sub_m
-                .value_of("cid")
-                .unwrap_or("-1")
-                .parse::<i32>()
-                .unwrap();
+            let cid = sub_m.value_of("cid").map(|v| v.parse::<i32>().unwrap());
 
-            let _instance = ts::TSInstance::spawn(
-                0,
-                addr,
+            let settings = models::TSSettings {
+                id: 0,
+                host: addr.to_string(),
                 port,
-                "",
+                identity: "".to_string(),
                 cid,
-                "Test Bot Instance",
-                &SETTINGS.main.rpc_bind_port,
-            )?;
+                name: "Test Bot Instance".to_string(),
+                password: None,
+                autostart: true,
+            };
+
+            let _instance = ts::TSInstance::spawn(&settings, &SETTINGS.main.rpc_bind_port)?;
 
             info!("Started, starting RPC server..");
 

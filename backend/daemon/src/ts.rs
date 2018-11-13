@@ -31,6 +31,7 @@ use std::env::current_dir;
 
 use rusqlite::{self, Connection};
 
+use models::TSSettings;
 use SETTINGS;
 
 const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
@@ -79,25 +80,24 @@ pub struct TSInstance {
 
 impl TSInstance {
     /// Create a new instance controller
-    /// ID is used on callbacks
-    pub fn spawn(
-        id: i32,
-        address: &str,
-        port: Option<u16>,
-        password: &str,
-        cid: i32,
-        name: &str,
-        rpc_port: &u16,
-    ) -> Fallible<TSInstance> {
+    /// Created from TSSettings model
+    /// rpc port is for callbacks used by the yamba plugin
+    pub fn spawn(settings: &TSSettings, rpc_port: &u16) -> Fallible<TSInstance> {
         let mut params = Vec::new();
-        if let Some(v) = port {
+        if let Some(v) = settings.port {
             params.push(("port".to_owned(), v.to_string()));
         }
-        params.extend(vec![
-            ("nickname".to_owned(), name.to_string()),
-            ("password".to_owned(), password.to_string()),
-            ("cid".to_owned(), cid.to_string()),
-        ]);
+
+        if let Some(v) = settings.cid {
+            params.push(("cid".to_owned(), v.to_string()));
+        }
+
+        if let Some(ref v) = settings.password {
+            params.push(("password".to_owned(), v.to_string()));
+        }
+
+        params.push(("nickname".to_owned(), settings.name.to_string()));
+
         let ts_url = serde_urlencoded::to_string(params)?;
         let path_binary = PathBuf::from(&SETTINGS.ts.dir);
         let path_binary = path_binary.join(&SETTINGS.ts.start_binary);
@@ -106,7 +106,7 @@ impl TSInstance {
             env::var("LD_LIBRARY_PATH").unwrap_or("".to_string())
         );
 
-        let path = current_dir()?.join("ts").join(format!("{}", id));
+        let path = current_dir()?.join("ts").join(format!("{}", settings.id));
         DirBuilder::new()
             .recursive(true)
             .create(&path)
@@ -121,13 +121,13 @@ impl TSInstance {
             .env("KDEDIR", "")
             .env("KDEDIRS", "")
             .env("TS3_CONFIG_DIR", path.to_string_lossy().into_owned())
-            .env(TS_ENV_ID, id.to_string())
+            .env(TS_ENV_ID, settings.id.to_string())
             .env(TS_ENV_CALLBACK, rpc_port.to_string())
             .args(&["--auto-servernum", "--server-args=-screen 0 640x480x24:32"])
             .arg(path_binary.to_string_lossy().to_mut())
             .args(&SETTINGS.ts.additional_args_binary)
             .arg("-nosingleinstance")
-            .arg(format!("ts3server://{}?{}", address, ts_url));
+            .arg(format!("ts3server://{}?{}", settings.host, ts_url));
         trace!("TS Workdir: {}", &SETTINGS.ts.dir);
         trace!("CMD: {:?}", cmd);
 
@@ -151,7 +151,7 @@ impl TSInstance {
         }
 
         Ok(TSInstance {
-            id,
+            id: settings.id.clone(), // TODO decide for non copy solution
             process: cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?,
         })
     }
