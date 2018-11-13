@@ -17,21 +17,34 @@
 
 use failure::{self, Fallible};
 use futures::{Future, Stream};
+use hashbrown::HashMap;
 use hyper::{self, Body, Response};
 use tokio::{self, runtime::Runtime};
 use tokio_signal::unix::{self, Signal};
 
 use std::io;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use api;
+use models::{Queue, TSSettings};
 use rpc;
+use ts::TSInstance;
+
+#[derive(Debug)]
+pub struct Instance {
+    id: i32,
+    ts_instance: TSInstance,
+    queue: RwLock<Queue>,
+    volume: RwLock<i32>,
+    ts_Settings: RwLock<TSSettings>,
+}
 
 /// Daemon init & handling
 
 // type used by rpc & api
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+pub type Instances = Arc<RwLock<HashMap<i32, Instance>>>;
 
 #[derive(Fail, Debug)]
 pub enum DaemonErr {
@@ -47,11 +60,12 @@ pub enum DaemonErr {
 
 /// Start runtime
 pub fn start_runtime() -> Fallible<()> {
+    let instances: Instances = Arc::new(RwLock::new(HashMap::new()));
+
     let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
     rpc::create_rpc_server(&mut rt).map_err(|e| DaemonErr::RPCCreationError(e))?;
     api::create_api_server(&mut rt).map_err(|e| DaemonErr::APICreationError(e))?;
     info!("Daemon initialized");
-    //let stream = ctrl_c.wait()?;
     match rt.block_on(
         Signal::new(unix::libc::SIGINT)
             .flatten_stream()

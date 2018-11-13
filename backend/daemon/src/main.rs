@@ -46,6 +46,7 @@ extern crate tokio_signal;
 #[macro_use]
 extern crate mysql;
 extern crate chrono;
+extern crate hashbrown;
 
 use std::alloc::System;
 
