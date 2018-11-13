@@ -15,9 +15,9 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use mysql::chrono::prelude::NaiveDateTime;
+use chrono::naive::NaiveDateTime;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Song {
     pub id: String,
     pub name: String,
@@ -28,7 +28,7 @@ pub struct Song {
     pub last_used: NaiveDateTime,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Playlist {
     pub id: String,
     pub name: String,
@@ -37,16 +37,17 @@ pub struct Playlist {
     pub modified: NaiveDateTime,
 }
 
-#[derive(Debug, Clone)]
-pub struct Instance {
+#[derive(Debug, Clone, Deserialize)]
+pub struct TSSettings {
     pub id: i64,
     pub host: String,
-    pub port: u16,
+    pub port: Option<u16>,
     pub identity: String,
+    pub cid: Option<i32>,
     pub autostart: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Queue {
     pub index: i32,
     pub instance_id: i32,
