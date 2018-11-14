@@ -20,23 +20,35 @@ $(function () {
     App.Websocket.onEvent('playlistsUpdated', function (payload) {
         fillPlaylistTable(JSON.parse(payload.json));
     }.bind(this));
-    fetchContent('/', 'music');
+    fetchContent(window.location.pathname);
 });
 
-function fetchContent(url, contentId) {
+function fetchContent(url) {
+    let contentId;
+    if (url === '/') {
+        contentId = 'music';
+    } else {
+        contentId = url.toLowerCase().replace(new RegExp('/', 'g'), '-').replace('-','');
+    }
     let mainContentDiv = $('#content');
     let contentDiv = $('#' + contentId);
     mainContentDiv.children().hide();
     if (contentDiv.length) {
         contentDiv.show();
+        window.history.pushState({},'',url);
     } else {
         $.ajax({
             method: 'get',
             url: url,
             success: function (response) {
                 mainContentDiv.append('<div id="' + contentId + '">' + response + '</div>');
+                window.history.pushState({},'',url);
             },
+            error: function (response) {
+                if (response.status === 403) {
+                    fetchContent('/users/login');
+                }
+            }
         });
     }
-    window.history.pushState({},'',url);
 }
