@@ -1,9 +1,21 @@
 function fillPlaylistTable(playlists) {
     let tableBody = $('#playlist-table');
-    tableBody.empty();
+    let content = "";
     playlists.forEach((playlist) => {
-        tableBody.append('<tr><td><a href="#" onclick="deletePlaylist(\'' + playlist.id + '\')"><i style="color: red" class="fi-trash"></i></a></td><td>' + playlist.name + '<td><span class="badge badge-right">' + playlist.titles_to_playlists.length + '</span></td>' + '</td></tr>');
+        content +=
+            '<tr>' +
+            ' <td>' +
+            '  <a href="#" onclick="deletePlaylist(\'' + playlist.id + '\')">' +
+            '   <i style="color: red" class="fi-trash"></i>' +
+            '  </a>' +
+            ' </td>' +
+            ' <td>' + playlist.name + '</td>' +
+            ' <td>' +
+            '  <span class="badge badge-right">' + playlist.titles_to_playlists.length + '</span>' +
+            ' </td>' +
+            '</tr>';
     });
+    tableBody.html(content);
 }
 
 function deletePlaylist(playlist) {
