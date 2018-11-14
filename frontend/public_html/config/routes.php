@@ -54,6 +54,10 @@ Router::scope('/', function (RouteBuilder $routes) {
      */
     $routes->connect('/', ['controller' => 'Music', 'action' => 'index']);
 
+    $routes->prefix('admin', function (RouteBuilder $routes) {
+       $routes->connect('/', ['controller' => 'Permissions', 'action' => 'index']);
+       $routes->fallbacks(DashedRoute::class);
+    });
     /**
      * Connect catchall routes for all controllers.
      *
