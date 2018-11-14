@@ -1,17 +1,16 @@
 use atomic::{Atomic, Ordering};
 use failure::Fallible;
-use futures::future;
 use hyper;
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use serde::de::Deserialize;
-use serde_json::{self, to_value};
+use serde_json;
 use tokio::runtime;
 
 use std::sync::Arc;
 
-use daemon::{self, BoxFut};
+use daemon::{self, APIChannel, BoxFut};
 use SETTINGS;
 
 #[derive(Fail, Debug)]
@@ -20,14 +19,43 @@ pub enum APIErr {
     BindError(#[cause] hyper::error::Error),
 }
 
+/// Playlist API call struct
 #[derive(Serialize, Deserialize, Debug)]
-struct NewPlaylist {
-    url: String,
+pub struct NewPlaylist {
+    pub url: String,
+}
+
+/// Playlist API callback structure
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PlaylistAnswer {
+    pub request_id: u32,
+    pub song_ids: Vec<i32>,
+}
+
+/// Used for returning errors on failure callbacks
+pub struct CallbackError {
+    pub request_id: u32,
+    pub message: String,
+}
+
+/// API Request containing its ID and the request type
+#[derive(Debug)]
+pub struct APIRequest {
+    pub request_id: u32,
+    /// Callback (web API)
+    pub callback: bool,
+    pub request_type: RequestType,
+}
+
+/// Request type
+#[derive(Debug)]
+pub enum RequestType {
+    Playlist(NewPlaylist),
 }
 
 //const COUNTER: Arc<Atomic<u32>> = Arc::new(Atomic::new(0));
 
-fn api(req: Request<Body>, counter: Arc<Atomic<u32>>) -> BoxFut {
+fn api(req: Request<Body>, counter: Arc<Atomic<u32>>, channel: APIChannel) -> BoxFut {
     let mut response: Response<Body> = Response::new(Body::empty());
     let (parts, body) = req.into_parts();
     Box::new(body.concat2().map(move |b| {
@@ -38,9 +66,8 @@ fn api(req: Request<Body>, counter: Arc<Atomic<u32>>) -> BoxFut {
                     Body::from("Hello, this is part of an rest-like API, see docs");
                 *response.status_mut() = StatusCode::IM_A_TEAPOT;
             }
-
             (Method::POST, "/new/playlist") => {
-                response = handle_request(counter, &b, new_playlist);
+                response = handle_request(counter, &b, new_playlist, channel);
             }
             (_, v) => {
                 info!("Unknown API request {}", v);
@@ -57,9 +84,10 @@ fn handle_request<'a, T, F>(
     req_counter: Arc<Atomic<u32>>,
     data: &'a [u8],
     mut handler: F,
+    channel: APIChannel,
 ) -> Response<Body>
 where
-    F: FnMut(T, &mut Response<Body>, u32) -> Fallible<()>,
+    F: FnMut(T, &mut Response<Body>, u32, APIChannel) -> Fallible<()>,
     T: Deserialize<'a>,
 {
     let mut response = Response::new(Body::empty());
@@ -67,7 +95,7 @@ where
         Ok(v) => {
             debug!("Parsed request");
             let req_id = req_counter.fetch_add(1, Ordering::AcqRel);
-            let mut result = handler(v, &mut response, req_id);
+            let mut result = handler(v, &mut response, req_id, channel);
             if result.is_ok() {
                 trace!("Processed api call");
                 *response.status_mut() = StatusCode::ACCEPTED;
@@ -86,16 +114,24 @@ where
     response
 }
 
+/// Handle playlist request
 fn new_playlist(
     playlist: NewPlaylist,
     response: &mut Response<Body>,
     request_id: u32,
+    mut channel: APIChannel,
 ) -> Fallible<()> {
     info!("URL: {}", playlist.url);
     *response.status_mut() = StatusCode::ACCEPTED;
-    *response.body_mut() = serde_json::to_string(&json!({ "request id": request_id }))
+    *response.body_mut() = serde_json::to_string(&json!({ "request id": &request_id }))
         .unwrap()
         .into();
+    let job = APIRequest {
+        request_id,
+        callback: true,
+        request_type: RequestType::Playlist(playlist),
+    };
+    channel.try_send(job)?;
     Ok(())
 }
 
@@ -105,7 +141,7 @@ pub fn check_config() -> Fallible<()> {
 }
 
 /// Create api server, bind it & attach to runtime
-pub fn create_api_server(runtime: &mut runtime::Runtime) -> Fallible<()> {
+pub fn create_api_server(runtime: &mut runtime::Runtime, channel: APIChannel) -> Fallible<()> {
     let addr =
         daemon::parse_socket_address(&SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port)?;
 
@@ -126,7 +162,8 @@ pub fn create_api_server(runtime: &mut runtime::Runtime) -> Fallible<()> {
         .map_err(|e| APIErr::BindError(e))?
         .serve(move || {
             let counter = counter.clone();
-            service_fn(move |req: Request<Body>| api(req, counter.clone()))
+            let channel = channel.clone();
+            service_fn(move |req: Request<Body>| api(req, counter.clone(), channel.clone()))
         }).map_err(|e| eprintln!("server error: {}", e));
 
     info!("API Listening on http://{}", addr);

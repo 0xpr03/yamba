@@ -43,6 +43,7 @@ extern crate serde_urlencoded;
 extern crate sha2;
 extern crate tokio;
 extern crate tokio_signal;
+extern crate tokio_threadpool;
 #[macro_use]
 extern crate mysql;
 extern crate chrono;
@@ -63,6 +64,7 @@ mod playback;
 mod rpc;
 mod ts;
 mod ytdl;
+mod ytdl_worker;
 
 use clap::{App, Arg, SubCommand};
 use failure::Fallible;

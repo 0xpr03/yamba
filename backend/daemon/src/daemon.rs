@@ -16,11 +16,13 @@
  */
 
 use failure::{self, Fallible};
-use futures::{Future, Stream};
+use futures::sync::mpsc;
+use futures::{Future, Sink, Stream};
 use hashbrown::HashMap;
 use hyper::{self, Body, Response};
 use tokio::{self, runtime::Runtime};
 use tokio_signal::unix::{self, Signal};
+use tokio_threadpool::blocking;
 
 use std::io;
 use std::net::SocketAddr;
@@ -30,7 +32,8 @@ use api;
 use models::{Queue, TSSettings};
 use rpc;
 use ts::TSInstance;
-use ytdl;
+use ytdl::YtDL;
+use ytdl_worker;
 
 #[derive(Debug)]
 pub struct Instance {
@@ -45,6 +48,7 @@ pub struct Instance {
 
 // type used by rpc & api
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+pub type APIChannel = mpsc::Sender<api::APIRequest>;
 pub type Instances = Arc<RwLock<HashMap<i32, Instance>>>;
 
 #[derive(Fail, Debug)]
@@ -65,10 +69,10 @@ pub enum DaemonErr {
 pub fn start_runtime() -> Fallible<()> {
     info!("Starting daemon..");
     let instances: Instances = Arc::new(RwLock::new(HashMap::new()));
-    let _ytdl = ytdl::YtDL::new()?;
+    let ytdl = Arc::new(YtDL::new()?);
 
     info!("Performing ytdl startup check..");
-    match _ytdl.startup_test() {
+    match ytdl.startup_test() {
         true => debug!("Startup check success"),
         false => {
             return Err(DaemonErr::InitializationError(
@@ -77,9 +81,14 @@ pub fn start_runtime() -> Fallible<()> {
         }
     };
 
+    let (tx, rx) = mpsc::channel::<api::APIRequest>(100);
+
     let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
+
     rpc::create_rpc_server(&mut rt).map_err(|e| DaemonErr::RPCCreationError(e))?;
-    api::create_api_server(&mut rt).map_err(|e| DaemonErr::APICreationError(e))?;
+    api::create_api_server(&mut rt, tx.clone()).map_err(|e| DaemonErr::APICreationError(e))?;
+    ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone());
+
     info!("Daemon initialized");
     match rt.block_on(
         Signal::new(unix::libc::SIGINT)
