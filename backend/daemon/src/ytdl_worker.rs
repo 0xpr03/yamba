@@ -28,6 +28,8 @@ use std::time::Instant;
 use api::{self, APIRequest, CallbackError};
 use ytdl::YtDL;
 
+use SETTINGS;
+
 /// Initialize ytdl worker
 /// Has to be called after init of senders
 pub fn create_ytdl_worker(runtime: &mut Runtime, rx: mpsc::Receiver<APIRequest>, ytdl: Arc<YtDL>) {
@@ -44,6 +46,7 @@ pub fn create_ytdl_worker(runtime: &mut Runtime, rx: mpsc::Receiver<APIRequest>,
         let end = start.elapsed();
         debug!("Request took {}{:03}ms", end.as_secs(), end.subsec_millis());
         if request.callback {
+            //SETTINGS.
             // todo callback
         }
         Ok(())
@@ -58,6 +61,7 @@ fn handle_playlist(
 ) -> Fallible<api::PlaylistAnswer> {
     let result = ytdl.get_playlist_info(&request.url)?;
     //debug!("playlist result: {:?}", result);
+    debug!("{} entries found", result.len());
     Ok(api::PlaylistAnswer {
         request_id,
         song_ids: Vec::new(),
