@@ -67,6 +67,7 @@ pub struct Track {
     pub formats: Vec<Format>,
     pub protocol: Option<String>,
     pub webpage_url: String,
+    pub artist: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
