@@ -15,4 +15,15 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use failure::Fallible;
+
 use mysql::chrono::prelude::NaiveDateTime;
+use mysql::Pool;
+
+use models;
+
+pub fn save_playlist(playlist: models::Playlist, pool: Pool) -> Fallible<()> {
+    let stmt = pool.prepare("INSERT INTO `` () VALUES (?,?,?,?)")?;
+
+    Ok(())
+}
