@@ -61,6 +61,8 @@ pub struct ConfigMain {
     pub rpc_bind_ip: String,
     pub api_bind_port: u16,
     pub api_bind_ip: String,
+    pub api_callback_port: u16,
+    pub api_callback_ip: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -26,6 +26,8 @@ rpc_bind_ip = "127.0.0.1"
 # api server binding socket
 api_bind_port = 1338
 api_bind_ip = "127.0.0.1"
+api_callback_ip = "127.0.0.1"
+api_callback_port = "1339"
 
 
 [db]
