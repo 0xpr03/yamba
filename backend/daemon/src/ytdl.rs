@@ -15,14 +15,14 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::env::current_dir;
 use std::fs::{remove_file, rename, set_permissions, DirBuilder, File};
+use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead, BufReader, ErrorKind, Read};
 use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, RwLock};
-
-use std::env::current_dir;
-use std::path::{Path, PathBuf};
 use std::thread;
 
 use failure::{Fallible, ResultExt};
@@ -66,6 +66,7 @@ pub struct Track {
     pub duration: Option<f64>,
     pub formats: Vec<Format>,
     pub protocol: Option<String>,
+    pub webpage_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -81,6 +82,13 @@ pub struct Format {
     pub acodec: Option<String>,
     // audio codec
     pub http_headers: HttpHeaders,
+}
+
+impl Hash for Track {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.title.hash(state);
+        self.extractor.hash(state);
+    }
 }
 
 impl Track {
