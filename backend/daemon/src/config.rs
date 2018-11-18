@@ -68,7 +68,7 @@ pub struct ConfigMain {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigDB {
     pub host: String,
-    pub port: i16,
+    pub port: u16,
     pub user: String,
     pub use_password: bool,
     pub password: String,
