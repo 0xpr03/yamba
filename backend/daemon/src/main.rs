@@ -86,6 +86,7 @@ lazy_static! {
         info!("Loading config..");
         config::init_settings().unwrap()
     };
+    static ref USERAGENT: String = format!("YAMBA v{}", VERSION);
 }
 
 fn main() -> Fallible<()> {
