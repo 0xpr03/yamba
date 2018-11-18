@@ -5,6 +5,7 @@ use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use serde::de::Deserialize;
+use serde::Serialize;
 use serde_json;
 use tokio::runtime;
 
@@ -33,6 +34,7 @@ pub struct PlaylistAnswer {
 }
 
 /// Used for returning errors on failure callbacks
+#[derive(Debug, Serialize)]
 pub struct CallbackError {
     pub request_id: u32,
     pub message: String,
