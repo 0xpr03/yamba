@@ -37,6 +37,7 @@ user = "yamba"
 use_password = false
 password = ""
 db = "yamba"
+host = "127.0.0.1"
 
 [ytdl]
 dir="ytdl"
