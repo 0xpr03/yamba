@@ -26,6 +26,8 @@ use models;
 use ytdl::Track;
 
 use std::hash::Hash;
+use std::vec::Vec;
+
 use SETTINGS;
 
 pub fn init_pool() -> Fallible<Pool> {
@@ -41,8 +43,18 @@ pub fn init_pool() -> Fallible<Pool> {
 }
 
 /// Save a set of tracks into the DB and return their IDs
-pub fn insert_tracks(tracks: &[Track], pool: Pool) -> Fallible<()> {
-    let stmt = pool.prepare("INSERT INTO `` () VALUES (?,?,?,?)")?;
+pub fn insert_tracks(tracks: &[Track], pool: Pool) -> Fallible<Vec<String>> {
+    let mut transaction = pool.start_transaction(false, None, None)?;
+
+    let ids = tracks
+        .iter()
+        .map(|track| {
+            let id = calculate_id(track);
+            transaction.prep_exec("INSERT INTO `titles` (`id`,`name`,`source`,`downloaded`, `artist`, `length`) VALUES (?,?,?,?,?,?)", (&id, &track.title,&track.webpage_url,0,&track.artist,track.duration))?;
+            Ok(id)
+        }).collect::<Result<Vec<String>, MySqlError>>()?;
+
+    transaction.commit()?;
 
     Ok(ids)
 }
