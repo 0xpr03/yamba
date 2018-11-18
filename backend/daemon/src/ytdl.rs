@@ -42,18 +42,6 @@ const VERSION_BIN_KEY: &'static str = "bin";
 const VERSION_SHA_INDEX: usize = 1;
 const YTDL_NAME: &'static str = "youtube-dl"; // name of the python program file
 
-const KEY_LENGTH: &'static str = "duration";
-const KEY_TITLE: &'static str = "fulltitle";
-const KEY_FOMATS: &'static str = "formats";
-// list of available formats
-const KEY_FORMAT: &'static str = "format";
-// format name of entry
-const KEY_FORMAT_URL: &'static str = "url";
-const KEY_FORMAT_CODEC_AUDIO: &'static str = "acodec";
-const KEY_FORMAT_CODEC_VIDEO: &'static str = "vcodec";
-const KEY_ID: &'static str = "id";
-const KEY_DECODER: &'static str = "extractor_key";
-
 lazy_static! {
     static ref LOCK: Arc<RwLock<()>> = Arc::new(RwLock::new(()));
 }
