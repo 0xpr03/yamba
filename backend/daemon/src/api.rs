@@ -37,7 +37,7 @@ pub struct NewPlaylist {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlaylistAnswer {
     pub request_id: u32,
-    pub song_ids: Vec<i32>,
+    pub song_ids: Vec<String>,
 }
 
 /// Used for returning errors on failure callbacks
