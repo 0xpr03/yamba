@@ -18,6 +18,7 @@
 use failure::Fallible;
 use futures::sync::mpsc;
 use futures::Stream;
+use mysql::Pool;
 use serde::Serialize;
 use tokio::runtime::Runtime;
 use tokio_threadpool::blocking;
@@ -30,17 +31,25 @@ use ytdl::YtDL;
 
 use SETTINGS;
 
+use db;
+
 /// Initialize ytdl worker
 /// Has to be called after init of senders
-pub fn create_ytdl_worker(runtime: &mut Runtime, rx: mpsc::Receiver<APIRequest>, ytdl: Arc<YtDL>) {
+pub fn create_ytdl_worker(
+    runtime: &mut Runtime,
+    rx: mpsc::Receiver<APIRequest>,
+    ytdl: Arc<YtDL>,
+    pool: Pool,
+) {
     let worker_future = rx.for_each(move |request| {
         let ytdl = ytdl.clone();
+        let pool = pool.clone();
         debug!("Received work request: {:?}", request);
         use api::RequestType;
         let start = Instant::now();
         let response = match request.request_type {
             RequestType::Playlist(v) => {
-                handle_request(v, request.request_id, ytdl, handle_playlist)
+                handle_request(v, request.request_id, ytdl, pool, handle_playlist)
             }
         };
         let end = start.elapsed();
@@ -58,6 +67,7 @@ fn handle_playlist(
     request: api::NewPlaylist,
     request_id: u32,
     ytdl: Arc<YtDL>,
+    pool: Pool,
 ) -> Fallible<api::PlaylistAnswer> {
     let result = ytdl.get_playlist_info(&request.url)?;
     //debug!("playlist result: {:?}", result);
@@ -72,13 +82,14 @@ fn handle_request<'a, R, T, F>(
     request: R,
     request_id: u32,
     ytdl: Arc<YtDL>,
+    pool: Pool,
     mut handler: F,
 ) -> Result<T, CallbackError>
 where
-    F: FnMut(R, u32, Arc<YtDL>) -> Fallible<T>,
+    F: FnMut(R, u32, Arc<YtDL>, Pool) -> Fallible<T>,
     T: Serialize,
 {
-    match handler(request, request_id, ytdl) {
+    match handler(request, request_id, ytdl, pool) {
         Ok(v) => {
             debug!("Worker success");
             Ok(v)

@@ -29,6 +29,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, RwLock};
 
 use api;
+use db;
 use models::{Queue, TSSettings};
 use rpc;
 use ts::TSInstance;
@@ -70,6 +71,7 @@ pub fn start_runtime() -> Fallible<()> {
     info!("Starting daemon..");
     let instances: Instances = Arc::new(RwLock::new(HashMap::new()));
     let ytdl = Arc::new(YtDL::new()?);
+    let pool = db::init_pool()?;
 
     info!("Performing ytdl startup check..");
     match ytdl.startup_test() {
@@ -87,7 +89,7 @@ pub fn start_runtime() -> Fallible<()> {
 
     rpc::create_rpc_server(&mut rt).map_err(|e| DaemonErr::RPCCreationError(e))?;
     api::create_api_server(&mut rt, tx.clone()).map_err(|e| DaemonErr::APICreationError(e))?;
-    ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone());
+    ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());
 
     info!("Daemon initialized");
     match rt.block_on(
