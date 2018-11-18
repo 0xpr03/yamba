@@ -53,10 +53,22 @@ pub fn create_ytdl_worker(
             }
         };
         let end = start.elapsed();
-        debug!("Request took {}{:03}ms", end.as_secs(), end.subsec_millis());
+        debug!(
+            "Request took {}{:03}ms to process",
+            end.as_secs(),
+            end.subsec_millis()
+        );
         if request.callback {
             //SETTINGS.
             // todo callback
+            match api::api_send_callback(
+                &SETTINGS.main.api_callback_ip,
+                SETTINGS.main.api_callback_port,
+                &response,
+            ) {
+                Ok(_) => info!("Callback successfull"),
+                Err(e) => warn!("Callback errored: {}", e),
+            }
         }
         Ok(())
     });
@@ -70,11 +82,12 @@ fn handle_playlist(
     pool: Pool,
 ) -> Fallible<api::PlaylistAnswer> {
     let result = ytdl.get_playlist_info(&request.url)?;
+    let ids = db::insert_tracks(&result, pool)?;
     //debug!("playlist result: {:?}", result);
     debug!("{} entries found", result.len());
     Ok(api::PlaylistAnswer {
         request_id,
-        song_ids: Vec::new(),
+        song_ids: ids,
     })
 }
 
