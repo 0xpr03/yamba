@@ -17,11 +17,15 @@
 
 use failure::Fallible;
 
+use metrohash::MetroHash128;
 use mysql::chrono::prelude::NaiveDateTime;
 use mysql::error::Error as MySqlError;
 use mysql::{Opts, OptsBuilder, Pool};
 
 use models;
+use ytdl::Track;
+
+use std::hash::Hash;
 use SETTINGS;
 
 pub fn init_pool() -> Fallible<Pool> {
@@ -40,5 +44,13 @@ pub fn init_pool() -> Fallible<Pool> {
 pub fn insert_tracks(tracks: &[Track], pool: Pool) -> Fallible<()> {
     let stmt = pool.prepare("INSERT INTO `` () VALUES (?,?,?,?)")?;
 
-    Ok(())
+    Ok(ids)
+}
+
+/// Create ID for track
+fn calculate_id(track: &Track) -> String {
+    let mut hasher = MetroHash128::default();
+    track.hash(&mut hasher);
+    let (h1, h2) = hasher.finish128();
+    format!("{:x}{:x}", h1, h2)
 }

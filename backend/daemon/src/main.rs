@@ -48,6 +48,7 @@ extern crate tokio_threadpool;
 extern crate mysql;
 extern crate chrono;
 extern crate hashbrown;
+extern crate metrohash;
 
 use std::alloc::System;
 

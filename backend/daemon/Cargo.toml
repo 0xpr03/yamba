@@ -31,6 +31,7 @@ atomic = "0.4"
 rusqlite="0.15"
 mysql="14.1"
 hashbrown = "0.1"
+metrohash = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 
 [dependencies.vlc-rs]
