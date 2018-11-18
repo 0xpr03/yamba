@@ -4,6 +4,12 @@ use hyper;
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use reqwest;
+use reqwest::header::HeaderMap;
+use reqwest::header::{
+    ACCEPT, ACCEPT_ENCODING, CONNECTION, CONTENT_ENCODING, LOCATION, USER_AGENT,
+};
+use reqwest::{Client, Response as RQResponse};
 use serde::de::Deserialize;
 use serde::Serialize;
 use serde_json;
@@ -13,6 +19,7 @@ use std::sync::Arc;
 
 use daemon::{self, APIChannel, BoxFut};
 use SETTINGS;
+use USERAGENT;
 
 #[derive(Fail, Debug)]
 pub enum APIErr {
@@ -170,5 +177,22 @@ pub fn create_api_server(runtime: &mut runtime::Runtime, channel: APIChannel) ->
 
     info!("API Listening on http://{}", addr);
     runtime.spawn(server);
+    Ok(())
+}
+
+/// Perform api callback with specified message
+pub fn api_send_callback<T>(host: &str, port: u16, msg: &T) -> Fallible<()>
+where
+    T: Serialize,
+{
+    let agent: &str = &USERAGENT;
+
+    let result = reqwest::Client::new()
+        .post(&format!("{}:{}", host, port))
+        .header(USER_AGENT, agent)
+        .json(msg)
+        .send()?;
+
+    trace!("Callback response: {:?}", result);
     Ok(())
 }
