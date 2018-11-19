@@ -22,7 +22,7 @@
     <tr>
         <th colspan="3" style="font-weight: bold; padding: 0">
             <button class="button expanded" data-open="add-playlist-modal"
-                    style="margin-bottom:0;width: 100%; height: 100%"><?= __('New Playlist') ?></button>
+                    style="margin-bottom:0;width: 100%; height: 100%" onclick="$('#add-playlist-error-div').hide()"><?= __('New Playlist') ?></button>
             <div class="reveal small" id="add-playlist-modal" data-reveal>
                 <?= $this->Form->create(null, ['id' => 'add-playlist-form']) ?>
                 <fieldset class="fieldset">
