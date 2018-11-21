@@ -35,7 +35,7 @@ api_callback_port = "1339"
 port = 3306
 user = "yamba"
 use_password = false
-password = ""
+password = "password"
 db = "yamba"
 host = "127.0.0.1"
 

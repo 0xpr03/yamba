@@ -88,6 +88,7 @@ pub struct ConfigYtDL {
 /// Init settings
 pub fn init_settings() -> Fallible<ConfigRoot> {
     let settings = load_settings()?;
+    trace!("{:?}", settings);
     let parsed = settings.try_into::<ConfigRoot>()?;
     Ok(parsed)
 }
