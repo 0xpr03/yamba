@@ -42,7 +42,7 @@ const TS_SETTINGS_FILE: &'static str = "settings.db";
 pub enum TSInstanceErr {
     #[fail(display = "Database Error on configuring instance {}", _0)]
     Database(#[cause] rusqlite::Error),
-    #[fail(display = "Instance spawn error {}", _0)]
+    #[fail(display = "TS Instance spawn error {}", _0)]
     SpawnError(#[cause] io::Error),
     #[fail(display = "Pipe error processing ytdl output {}", _0)]
     PipeError(String),
@@ -136,7 +136,7 @@ impl TSInstance {
 
         if !path.exists() {
             info!("Missing instance settings, creating..");
-            let mut child = cmd.spawn()?;
+            let mut child = cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?;
             thread::sleep(Duration::from_millis(5000));
             child.kill()?;
             TSInstance::wait_for_child_timeout(1000, &mut child)?;

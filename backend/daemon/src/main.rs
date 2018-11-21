@@ -221,7 +221,13 @@ fn main() -> Fallible<()> {
                 autostart: true,
             };
 
-            let _instance = ts::TSInstance::spawn(&settings, &SETTINGS.main.rpc_bind_port)?;
+            let _instance = match ts::TSInstance::spawn(&settings, &SETTINGS.main.rpc_bind_port) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Error at instance start: {}", e);
+                    return Err(e);
+                }
+            };
 
             info!("Started, starting RPC server..");
 
