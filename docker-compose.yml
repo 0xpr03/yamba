@@ -22,7 +22,7 @@ services:
     build: ./frontend
     ports:
       - 9000:80
-    volumes:
+#    volumes:
 #      - ./frontend/public_html:/var/www/html
     env_file:
       - ./config/frontend.env
