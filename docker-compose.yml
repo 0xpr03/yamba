@@ -30,6 +30,9 @@ services:
     build: ./backend
     env_file:
       - ./config/backend.env
-      - ./config/database.env
-    volumes:
-      - ./backend/ts3client:/opt/ts3client
+    environment:
+      yamba_db__host: "${MYSQL_HOST}"
+      yamba_db__port: "${MYSQL_PORT}"
+      yamba_db__user: "${MYSQL_USER}"
+      yamba_db__db: "${MYSQL_DATABASE}"
+      yamba_db__password: "${MYSQL_PASSWORD}"

@@ -10,4 +10,7 @@ fi
 
 cd ..
 
-sudo docker-compose up --build
+set -a
+source config/database.env
+set +a
+sudo -E docker-compose up --build
