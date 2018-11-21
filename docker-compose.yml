@@ -10,17 +10,20 @@ services:
       - 3306:3306
     volumes:
       - ./dbInit:/docker-entrypoint-initdb.d
-      - ./database:/var/lib/mysql
+#      - ./database:/var/lib/mysql
     env_file:
       - ./config/database.env
       - ./config/database_root.env
+    logging:
+      driver: none
+
 
   frontend:
     build: ./frontend
     ports:
       - 9000:80
     volumes:
-      - ./frontend/public_html:/var/www/html
+#      - ./frontend/public_html:/var/www/html
     env_file:
       - ./config/frontend.env
       - ./config/database.env
