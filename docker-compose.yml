@@ -31,6 +31,8 @@ services:
 
   backend:
     build: ./backend
+    volumes:
+      - ./backend/ts3client:/opt/ts3client
     env_file:
       - ./config/backend.env
     environment:
