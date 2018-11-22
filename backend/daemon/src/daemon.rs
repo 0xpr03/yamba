@@ -71,7 +71,7 @@ pub fn start_runtime() -> Fallible<()> {
     info!("Starting daemon..");
     let instances: Instances = Arc::new(RwLock::new(HashMap::new()));
     let ytdl = Arc::new(YtDL::new()?);
-    let pool = db::init_pool()?;
+    let pool = db::init_pool_timeout()?;
 
     info!("Performing ytdl startup check..");
     match ytdl.startup_test() {
