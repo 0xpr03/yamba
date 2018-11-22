@@ -14,6 +14,11 @@ services:
     env_file:
       - ./config/database.env
       - ./config/database_root.env
+    environment:
+      MYSQL_DATABASE: "${YAMBA_DATABASE_DATABASE}"
+      MYSQL_USER: "${YAMBA_DATABASE_USER}"
+      MYSQL_PASSWORD: "${YAMBA_DATABASE_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${YAMBA_DATABASE_ROOT_PASSWORD}"
 
   frontend:
     build: ./frontend
@@ -33,8 +38,8 @@ services:
     env_file:
       - ./config/backend.env
     environment:
-      yamba_db__host: "${MYSQL_HOST}"
-      yamba_db__port: "${MYSQL_PORT}"
-      yamba_db__user: "${MYSQL_USER}"
-      yamba_db__db: "${MYSQL_DATABASE}"
-      yamba_db__password: "${MYSQL_PASSWORD}"
+      yamba_db__host: "${YAMBA_DATABASE_HOST}"
+      yamba_db__port: "${YAMBA_DATABASE_PORT}"
+      yamba_db__user: "${YAMBA_DATABASE_USER}"
+      yamba_db__db: "${YAMBA_DATABASE_DATABASE}"
+      yamba_db__password: "${YAMBA_DATABASE_PASSWORD}"

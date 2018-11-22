@@ -48,7 +48,7 @@ return [
             'database' => 'queuesadilla',
             'host' => 'database',
             'user' => env('YAMBA_DATABASE_USERNAME'),
-            'pass' => env('MYSQL_ROOT_PASSWORD'),
+            'pass' => env('YAMBA_DATABASE_ROOT_PASSWORD'),
         ],
     ],
 ];

@@ -5,7 +5,7 @@
 echo "clear_env = no" >> /etc/php/7.2/fpm/pool.d/www.conf;
 while read p;
 do
-    [[ $p == "YAMBA"* ]] || [[ $p == "MYSQL"* ]] && echo env[${p/=/] = \'}\' >> /etc/php/7.2/fpm/pool.d/www.conf;
+    [[ $p == "YAMBA"* ]] && echo env[${p/=/] = \'}\' >> /etc/php/7.2/fpm/pool.d/www.conf;
 done < <(printenv);
 touch ../copiedEnv;
 exit 0;
