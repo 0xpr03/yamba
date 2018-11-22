@@ -217,13 +217,15 @@ where
 {
     let agent: &str = &USERAGENT;
 
-    let result = reqwest::Client::new()
+    let mut result = reqwest::Client::new()
         .post(&format!("http://{}:{}/{}", host, port, dir))
         .header(USER_AGENT, agent)
         .json(msg)
         .send()?;
 
-    trace!("Callback response: {:?}", result);
+    let body_text = result.text();
+
+    trace!("Callback response: {:?} body: {:?}", result, body_text);
     Ok(())
 }
 
@@ -234,6 +236,11 @@ mod test {
     /// Test header creation
     #[test]
     fn header_test() {
-        api_send_callback("localhost", 9000, &CallbackErrorType::NoError).unwrap();
+        api_send_callback(
+            "localhost",
+            9000,
+            "music/addSongs/",
+            &CallbackErrorType::NoError,
+        ).unwrap();
     }
 }
