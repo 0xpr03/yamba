@@ -20,12 +20,20 @@ namespace App\Controller;
 
 
 use Cake\Core\Exception\Exception;
+use Cake\Event\Event;
 use Cake\Http\Client;
 use Cake\ORM\TableRegistry;
 use Websocket\Lib\Websocket;
 
 class MusicController extends AppController
 {
+
+    public function beforeFilter(Event $event)
+    {
+        parent::beforeFilter($event);
+        $this->Auth->allow(['addSongs']);
+    }
+
     public function index()
     {
 
@@ -36,8 +44,8 @@ class MusicController extends AppController
         if (env('SERVER_PORT') != 82) {
             return $this->response->withStatus(403)->withStringBody('Forbidden');
         }
-        $song_ids = json_decode($this->request->getData('song_ids'));
         $token = $this->request->getData('token');
+        $song_ids = $this->request->getData('song_ids');
         if (!isset($song_ids, $token)) {
             return $this->response->withStatus(400)->withStringBody('Bad request');
         }
@@ -49,7 +57,9 @@ class MusicController extends AppController
             $songsToPlaylist = $songsToPlaylistTable->newEntity();
             $songsToPlaylist->set('song_id', $song_id);
             $songsToPlaylist->set('playlist_id', $addSong->get('playlist_id'));
-            $songsToPlaylistTable->save($songsToPlaylist);
+            if (!$songsToPlaylistTable->save($songsToPlaylist)) {
+                return $this->response->withStatus(500)->withStringBody('Interal Server Error');
+            }
         }
 
         $addSongTable->delete($addSong);
