@@ -38,6 +38,8 @@ use_password = false
 password = "password"
 db = "yamba"
 host = "127.0.0.1"
+# retry db connection on startup, seconds
+retry_time = 60
 
 [ytdl]
 dir="ytdl"

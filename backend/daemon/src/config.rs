@@ -73,6 +73,7 @@ pub struct ConfigDB {
     pub use_password: bool,
     pub password: String,
     pub db: String,
+    pub retry_time: u16,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -26,6 +26,9 @@ use models;
 use ytdl::Track;
 
 use std::hash::Hash;
+use std::thread;
+use std::time::Duration;
+use std::time::Instant;
 use std::vec::Vec;
 
 use SETTINGS;
@@ -40,6 +43,27 @@ pub fn init_pool() -> Fallible<Pool> {
         .tcp_port(SETTINGS.db.port);
     let opts: Opts = builder.into();
     Ok(Pool::new(opts)?)
+}
+
+/// Init db connection pool with retry timeout
+pub fn init_pool_timeout() -> Fallible<Pool> {
+    let start = Instant::now();
+
+    loop {
+        match init_pool() {
+            Err(e) => {
+                if start.elapsed().as_secs() > SETTINGS.db.retry_time as u64 {
+                    error!("Timeout during db connection!");
+                    return Err(e);
+                } else {
+                    info!("Retrying DB connect");
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
+                }
+            }
+            Ok(v) => return Ok(v),
+        }
+    }
 }
 
 /// Save a set of tracks into the DB and return their IDs
