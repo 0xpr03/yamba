@@ -289,6 +289,7 @@ impl YtDL {
     fn cmd_base(&self) -> Command {
         let mut cmd = Command::new(self.get_exec_path());
         cmd.current_dir(&self.base);
+        cmd.arg("--no-warnings");
         cmd
     }
 
