@@ -218,11 +218,22 @@ where
     let agent: &str = &USERAGENT;
 
     let result = reqwest::Client::new()
-        .post(&format!("{}:{}", host, port))
+        .post(&format!("http://{}:{}", host, port))
         .header(USER_AGENT, agent)
         .json(msg)
         .send()?;
 
     trace!("Callback response: {:?}", result);
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    /// Test header creation
+    #[test]
+    fn header_test() {
+        api_send_callback("localhost", 9000, &CallbackErrorType::NoError).unwrap();
+    }
 }
