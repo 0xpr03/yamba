@@ -47,14 +47,15 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer install -n
 COPY public_html/config ./config
 
 # Define logsDir
-RUN cakeLogsDir=/var/log/cake/logs \
-    # Override app config with default
-    cp ./config/app.default.php ./config/app.php \
+ENV cakeLogsDir=/var/log/cake/logs
+
+# Override app config with default
+RUN cp ./config/app.default.php ./config/app.php \
     # Create and configure logs and tmp directory
-    && mkdir -p cakeLogsDir tmp \
-    && chgrp -R www-data cakeLogsDir tmp \
-    && chmod -R g+rw cakeLogsDir tmp \
-    && ln -s cakeLogsDir logs
+    && mkdir -p $cakeLogsDir tmp \
+    && chgrp -R www-data $cakeLogsDir tmp \
+    && chmod -R g+rw $cakeLogsDir tmp \
+    && ln -s $cakeLogsDir logs
 
 # Add source files
 COPY public_html/index.php ./
