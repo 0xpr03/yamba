@@ -20,6 +20,36 @@ use std::sync::Arc;
 use daemon::{self, APIChannel, BoxFut};
 use SETTINGS;
 use USERAGENT;
+#[macro_use]
+use serialize;
+
+#[macro_export]
+macro_rules! enum_number {
+    ($name:ident { $($variant:ident = $value:expr, )* }) => {
+        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+        pub enum $name {
+            $($variant = $value,)*
+        }
+
+        impl ::serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                // Serialize the enum as a u64.
+                serializer.serialize_u64(*self as u64)
+            }
+        }
+    }
+}
+
+//#[derive(Clone, Eq, PartialEq, Copy, Debug, Serialize)]
+#[allow(non_camel_case_types)]
+#[repr(i32)]
+enum_number! (CallbackErrorType {
+    NoError = 0,
+    UnknownError = -1,
+});
 
 #[derive(Fail, Debug)]
 pub enum APIErr {
@@ -34,10 +64,11 @@ pub struct NewPlaylist {
 }
 
 /// Playlist API callback structure
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct PlaylistAnswer {
     pub request_id: u32,
     pub song_ids: Vec<String>,
+    pub error_code: CallbackErrorType,
 }
 
 /// Used for returning errors on failure callbacks
@@ -45,6 +76,7 @@ pub struct PlaylistAnswer {
 pub struct CallbackError {
     pub request_id: u32,
     pub message: String,
+    pub error_code: CallbackErrorType,
 }
 
 /// API Request containing its ID and the request type

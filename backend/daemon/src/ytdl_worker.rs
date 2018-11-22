@@ -26,7 +26,7 @@ use tokio_threadpool::blocking;
 use std::sync::Arc;
 use std::time::Instant;
 
-use api::{self, APIRequest, CallbackError};
+use api::{self, APIRequest, CallbackError, CallbackErrorType};
 use ytdl::YtDL;
 
 use SETTINGS;
@@ -88,6 +88,7 @@ fn handle_playlist(
     Ok(api::PlaylistAnswer {
         request_id,
         song_ids: ids,
+        error_code: CallbackErrorType::NoError,
     })
 }
 
@@ -112,6 +113,7 @@ where
             Err(CallbackError {
                 request_id: request_id,
                 message: format!("{}", e),
+                error_code: CallbackErrorType::UnknownError,
             })
         }
     }
