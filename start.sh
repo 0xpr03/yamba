@@ -14,4 +14,4 @@ set -a
 source config/database.env
 source config/database_root.env
 set +a
-sudo -E docker-compose up --build
+sudo -E docker-compose up $1
