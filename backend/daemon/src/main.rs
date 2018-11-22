@@ -50,7 +50,6 @@ extern crate chrono;
 extern crate hashbrown;
 extern crate libpulse_sys as pulse;
 extern crate metrohash;
-extern crate rustc_serialize;
 
 use std::alloc::System;
 

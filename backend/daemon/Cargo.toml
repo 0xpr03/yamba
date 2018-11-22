@@ -33,7 +33,6 @@ hashbrown = "0.1"
 metrohash = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 libpulse-sys = "1.4"
-rustc-serialize = "0.3"
 
 [dependencies.vlc-rs]
 git = "https://github.com/0xpr03/vlc-rs"
