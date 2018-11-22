@@ -22,7 +22,6 @@ use mysql::chrono::prelude::NaiveDateTime;
 use mysql::error::Error as MySqlError;
 use mysql::{Opts, OptsBuilder, Pool};
 
-use models;
 use ytdl::Track;
 
 use std::hash::Hash;
@@ -33,6 +32,7 @@ use std::vec::Vec;
 
 use SETTINGS;
 
+/// Init db connection pool
 pub fn init_pool() -> Fallible<Pool> {
     let mut builder = OptsBuilder::new();
     builder
