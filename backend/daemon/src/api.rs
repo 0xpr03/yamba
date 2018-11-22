@@ -21,7 +21,7 @@ use daemon::{self, APIChannel, BoxFut};
 use SETTINGS;
 use USERAGENT;
 #[macro_use]
-use serialize;
+use rustc_serialize;
 
 #[macro_export]
 macro_rules! enum_number {
