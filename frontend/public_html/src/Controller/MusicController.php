@@ -77,9 +77,9 @@ class MusicController extends AppController
                 if ($response->getStatusCode() === 202) {
                     $addSongTable = TableRegistry::getTableLocator()->get('add_songs_jobs');
                     $addSong = $addSongTable->newEntity();
-                    $addSong->set('backend_token', $response->body('json_decode'));
+                    $addSong->set('backend_token', $response->json['request id']);
                     $addSong->set('playlist_id', $playlist->get('id'));
-                    $addSong->set('user_id', $this->getRequest()->getSession()->read('User.id'));
+                    $addSong->set('user_id', $this->Auth->user('id'));
                     if ($addSongTable->save($addSong)) {
                         $this->Flash->success(__('Your playlist is now in processing. You will be notified once it is fully loaded'));
                     }
