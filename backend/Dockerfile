@@ -11,6 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -q && apt-get install -qqy \
     # Install tools
     vim \
+    net-tools \
     # Install php
     libasound2-dev \
     xvfb \
