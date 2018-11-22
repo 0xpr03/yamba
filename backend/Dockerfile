@@ -4,7 +4,7 @@ LABEL maintainers="Aron Heinecke <Ox0p54r36@t-online.de>, \
                    Oliver Habersetzer <oliver.habersetzer@gmail.com>, \
                    Tristan Schönhals <tristan.schoenhals@gmail.com>"
 
-EXPOSE 80
+EXPOSE 1338
 
 ENV DEBIAN_FRONTEND=noninteractive
 
