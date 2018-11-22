@@ -7,6 +7,7 @@ LABEL maintainers="Aron Heinecke <Ox0p54r36@t-online.de>, \
                    Tristan Schönhals <tristan.schoenhals@gmail.com>"
 
 EXPOSE 80
+EXPOSE 82
 
 ENV DEBIAN_FRONTEND=noninteractive
 

@@ -33,6 +33,9 @@ class MusicController extends AppController
 
     public function addSongs()
     {
+        if (env('SERVER_PORT') != 82) {
+            return $this->response->withStatus(403)->withStringBody('Forbidden');
+        }
         $song_ids = json_decode($this->request->getData('song_ids'));
         $token = $this->request->getData('token');
         if (!isset($song_ids, $token)) {
@@ -81,18 +84,20 @@ class MusicController extends AppController
                     $addSong->set('playlist_id', $playlist->get('id'));
                     $addSong->set('user_id', $this->Auth->user('id'));
                     if ($addSongTable->save($addSong)) {
-                        $this->Flash->success(__('Your playlist is now in processing. You will be notified once it is fully loaded'));
+                        $this->_updatePlaylists();
+                        return $this->response->withStatus(200)->withStringBody('OK');
+                    } else {
+                        return $this->_error('Unable to create addSongJob');
                     }
                 } else {
                     return $this->_error('Could not resolve URL');
                 }
+            } else {
+                return $this->response->withStatus(400)->withStringBody(__('Bad Request'));
             }
         } else {
             return $this->_error('Could not save the playlist');
         }
-
-        $this->_updatePlaylists();
-        return $this->response->withStatus(200)->withStringBody('OK');
     }
 
     private function _error($message) {
