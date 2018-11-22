@@ -20,8 +20,6 @@ use std::sync::Arc;
 use daemon::{self, APIChannel, BoxFut};
 use SETTINGS;
 use USERAGENT;
-#[macro_use]
-use serialize;
 
 #[macro_export]
 macro_rules! enum_number {
