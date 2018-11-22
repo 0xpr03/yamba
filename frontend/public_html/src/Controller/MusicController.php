@@ -69,7 +69,7 @@ class MusicController extends AppController
             if (isset($url) && mb_strlen($url) > 0) {
                 $http = new Client();
                 try {
-                    $response = $http->post('http://backend/new/playlist', json_encode(['url' => $url]));
+                    $response = $http->post('http://backend:1338/new/playlist', json_encode(['url' => $url]));
                 } catch (Exception $e) {
                     return $this->_error('Unable to connect to backend');
                 }
