@@ -211,14 +211,14 @@ pub fn create_api_server(runtime: &mut runtime::Runtime, channel: APIChannel) ->
 }
 
 /// Perform api callback with specified message
-pub fn api_send_callback<T>(host: &str, port: u16, msg: &T) -> Fallible<()>
+pub fn api_send_callback<T>(host: &str, port: u16, dir: &str, msg: &T) -> Fallible<()>
 where
     T: Serialize,
 {
     let agent: &str = &USERAGENT;
 
     let result = reqwest::Client::new()
-        .post(&format!("http://{}:{}", host, port))
+        .post(&format!("http://{}:{}/{}", host, port, dir))
         .header(USER_AGENT, agent)
         .json(msg)
         .send()?;
