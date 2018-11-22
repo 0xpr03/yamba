@@ -34,7 +34,7 @@ services:
   backend:
     build: ./backend
     volumes:
-      - /home/aron/Dev/yamba/backend/daemon/target/debug:/opt/yamba/daemon/target/debug
+#      - ./backend/daemon/target/debug:/opt/yamba/daemon/target/debug
       - ./backend/ts3client:/opt/ts3client
     env_file:
       - ./config/backend.env

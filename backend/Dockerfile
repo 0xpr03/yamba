@@ -36,18 +36,15 @@ COPY ./daemon/conf /opt/yamba/daemon/conf
 COPY ./daemon/default_log.yml /opt/yamba/daemon/default_log.yml
 COPY ./daemon/Cargo.toml /opt/yamba/daemon/Cargo.toml
 WORKDIR /opt/yamba/daemon
-#RUN cargo update
-#RUN cargo build --verbose
+RUN cargo update
+RUN cargo build --verbose
 
 # copy ts3plugin
 COPY ./ts3plugin/src /opt/yamba/ts3plugin/src
 COPY ./ts3plugin/Cargo.toml /opt/yamba/ts3plugin/Cargo.toml
 WORKDIR /opt/yamba/ts3plugin
-#RUN cargo update
-#RUN cargo build --verbose
-
-# copy teamspeak
-#COPY ./ts3client /opt/ts3client
+RUN cargo update
+RUN cargo build --verbose
 
 WORKDIR /opt/yamba/daemon/target/debug
 
