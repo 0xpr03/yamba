@@ -32,6 +32,7 @@ class MusicController extends AppController
     {
         parent::beforeFilter($event);
         $this->Auth->allow(['addSongs']);
+        $this->Security->setConfig('unlockedActions', ['addSongs']);
     }
 
     public function index()
