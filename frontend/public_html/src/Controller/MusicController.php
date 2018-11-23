@@ -42,28 +42,47 @@ class MusicController extends AppController
 
     public function addSongs()
     {
+        $errorFunc = function ($message, $type = null, $class = null) {
+            $this->_updatePlaylists($type, $class);
+            return $this->response->withStatus(500)->withStringBody(__('An error occurred during addSongs: ') . __($message));
+        };
         if (env('SERVER_PORT') != 82) {
             return $this->response->withStatus(403)->withStringBody('Forbidden');
         }
-        $token = $this->request->getData('token');
+        $this->log($this->request->getData());
+        $token = $this->request->getData('request_id');
         $song_ids = $this->request->getData('song_ids');
-        if (!isset($song_ids, $token)) {
+        $code = $this->request->getData('error_code');
+        $message = $this->request->getData('message');
+
+        if (!isset($token, $code)) {
             return $this->response->withStatus(400)->withStringBody('Bad request');
         }
 
-        $songsToPlaylistTable = TableRegistry::getTableLocator()->get('titles_to_playlists');
+        switch ($code) {
+            case 0:
+                break;
+            default:
+                return $errorFunc('Unknown code: ' . $code, 'alert', $message);
+        }
+
+        $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('titles_to_playlists');
         $addSongTable = TableRegistry::getTableLocator()->get('add_songs_jobs');
         $addSong = $addSongTable->get($token);
         foreach ($song_ids as $song_id) {
-            $songsToPlaylist = $songsToPlaylistTable->newEntity();
-            $songsToPlaylist->set('song_id', $song_id);
-            $songsToPlaylist->set('playlist_id', $addSong->get('playlist_id'));
-            if (!$songsToPlaylistTable->save($songsToPlaylist)) {
-                return $this->response->withStatus(500)->withStringBody('Interal Server Error');
+            $titlesToPlaylist = $titlesToPlaylistTable->newEntity();
+            $titlesToPlaylist->set('title_id', $song_id);
+            $titlesToPlaylist->set('playlist_id', $addSong->get('playlist_id'));
+            if (!$titlesToPlaylistTable->save($titlesToPlaylist)) {
+                return $errorFunc('Error saving title_to_playlist');
             }
         }
 
         $addSongTable->delete($addSong);
+
+        $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
+        $playlist = $playlistTable->find('all', ['conditions' => ['id' => $addSong->get('playlist_id')]])->first();
+        $this->_updatePlaylists('success', 'Your playlist: "' . $playlist->get('name') . '" has been fully loaded!');
         return $this->response->withStatus(200)->withStringBody('OK');
     }
 
@@ -140,8 +159,8 @@ class MusicController extends AppController
         return $this->response->withStatus(200)->withStringBody('OK');
     }
 
-    private function _updatePlaylists()
+    private function _updatePlaylists($type = null, $message = null)
     {
-        Websocket::publishEvent('playlistsUpdated', ['json' => $this->_playlistsJson()]);
+        Websocket::publishEvent('playlistsUpdated', ['json' => $this->_playlistsJson(), 'type' => $type, 'message' => $message]);
     }
 }
