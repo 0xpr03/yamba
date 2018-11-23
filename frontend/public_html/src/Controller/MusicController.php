@@ -68,6 +68,10 @@ class MusicController extends AppController
 
     public function addPlaylist()
     {
+        $errorFunc = function ($message) {
+            $this->_updatePlaylists('alert', __('An error occurred during playlist creation: ') . __($message));
+            return $this->response->withStatus(500)->withStringBody('Interal Server Error');
+        };
         $name = $this->request->getQuery('name');
         if (!isset($name) || mb_strlen($name) < 1) {
             return $this->response->withStatus(400)->withStringBody('Bad request');
@@ -84,7 +88,7 @@ class MusicController extends AppController
                 try {
                     $response = $http->post('http://backend:1338/new/playlist', json_encode(['url' => $url]));
                 } catch (Exception $e) {
-                    return $this->_error('Unable to connect to backend');
+                    return $errorFunc('Unable to connect to backend');
                 }
 
                 if ($response->getStatusCode() === 202) {
@@ -95,24 +99,20 @@ class MusicController extends AppController
                     $addSong->set('user_id', $this->Auth->user('id'));
                     if ($addSongTable->save($addSong)) {
                         $this->_updatePlaylists();
-                        return $this->response->withStatus(200)->withStringBody('OK');
+                        return $this->response->withStatus(200)->withStringBody('Your playlist is now in processing. You will be notified once it is fully loaded');
                     } else {
-                        return $this->_error('Unable to create addSongJob');
+                        return $errorFunc('Unable to create addSongJob');
                     }
                 } else {
-                    return $this->_error('Could not resolve URL');
+                    return $errorFunc('Could not resolve URL');
                 }
             } else {
-                return $this->response->withStatus(400)->withStringBody(__('Bad Request'));
+                $this->_updatePlaylists();
+                return $this->response->withStatus(200)->withStringBody('OK');
             }
         } else {
-            return $this->_error('Could not save the playlist');
+            return $errorFunc('Could not save the playlist');
         }
-    }
-
-    private function _error($message) {
-        $this->_updatePlaylists();
-        return $this->response->withStatus(500)->withStringBody(__('An error occurred during playlist creation: ') . __($message));
     }
 
     private function _playlistsJson()
