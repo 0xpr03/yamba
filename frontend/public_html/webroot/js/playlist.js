@@ -48,7 +48,13 @@ function addPlaylist(form) {
         url: '/Music/addPlaylist',
         data: {'name': formData.name, 'url': formData.url},
         success: function (response) {
-            $('#close-add-playlist-modal').click();
+            if (response === 'OK') {
+                $('#close-add-playlist-modal').click();
+            } else {
+                let successdiv = $('#add-playlist-success-div');
+                successdiv.show();
+                successdiv.find('#add-playlist-success-span').text(response);
+            }
             form.find('input[type=text]').val('');
         },
         error: function (response) {

@@ -19,6 +19,14 @@ $(function () {
     $(document).foundation();
     App.Websocket.onEvent('playlistsUpdated', function (payload) {
         fillPlaylistTable(JSON.parse(payload.json));
+        if (payload.message != null) {
+            let flash = $('#websocket-flash-div');
+            if (payload.type != null) {
+                flash.addClass(payload.type);
+            }
+            flash.find('#websocket-flash-span').text(payload.message);
+            flash.show();
+        }
     }.bind(this));
     fetchContent(window.location.pathname);
 });
