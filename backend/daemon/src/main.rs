@@ -47,6 +47,7 @@ extern crate tokio_threadpool;
 #[macro_use]
 extern crate mysql;
 extern crate chrono;
+extern crate erased_serde;
 extern crate hashbrown;
 extern crate libpulse_sys as pulse;
 extern crate metrohash;

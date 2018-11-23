@@ -15,14 +15,15 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use erased_serde::Serialize;
 use failure::Fallible;
 use futures::sync::mpsc;
 use futures::Stream;
 use mysql::Pool;
-use serde::Serialize;
 use tokio::runtime::Runtime;
 use tokio_threadpool::blocking;
 
+use std::boxed::Box;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -52,6 +53,12 @@ pub fn create_ytdl_worker(
                 handle_request(v, request.request_id, ytdl, pool, handle_playlist)
             }
         };
+
+        let response: Box<Serialize> = match response {
+            Ok(v) => Box::new(v),
+            Err(e) => Box::new(e),
+        };
+
         let end = start.elapsed();
         debug!(
             "Request took {}{:03}ms to process",
