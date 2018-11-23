@@ -74,7 +74,21 @@ pub fn insert_tracks(tracks: &[Track], pool: Pool) -> Fallible<Vec<String>> {
         .iter()
         .map(|track| {
             let id = calculate_id(track);
-            transaction.prep_exec("INSERT INTO `titles` (`id`,`name`,`source`,`downloaded`, `artist`, `length`) VALUES (?,?,?,?,?,?)", (&id, &track.title,&track.webpage_url,0,&track.artist,track.duration))?;
+            transaction.prep_exec(
+                "INSERT INTO `titles` 
+            (`id`,`name`,`source`,`downloaded`, `artist`, `length`) 
+            VALUES (?,?,?,?,?,?)
+            ON DUPLICATE KEY
+            UPDATE name=name, length=length",
+                (
+                    &id,
+                    &track.title,
+                    &track.webpage_url,
+                    0,
+                    &track.artist,
+                    track.duration,
+                ),
+            )?;
             Ok(id)
         }).collect::<Result<Vec<String>, MySqlError>>()?;
 
