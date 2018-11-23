@@ -16,7 +16,11 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
 */
 ?>
-
+<?= $this->element('callout', [
+'params' => [
+'id' => 'websocket-flash',
+]
+]); ?>
 <div class="row" style="margin-top: 2em;">
     <div class="columns shrink">
         <?= $this->element('playlists'); ?>
