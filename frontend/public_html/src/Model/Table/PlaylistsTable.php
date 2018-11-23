@@ -27,7 +27,7 @@ class PlaylistsTable extends Table
         $this->hasMany('titles_to_playlists', [
             'dependent' => true
         ]);
-        $this->hasOne('AddSongsJobs', [
+        $this->hasOne('AddTitlesJobs', [
             'dependent' => true
         ]);
     }

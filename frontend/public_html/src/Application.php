@@ -93,7 +93,7 @@ class Application extends BaseApplication
                 callable $next
             ) {
                 $params = $request->getAttribute('params');
-                if ($params['controller'] !== 'Music' || $params['action'] !== 'addSongs') {
+                if ($params['controller'] !== 'Music' || $params['action'] !== 'addTitles') {
                     $csrf = new CsrfProtectionMiddleware([
                         'httpOnly' => true
                     ]);

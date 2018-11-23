@@ -71,7 +71,7 @@ pub fn create_ytdl_worker(
             match api::api_send_callback(
                 &SETTINGS.main.api_callback_ip,
                 SETTINGS.main.api_callback_port,
-                "music/addSongs",
+                "music/addTitles",
                 &response,
             ) {
                 Ok(_) => info!("Callback successfull"),

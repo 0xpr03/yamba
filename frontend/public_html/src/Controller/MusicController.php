@@ -31,8 +31,8 @@ class MusicController extends AppController
     public function beforeFilter(Event $event)
     {
         parent::beforeFilter($event);
-        $this->Auth->allow(['addSongs']);
-        $this->Security->setConfig('unlockedActions', ['addSongs']);
+        $this->Auth->allow(['addTitles']);
+        $this->Security->setConfig('unlockedActions', ['addTitles']);
     }
 
     public function index()
@@ -40,18 +40,18 @@ class MusicController extends AppController
 
     }
 
-    public function addSongs()
+    public function addTitles()
     {
         $errorFunc = function ($message, $type = null, $class = null) {
             $this->_updatePlaylists($type, $class);
-            return $this->response->withStatus(500)->withStringBody(__('An error occurred during addSongs: ') . __($message));
+            return $this->response->withStatus(500)->withStringBody(__('An error occurred during addTitles: ') . __($message));
         };
         if (env('SERVER_PORT') != 82) {
             return $this->response->withStatus(403)->withStringBody('Forbidden');
         }
         $this->log($this->request->getData());
         $token = $this->request->getData('request_id');
-        $song_ids = $this->request->getData('song_ids');
+        $title_ids = $this->request->getData('song_ids');
         $code = $this->request->getData('error_code');
         $message = $this->request->getData('message');
 
@@ -67,22 +67,23 @@ class MusicController extends AppController
         }
 
         $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('titles_to_playlists');
-        $addSongTable = TableRegistry::getTableLocator()->get('add_songs_jobs');
-        $addSong = $addSongTable->get($token);
-        foreach ($song_ids as $song_id) {
+        $addTitleTable = TableRegistry::getTableLocator()->get('add_titles_jobs');
+        $addTitle = $addTitleTable->get($token);
+        foreach ($title_ids as $title_id) {
             $titlesToPlaylist = $titlesToPlaylistTable->newEntity();
-            $titlesToPlaylist->set('title_id', $song_id);
-            $titlesToPlaylist->set('playlist_id', $addSong->get('playlist_id'));
+            $titlesToPlaylist->set('title_id', $title_id);
+            $titlesToPlaylist->set('playlist_id', $addTitle->get('playlist_id'));
             if (!$titlesToPlaylistTable->save($titlesToPlaylist)) {
                 return $errorFunc('Error saving title_to_playlist');
             }
         }
 
-        $addSongTable->delete($addSong);
+        $addTitleTable->delete($addTitle);
 
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
-        $playlist = $playlistTable->find('all', ['conditions' => ['id' => $addSong->get('playlist_id')]])->first();
-        $this->_updatePlaylists('success', 'Your playlist: "' . $playlist->get('name') . '" has been fully loaded!');
+        $playlist = $playlistTable->find('all', ['conditions' => ['id' => $addTitle->get('playlist_id')]])->first();
+        $titleCount = $titlesToPlaylistTable->find('all', ['conditions' => ['playlist_id' => $addTitle->get('playlist_id')]])->count();
+        $this->_updatePlaylists('success', $titleCount . ' titles have been successfully loaded into "' . $playlist->get('name') . '"');
         return $this->response->withStatus(200)->withStringBody('OK');
     }
 
@@ -112,16 +113,16 @@ class MusicController extends AppController
                 }
 
                 if ($response->getStatusCode() === 202) {
-                    $addSongTable = TableRegistry::getTableLocator()->get('add_songs_jobs');
-                    $addSong = $addSongTable->newEntity();
-                    $addSong->set('backend_token', $response->json['request id']);
-                    $addSong->set('playlist_id', $playlist->get('id'));
-                    $addSong->set('user_id', $this->Auth->user('id'));
-                    if ($addSongTable->save($addSong)) {
+                    $addTitleTable = TableRegistry::getTableLocator()->get('add_titles_jobs');
+                    $addTitle = $addTitleTable->newEntity();
+                    $addTitle->set('backend_token', $response->json['request id']);
+                    $addTitle->set('playlist_id', $playlist->get('id'));
+                    $addTitle->set('user_id', $this->Auth->user('id'));
+                    if ($addTitleTable->save($addTitle)) {
                         $this->_updatePlaylists();
                         return $this->response->withStatus(200)->withStringBody('Your playlist is now in processing. You will be notified once it is fully loaded');
                     } else {
-                        return $errorFunc('Unable to create addSongJob');
+                        return $errorFunc('Unable to create addTitleJob');
                     }
                 } else {
                     return $errorFunc('Could not resolve URL');
