@@ -178,17 +178,21 @@ mod test {
         println!("sink2 id:{}", sink_2);
 
         println!("Sinks created..");
-        thread::sleep(Duration::from_secs(2));
+        // let mut a = String::from("");
+        // let reader = ::std::io::stdin();
+        // reader.read_line(&mut a);
+        thread::sleep(Duration::from_millis(500));
 
         delete_virtual_sink(mloop.clone(), context.clone(), sink_1).unwrap();
 
         println!("Deleted first sink");
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(Duration::from_millis(500));
 
         delete_virtual_sink(mloop.clone(), context.clone(), sink_2).unwrap();
+        println!("Deleted second sink");
 
         let res = delete_virtual_sink(mloop.clone(), context.clone(), sink_2);
         assert!(res.is_err());
-        println!("{}", res.unwrap_err());
+        println!("Tested double unload");
     }
 }
