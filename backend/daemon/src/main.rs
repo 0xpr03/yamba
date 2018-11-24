@@ -49,7 +49,9 @@ extern crate mysql;
 extern crate chrono;
 extern crate erased_serde;
 extern crate hashbrown;
-extern crate libpulse_sys as pulse;
+extern crate libpulse_binding as pulse;
+extern crate libpulse_glib_binding as pglib;
+extern crate libpulse_sys as pulse_sys;
 extern crate metrohash;
 
 use std::alloc::System;
@@ -58,6 +60,7 @@ use std::alloc::System;
 static GLOBAL: System = System;
 
 mod api;
+mod audio;
 mod config;
 mod daemon;
 mod db;

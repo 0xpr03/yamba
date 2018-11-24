@@ -32,8 +32,10 @@ mysql="14.1"
 hashbrown = "0.1"
 metrohash = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
-libpulse-sys = "1.4"
+libpulse-sys = {version = "1.4", default-features = false }
 erased-serde = "0.3"
+libpulse-binding =  {version = "2.3", default-features = false}
+libpulse-glib-binding = { version = "2.3", default-features = false }
 
 [dependencies.vlc-rs]
 git = "https://github.com/0xpr03/vlc-rs"
