@@ -14,10 +14,12 @@
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::ffi::{CStr, CString};
 use std::path::Path;
+use std::vec::Vec;
 
 use failure::Fallible;
-use vlc::{self, Instance, Media, MediaPlayer, MediaPlayerAudioEx};
+use vlc::{self, sys, Instance, Media, MediaPlayer, MediaPlayerAudioEx};
 
 #[derive(Fail, Debug)]
 pub enum PlaybackErr {
@@ -110,6 +112,101 @@ impl<'a> Player<'a> {
             None => false,
         }
     }
+
+    pub fn get_audio_modules(&self) -> Vec<AudioOutput> {
+        let mut modules = Vec::new();
+        unsafe {
+            let p0 = sys::libvlc_audio_output_list_get(self.instance.raw());
+
+            let mut pnext = p0;
+
+            while !pnext.is_null() {
+                modules.push(AudioOutput {
+                    name: CStr::from_ptr((*pnext).psz_name)
+                        .to_string_lossy()
+                        .into_owned(),
+                    description: CStr::from_ptr((*pnext).psz_description)
+                        .to_string_lossy()
+                        .into_owned(),
+                });
+                pnext = (*pnext).p_next;
+            }
+            sys::libvlc_audio_output_list_release(p0);
+        }
+        modules
+    }
+
+    pub fn set_audio_module(&self, audio_output: &AudioOutput) {
+        unsafe {
+            sys::libvlc_audio_output_set(
+                self.player.raw(),
+                CString::new(audio_output.name.clone()).unwrap().into_raw(),
+            );
+        }
+    }
+
+    pub fn get_audio_device_list(&self, module: &AudioOutput) -> Vec<AudioDevice> {
+        let mut devices = Vec::new();
+        unsafe {
+            let p0 = sys::libvlc_audio_output_device_list_get(
+                self.instance.raw(),
+                CString::new(module.name.clone()).unwrap().into_raw(),
+            );
+
+            let mut pnext = p0;
+
+            while !pnext.is_null() {
+                devices.push(AudioDevice {
+                    device: CStr::from_ptr((*pnext).psz_device)
+                        .to_string_lossy()
+                        .into_owned(),
+                    description: CStr::from_ptr((*pnext).psz_description)
+                        .to_string_lossy()
+                        .into_owned(),
+                });
+                pnext = (*pnext).p_next;
+            }
+            sys::libvlc_audio_output_device_list_release(p0);
+        }
+        devices
+    }
+
+    pub fn get_audio_device_list_enum(&self) -> Vec<AudioDevice> {
+        let mut devices = Vec::new();
+        unsafe {
+            let p0 = sys::libvlc_audio_output_device_enum(self.player.raw());
+
+            let mut pnext = p0;
+
+            while !pnext.is_null() {
+                devices.push(AudioDevice {
+                    device: CStr::from_ptr((*pnext).psz_device)
+                        .to_string_lossy()
+                        .into_owned(),
+                    description: CStr::from_ptr((*pnext).psz_description)
+                        .to_string_lossy()
+                        .into_owned(),
+                });
+                pnext = (*pnext).p_next;
+            }
+            sys::libvlc_audio_output_device_list_release(p0);
+        }
+        devices
+    }
+}
+
+/// Audio output module
+#[derive(Debug)]
+pub struct AudioOutput {
+    pub name: String,
+    pub description: String,
+}
+
+/// Audio device
+#[derive(Debug)]
+pub struct AudioDevice {
+    pub device: String,
+    pub description: String,
 }
 
 #[cfg(test)]
@@ -117,6 +214,33 @@ mod tests {
     use super::*;
     use std::thread;
     use std::time::Duration;
+
+    #[test]
+    fn libvlc_test_audio_modules() {
+        let instance = Player::create_instance().unwrap();
+        let mut player = Player::new(&instance).unwrap();
+
+        let modules = player.get_audio_modules();
+        println!("Modules: {:?}", modules);
+
+        let module_pulse = modules.iter().find(|v| v.name == "pulse").unwrap();
+
+        player
+            .set_url("https://cdn.online-convert.com/example-file/audio/ogg/example.ogg")
+            .unwrap();
+
+        player.set_audio_module(module_pulse);
+
+        let devices = player.get_audio_device_list_enum();
+        println!("Devices:");
+        for device in devices {
+            println!("{:?}", device);
+        }
+        player.play().unwrap();
+        thread::sleep(Duration::from_secs(1));
+
+        thread::sleep(Duration::from_secs(10));
+    }
 
     #[test]
     fn libvlc_minimal_playback() {
