@@ -233,7 +233,6 @@ where
 mod test {
     use super::*;
 
-    /// Test header creation
     #[test]
     fn header_test() {
         api_send_callback(
