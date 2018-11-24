@@ -52,6 +52,8 @@ pub enum AudioErr {
     ContextConnectingErr(&'static str),
     #[fail(display = "Couldn't unload sink")]
     SinkUnloadErr,
+    #[fail(display = "Couldn't load sink, received invalid ID")]
+    SinkLoadErr,
 }
 
 /// Delete virtual sink
@@ -85,18 +87,15 @@ pub fn delete_virtual_sink(mainloop: CMainloop, context: CContext, sink_id: u32)
 pub fn create_virtual_sink(mainloop: CMainloop, context: CContext, name: &str) -> Fallible<u32> {
     let sink_id: Arc<Mutex<Option<u32>>> = Arc::new(Mutex::new(None));
     let sink_id_ref = sink_id.clone();
-    let operation = context.borrow().introspect().load_module(
-        "module-null-sink",
-        &format!(
-            "sink_name={},source_name={}s,sink_properties=device.description=Yamba_Device",
-            name, name
-        ),
-        move |v| {
+    let params = format!("sink_properties=device.description=Yamba_Device",);
+    context
+        .borrow()
+        .introspect()
+        .load_module("module-null-sink", &params, move |v| {
             let b: u32 = v;
             trace!("Module load: {}", v);
             *sink_id_ref.lock().unwrap() = Some(b);
-        },
-    );
+        });
 
     while sink_id.lock().unwrap().is_none() {
         match mainloop.borrow_mut().iterate(false) {
@@ -106,10 +105,14 @@ pub fn create_virtual_sink(mainloop: CMainloop, context: CContext, name: &str) -
         }
     }
 
-    println!("{:?}", operation.get_state());
-
     let mut v = sink_id.lock().unwrap();
-    Ok(v.take().unwrap())
+    let v = v.take().unwrap();
+    if v == ::std::u32::MAX {
+        // undocumented, happens on invalid params
+        return Err(AudioErr::SinkLoadErr.into());
+    }
+
+    Ok(v)
 }
 
 /// Init pulse audio context
