@@ -105,7 +105,7 @@ fn api(req: Request<Body>, counter: Arc<Atomic<u32>>, channel: APIChannel) -> Bo
                     Body::from("Hello, this is part of an rest-like API, see docs");
                 *response.status_mut() = StatusCode::IM_A_TEAPOT;
             }
-            (Method::POST, "/new/playlist") => {
+            (Method::POST, "/new/titles") => {
                 response = handle_request(counter, &b, new_playlist, channel);
             }
             (_, v) => {
