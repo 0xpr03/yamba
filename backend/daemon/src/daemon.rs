@@ -20,9 +20,11 @@ use futures::sync::mpsc;
 use futures::{Future, Sink, Stream};
 use hashbrown::HashMap;
 use hyper::{self, Body, Response};
+use mysql::Pool;
 use tokio::{self, runtime::Runtime};
 use tokio_signal::unix::{self, Signal};
 use tokio_threadpool::blocking;
+use vlc::Instance as PlayerInstance;
 
 use std::io;
 use std::net::SocketAddr;
@@ -31,18 +33,19 @@ use std::sync::{Arc, Mutex, RwLock};
 use api;
 use db;
 use models::{Queue, TSSettings};
+use playback::Player;
 use rpc;
 use ts::TSInstance;
 use ytdl::YtDL;
 use ytdl_worker;
 
-#[derive(Debug)]
 pub struct Instance {
     id: i32,
     ts_instance: TSInstance,
-    queue: RwLock<Queue>,
     volume: RwLock<i32>,
     ts_Settings: RwLock<TSSettings>,
+    player: Player,
+    player_instance: Arc<Mutex<PlayerInstance>>,
 }
 
 /// Daemon init & handling
@@ -50,7 +53,7 @@ pub struct Instance {
 // type used by rpc & api
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 pub type APIChannel = mpsc::Sender<api::APIRequest>;
-pub type Instances = Arc<RwLock<HashMap<i32, Instance>>>;
+pub type Instances<'a> = Arc<RwLock<HashMap<i32, Instance>>>;
 
 #[derive(Fail, Debug)]
 pub enum DaemonErr {
@@ -111,6 +114,22 @@ pub fn start_runtime() -> Fallible<()> {
     info!("Daemon stopped");
     Ok(())
 }
+
+/// Load instances
+/// Stops previous instances
+fn load_instances(instances: Instances, pool: Pool) -> Fallible<()> {
+    let mut instances = instances.write().expect("Main RwLock poisoned!");
+    instances.clear();
+    let instance_ids = db::get_instance_ids(&pool)?;
+    for id in instance_ids {
+        let data = db::load_instance_data(&pool, id)?;
+
+        //instances.insert(id, instance);
+    }
+    Ok(())
+}
+
+//fn create_instance_from_id(id: &i32) -> Instance {}
 
 /// Parse socket address
 pub fn parse_socket_address(ip: &str, port: u16) -> Fallible<SocketAddr> {
