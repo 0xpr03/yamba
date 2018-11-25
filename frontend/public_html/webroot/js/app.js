@@ -17,46 +17,4 @@
 
 $(function () {
     $(document).foundation();
-    App.Websocket.onEvent('playlistsUpdated', function (payload) {
-        fillPlaylistTable(JSON.parse(payload.json));
-        if (payload.message != null) {
-            let flash = $('#websocket-flash-div');
-            if (payload.type != null) {
-                flash.addClass(payload.type);
-            }
-            flash.find('#websocket-flash-span').text(payload.message);
-            flash.show();
-        }
-    }.bind(this));
-    fetchContent(window.location.pathname);
 });
-
-function fetchContent(url) {
-    let contentId;
-    if (url === '/') {
-        contentId = 'music';
-    } else {
-        contentId = url.toLowerCase().replace(new RegExp('/', 'g'), '-').replace('-','');
-    }
-    let mainContentDiv = $('#content');
-    let contentDiv = $('#' + contentId);
-    mainContentDiv.children().hide();
-    if (contentDiv.length) {
-        contentDiv.show();
-        window.history.pushState({},'',url);
-    } else {
-        $.ajax({
-            method: 'get',
-            url: url,
-            success: function (response) {
-                mainContentDiv.append('<div id="' + contentId + '">' + response + '</div>');
-                window.history.pushState({},'',url);
-            },
-            error: function (response) {
-                if (response.status === 403) {
-                    fetchContent('/users/login');
-                }
-            }
-        });
-    }
-}
