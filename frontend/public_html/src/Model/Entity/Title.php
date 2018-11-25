@@ -16,25 +16,13 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace App\Model\Table;
-use Cake\ORM\Table;
-use Cake\Validation\Validator;
-class PlaylistsTable extends Table
+namespace App\Model\Entity;
+use Cake\ORM\Entity;
+class Title extends Entity
 {
-    public function initialize(array $config)
-    {
-        parent::initialize($config);
-        $this->hasMany('TitlesToPlaylists', [
-            'dependent' => true
-        ]);
-        $this->hasOne('AddTitlesJobs', [
-            'dependent' => true
-        ]);
-    }
-
-    public function validationDefault(Validator $validator)
-    {
-        return $validator
-            ->notEmpty('name', 'Playlist must have a name!');
-    }
+    // Make all fields mass assignable except for primary key field "id".
+    protected $_accessible = [
+        '*' => true,
+        'id' => false
+    ];
 }

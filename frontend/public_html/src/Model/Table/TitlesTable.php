@@ -18,23 +18,13 @@
 
 namespace App\Model\Table;
 use Cake\ORM\Table;
-use Cake\Validation\Validator;
-class PlaylistsTable extends Table
+class TitlesTable extends Table
 {
     public function initialize(array $config)
     {
         parent::initialize($config);
-        $this->hasMany('TitlesToPlaylists', [
+        $this->hasMany('TitlesToPlayists', [
             'dependent' => true
         ]);
-        $this->hasOne('AddTitlesJobs', [
-            'dependent' => true
-        ]);
-    }
-
-    public function validationDefault(Validator $validator)
-    {
-        return $validator
-            ->notEmpty('name', 'Playlist must have a name!');
     }
 }

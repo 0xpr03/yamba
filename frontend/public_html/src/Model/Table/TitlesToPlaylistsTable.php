@@ -19,22 +19,19 @@
 namespace App\Model\Table;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
-class PlaylistsTable extends Table
+class TitlesToPlaylistsTable extends Table
 {
     public function initialize(array $config)
     {
         parent::initialize($config);
-        $this->hasMany('TitlesToPlaylists', [
-            'dependent' => true
-        ]);
-        $this->hasOne('AddTitlesJobs', [
-            'dependent' => true
-        ]);
+        $this->belongsTo('Titles');
+        $this->belongsTo('Playlists');
     }
 
     public function validationDefault(Validator $validator)
     {
         return $validator
-            ->notEmpty('name', 'Playlist must have a name!');
+            ->notEmpty('title_id', 'Title must be specified!')
+            ->notEmpty('playlist_id', 'Playlist must be specified!');
     }
 }
