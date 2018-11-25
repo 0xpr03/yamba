@@ -90,7 +90,7 @@ fn handle_playlist(
     pool: Pool,
 ) -> Fallible<api::PlaylistAnswer> {
     let result = ytdl.get_playlist_info(&request.url)?;
-    let ids = db::insert_tracks(&result, pool)?;
+    let ids = db::insert_tracks(&result, &pool)?;
     //debug!("playlist result: {:?}", result);
     debug!("{} entries found", result.len());
     Ok(api::PlaylistAnswer {
