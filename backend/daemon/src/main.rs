@@ -166,40 +166,40 @@ fn main() -> Fallible<()> {
         ("play-audio", Some(sub_m)) => {
             info!("Audio play testing..");
             let instance = playback::Player::create_instance()?;
-            let mut player = playback::Player::new(&instance)?;
+            let mut player = playback::Player::new(instance)?;
             let path = get_path_for_existing_file(sub_m.value_of("file").unwrap()).unwrap();
             player.set_file(&path)?;
             player.play()?;
 
             debug!("File: {:?}", path);
-            while !player.ended() {
-                trace!("Position: {}", player.get_position());
+            while !player.ended()? {
+                trace!("Position: {}", player.get_position()?);
                 thread::sleep(Duration::from_millis(500));
             }
             info!("Finished");
         }
         ("test-url", Some(sub_m)) => {
             info!("Url play testing..");
-            let instance = playback::Player::create_instance()?;
             {
-                let mut player = playback::Player::new(&instance)?;
+                let instance = playback::Player::create_instance()?;
+
+                let mut player = playback::Player::new(instance.clone())?;
                 let url = sub_m.value_of("url").unwrap();
                 for i in 0..100 {
                     player.set_url(&url)?;
                     player.play()?;
 
                     debug!("url: {:?}", url);
-                    while !player.ended() {
-                        trace!("Position: {}", player.get_position());
+                    while !player.ended()? {
+                        trace!("Position: {}", player.get_position()?);
                         thread::sleep(Duration::from_millis(250));
                         // play around with volume
-                        player.set_volume((player.get_position() * 1000.0) as i32 % 100)?;
+                        player.set_volume((player.get_position()? * 1000.0) as i32 % 100)?;
                     }
                     println!("playthough finished {}", i);
                 }
                 drop(player);
             }
-            drop(instance);
             info!("finished, waiting..");
             thread::sleep(Duration::from_millis(5000));
             info!("Finished");
