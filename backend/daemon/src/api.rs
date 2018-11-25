@@ -162,7 +162,7 @@ fn new_playlist(
 ) -> Fallible<()> {
     info!("URL: {}", playlist.url);
     *response.status_mut() = StatusCode::ACCEPTED;
-    *response.body_mut() = serde_json::to_string(&json!({ "request id": &request_id }))
+    *response.body_mut() = serde_json::to_string(&json!({ "request_id": &request_id }))
         .unwrap()
         .into();
     let job = APIRequest {
