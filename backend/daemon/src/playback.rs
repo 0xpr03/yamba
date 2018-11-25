@@ -16,10 +16,23 @@
  */
 use std::ffi::{CStr, CString};
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::vec::Vec;
 
 use failure::Fallible;
 use vlc::{self, sys, Instance, Media, MediaPlayer, MediaPlayerAudioEx};
+
+macro_rules! lock {
+    ($x:expr) => {
+        lock_r!($x)?
+    };
+}
+
+macro_rules! lock_r {
+    ($x:expr) => {
+        $x.lock().map_err(|_| PlaybackErr::LockError)
+    };
+}
 
 #[derive(Fail, Debug)]
 pub enum PlaybackErr {
@@ -29,94 +42,103 @@ pub enum PlaybackErr {
     Media(&'static str),
     #[fail(display = "Player error {}", _0)]
     Player(&'static str),
+    #[fail(display = "Error on aquiring mutex for media")]
+    LockError,
 }
 
-pub struct Player<'a> {
-    media: Option<Media>,
-    instance: &'a Instance,
-    player: MediaPlayer,
+pub struct Player {
+    media: Mutex<Option<Media>>,
+    instance: Arc<Mutex<Instance>>,
+    player: Mutex<MediaPlayer>,
 }
 
-impl<'a> Player<'a> {
+impl Player {
     /// Creates a new instance of libvlc
-    pub fn create_instance() -> Fallible<Instance> {
+    pub fn create_instance() -> Fallible<Arc<Mutex<Instance>>> {
         let mut args: Vec<String> = Vec::new();
         args.push("--no-video".to_string());
         let instance = Instance::with_args(Some(args))
             .ok_or(PlaybackErr::Instance("can't create a new player instance"))?;
-        Ok(instance)
+        Ok(Arc::new(Mutex::new(instance)))
     }
+
     /// Create new Player with given instance
-    pub fn new(instance: &'a Instance) -> Fallible<Player<'a>> {
+    pub fn new(instance: Arc<Mutex<Instance>>) -> Fallible<Player> {
         debug!("player init");
+        let instance_c = instance.clone();
+        let instance_ = lock!(instance_c);
         Ok(Player {
-            media: None,
-            player: MediaPlayer::new(instance).ok_or(PlaybackErr::Player("can't create player"))?,
+            media: Mutex::new(None),
+            player: Mutex::new(
+                MediaPlayer::new(&*instance_).ok_or(PlaybackErr::Player("can't create player"))?,
+            ),
             instance,
         })
     }
 
     /// Set volume
     pub fn set_volume(&self, volume: i32) -> Fallible<()> {
-        Ok(self
-            .player
+        Ok(lock!(self.player)
             .set_volume(volume)
             .map_err(|_| PlaybackErr::Player("can't set volume"))?)
     }
 
     /// Set url as media
     pub fn set_url(&mut self, url: &str) -> Fallible<()> {
-        self.media = Some(
-            Media::new_location(self.instance, url)
+        let mut lock = lock!(self.media);
+        *lock = Some(
+            Media::new_location(&*lock!(self.instance), url)
                 .ok_or(PlaybackErr::Media("can't create media for url"))?,
         );
-        self.player.set_media(self.media.as_ref().unwrap());
+        lock!(self.player).set_media(lock.as_ref().unwrap());
 
         Ok(())
     }
 
     /// Set file to play
     pub fn set_file(&mut self, file: &Path) -> Fallible<()> {
-        self.media = Some(
-            Media::new_path(self.instance, file)
+        let mut lock = lock!(self.media);
+        *lock = Some(
+            Media::new_path(&*lock!(self.instance), file)
                 .ok_or(PlaybackErr::Media("can't create media for file"))?,
         );
-        self.media.as_ref().unwrap().parse_async();
-        self.player.set_media(self.media.as_ref().unwrap());
+        let media_ref = lock.as_ref().unwrap();
+        media_ref.parse_async();
+        lock!(self.player).set_media(media_ref);
 
         Ok(())
     }
     /// Play current media
     pub fn play(&self) -> Fallible<()> {
-        match self.player.play() {
+        match lock!(self.player).play() {
             Ok(_) => Ok(()),
             Err(_) => Err(PlaybackErr::Player("can't play media").into()),
         }
     }
     /// Check whether player is playing
-    pub fn is_playing(&self) -> bool {
-        self.player.is_playing()
+    pub fn is_playing(&self) -> Fallible<bool> {
+        Ok(lock!(self.player).is_playing())
     }
 
     /// Get position of player from 0.0 to 1.0 in media
-    pub fn get_position(&self) -> f32 {
-        match self.player.get_position() {
+    pub fn get_position(&self) -> Fallible<f32> {
+        Ok(match lock!(self.player).get_position() {
             Some(v) => v,
             None => 0.0,
-        }
+        })
     }
     /// Check whether current media has ended playing, false when no media is set
-    pub fn ended(&self) -> bool {
-        match self.media {
+    pub fn ended(&self) -> Fallible<bool> {
+        Ok(match *lock!(self.media) {
             Some(ref m) => m.state() == vlc::State::Ended,
             None => false,
-        }
+        })
     }
 
-    pub fn get_audio_modules(&self) -> Vec<AudioOutput> {
+    pub fn get_audio_modules(&self) -> Fallible<Vec<AudioOutput>> {
         let mut modules = Vec::new();
         unsafe {
-            let p0 = sys::libvlc_audio_output_list_get(self.instance.raw());
+            let p0 = sys::libvlc_audio_output_list_get(lock!(self.instance).raw());
 
             let mut pnext = p0;
 
@@ -133,23 +155,23 @@ impl<'a> Player<'a> {
             }
             sys::libvlc_audio_output_list_release(p0);
         }
-        modules
+        Ok(modules)
     }
 
     pub fn set_audio_module(&self, audio_output: &AudioOutput) {
         unsafe {
             sys::libvlc_audio_output_set(
-                self.player.raw(),
+                lock_r!(self.player).unwrap().raw(),
                 CString::new(audio_output.name.clone()).unwrap().into_raw(),
             );
         }
     }
 
-    pub fn get_audio_device_list(&self, module: &AudioOutput) -> Vec<AudioDevice> {
+    pub fn get_audio_device_list(&self, module: &AudioOutput) -> Fallible<Vec<AudioDevice>> {
         let mut devices = Vec::new();
         unsafe {
             let p0 = sys::libvlc_audio_output_device_list_get(
-                self.instance.raw(),
+                lock!(self.instance).raw(),
                 CString::new(module.name.clone()).unwrap().into_raw(),
             );
 
@@ -168,13 +190,13 @@ impl<'a> Player<'a> {
             }
             sys::libvlc_audio_output_device_list_release(p0);
         }
-        devices
+        Ok(devices)
     }
 
-    pub fn get_audio_device_list_enum(&self) -> Vec<AudioDevice> {
+    pub fn get_audio_device_list_enum(&self) -> Fallible<Vec<AudioDevice>> {
         let mut devices = Vec::new();
         unsafe {
-            let p0 = sys::libvlc_audio_output_device_enum(self.player.raw());
+            let p0 = sys::libvlc_audio_output_device_enum(lock!(self.player).raw());
 
             let mut pnext = p0;
 
@@ -191,7 +213,7 @@ impl<'a> Player<'a> {
             }
             sys::libvlc_audio_output_device_list_release(p0);
         }
-        devices
+        Ok(devices)
     }
 }
 
@@ -218,9 +240,9 @@ mod tests {
     #[test]
     fn libvlc_test_audio_modules() {
         let instance = Player::create_instance().unwrap();
-        let mut player = Player::new(&instance).unwrap();
+        let mut player = Player::new(instance).unwrap();
 
-        let modules = player.get_audio_modules();
+        let modules = player.get_audio_modules().unwrap();
         println!("Modules: {:?}", modules);
 
         let module_pulse = modules.iter().find(|v| v.name == "pulse").unwrap();
@@ -231,7 +253,7 @@ mod tests {
 
         player.set_audio_module(module_pulse);
 
-        let devices = player.get_audio_device_list_enum();
+        let devices = player.get_audio_device_list_enum().unwrap();
         println!("Devices:");
         for device in devices {
             println!("{:?}", device);

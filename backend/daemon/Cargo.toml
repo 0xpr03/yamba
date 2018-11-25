@@ -39,4 +39,5 @@ libpulse-glib-binding = { version = "2.3", default-features = false }
 
 [dependencies.vlc-rs]
 git = "https://github.com/0xpr03/vlc-rs"
-branch = "feature_args"
+branch = "master"
+rev = "c37c697d57c5c299234e7892ec49102bd14a68e7"
