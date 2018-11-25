@@ -20,7 +20,7 @@ use failure::Fallible;
 use metrohash::MetroHash128;
 use mysql::chrono::prelude::NaiveDateTime;
 use mysql::error::Error as MySqlError;
-use mysql::{Opts, OptsBuilder, Pool};
+use mysql::{from_row_opt, Opts, OptsBuilder, Pool};
 
 use ytdl::Track;
 
@@ -31,6 +31,16 @@ use std::time::Instant;
 use std::vec::Vec;
 
 use SETTINGS;
+
+use models::TSSettings;
+
+#[derive(Fail, Debug)]
+pub enum DatabaseErr {
+    #[fail(display = "Couldn't find data for ID {}", _0)]
+    InstanceNotFoundErr(i32),
+    #[fail(display = "DB error: {}", _0)]
+    DBError(#[cause] MySqlError),
+}
 
 /// Init db connection pool
 pub fn init_pool() -> Fallible<Pool> {
@@ -66,8 +76,42 @@ pub fn init_pool_timeout() -> Fallible<Pool> {
     }
 }
 
+/// Get instances with autostart
+pub fn get_instance_ids(pool: &Pool) -> Fallible<Vec<i32>> {
+    let instances: Fallible<Vec<i32>> = pool
+        .prep_exec(
+            "SELECT id from `instances` WHERE a `autostart` = ?",
+            (true,),
+        )?.map(|result| {
+            let (id,) = from_row_opt::<(i32,)>(result?)?;
+            Ok(id)
+        }).collect();
+    instances
+}
+
+/// Load data for specified instance ID
+pub fn load_instance_data(pool: &Pool, id: i32) -> Fallible<TSSettings> {
+    let mut result = pool.prep_exec(
+        "SELECT id, host,port,identity,cid,name,password,autostart from `instances`",
+        (&id,),
+    )?;
+    let row = result.next().ok_or(DatabaseErr::InstanceNotFoundErr(id))?;
+
+    let (id, host, port, identity, cid, name, password, autostart) = from_row_opt(row?)?;
+    Ok(TSSettings {
+        id,
+        host,
+        port,
+        identity,
+        cid,
+        name,
+        password,
+        autostart,
+    })
+}
+
 /// Save a set of tracks into the DB and return their IDs
-pub fn insert_tracks(tracks: &[Track], pool: Pool) -> Fallible<Vec<String>> {
+pub fn insert_tracks(tracks: &[Track], pool: &Pool) -> Fallible<Vec<String>> {
     let mut transaction = pool.start_transaction(false, None, None)?;
 
     let ids = tracks
