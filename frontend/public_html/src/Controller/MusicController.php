@@ -20,14 +20,16 @@ namespace App\Controller;
 
 
 use Cake\Core\Exception\Exception;
+use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\Event\Event;
-use Cake\Http\Client;
 use Cake\ORM\TableRegistry;
 use Websocket\Lib\Websocket;
 
+/**
+ * @property \App\Controller\Component\ApiComponent $Api
+ */
 class MusicController extends AppController
 {
-
     public function beforeFilter(Event $event)
     {
         parent::beforeFilter($event);
@@ -35,21 +37,29 @@ class MusicController extends AppController
         $this->Security->setConfig('unlockedActions', ['addTitles']);
     }
 
+    public function initialize()
+    {
+        parent::initialize();
+        $this->loadComponent('Api');
+    }
+
     public function index()
     {
-
+        $this->FrontendBridge->setJson(
+            'userID',
+            $this->Auth->user('id')
+        );
     }
 
     public function addTitles()
     {
-        $errorFunc = function ($message, $type = null, $class = null) {
-            $this->_updatePlaylists($type, $class);
+        $errorFunc = function ($message, $userID, $type = null, $class = null) {
+            $this->_updatePlaylists($type, $class, $userID);
             return $this->response->withStatus(500)->withStringBody(__('An error occurred during addTitles: ') . __($message));
         };
         if (env('SERVER_PORT') != 82) {
             return $this->response->withStatus(403)->withStringBody('Forbidden');
         }
-        $this->log($this->request->getData());
         $token = $this->request->getData('request_id');
         $title_ids = $this->request->getData('song_ids');
         $code = $this->request->getData('error_code');
@@ -59,31 +69,36 @@ class MusicController extends AppController
             return $this->response->withStatus(400)->withStringBody('Bad request');
         }
 
+        $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
+        $addTitleTable = TableRegistry::getTableLocator()->get('add_titles_jobs');
+        try {
+            $addTitle = $addTitleTable->get($token);
+        } catch (RecordNotFoundException $e) {
+            return $this->response->withStatus(200)->withStringBody('OK');
+        }
+        $userID = $addTitle->get('user_id');
+
         switch ($code) {
             case 0:
                 break;
             default:
-                return $errorFunc('Unknown code: ' . $code, 'alert', $message);
+                return $errorFunc('Unknown code: ' . $code, $userID, 'alert', $message);
         }
-
-        $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('titles_to_playlists');
-        $addTitleTable = TableRegistry::getTableLocator()->get('add_titles_jobs');
-        $addTitle = $addTitleTable->get($token);
         foreach ($title_ids as $title_id) {
             $titlesToPlaylist = $titlesToPlaylistTable->newEntity();
             $titlesToPlaylist->set('title_id', $title_id);
             $titlesToPlaylist->set('playlist_id', $addTitle->get('playlist_id'));
             if (!$titlesToPlaylistTable->save($titlesToPlaylist)) {
-                return $errorFunc('Error saving title_to_playlist');
+                return $errorFunc('Error saving title_to_playlist', $userID);
             }
         }
 
         $addTitleTable->delete($addTitle);
 
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
-        $playlist = $playlistTable->find('all', ['conditions' => ['id' => $addTitle->get('playlist_id')]])->first();
+        $playlistName = $playlistTable->find('all', ['conditions' => ['id' => $addTitle->get('playlist_id')]])->select('name')->first()->get('name');
         $titleCount = $titlesToPlaylistTable->find('all', ['conditions' => ['playlist_id' => $addTitle->get('playlist_id')]])->count();
-        $this->_updatePlaylists('success', $titleCount . ' titles have been successfully loaded into "' . $playlist->get('name') . '"');
+        $this->_updatePlaylists('success', $titleCount . ' titles have been successfully loaded into "' . $playlistName . '"', $userID);
         return $this->response->withStatus(200)->withStringBody('OK');
     }
 
@@ -105,9 +120,8 @@ class MusicController extends AppController
         if ($playlist) {
             $url = $this->request->getQuery('url');
             if (isset($url) && mb_strlen($url) > 0) {
-                $http = new Client();
                 try {
-                    $response = $http->post('http://backend:1338/new/playlist', json_encode(['url' => $url]));
+                    $response = $this->Api->createTitles($url);
                 } catch (Exception $e) {
                     return $errorFunc('Unable to connect to backend');
                 }
@@ -115,7 +129,7 @@ class MusicController extends AppController
                 if ($response->getStatusCode() === 202) {
                     $addTitleTable = TableRegistry::getTableLocator()->get('add_titles_jobs');
                     $addTitle = $addTitleTable->newEntity();
-                    $addTitle->set('backend_token', $response->json['request id']);
+                    $addTitle->set('backend_token', $response->json['request_id']);
                     $addTitle->set('playlist_id', $playlist->get('id'));
                     $addTitle->set('user_id', $this->Auth->user('id'));
                     if ($addTitleTable->save($addTitle)) {
@@ -139,7 +153,7 @@ class MusicController extends AppController
     private function _playlistsJson()
     {
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
-        return json_encode($playlistTable->find('all')->select(['Playlists.id', 'Playlists.name'])->contain(['titles_to_playlists'])->orderDesc('created'));
+        return json_encode($playlistTable->find('all')->select(['Playlists.id', 'Playlists.name'])->contain(['TitlesToPlaylists', 'AddTitlesJobs'])->orderDesc('created'));
     }
 
     public function getPlaylists()
@@ -155,13 +169,23 @@ class MusicController extends AppController
         }
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
         $playlist = $playlistTable->get($id);
+
+        try {
+            $this->Api->deleteTitles($playlist->get('id'));
+        } catch (Exception $e) {
+            return $this->response->withStatus(500)->withStringBody('Unable to connect to backend');
+        }
+
         $playlistTable->delete($playlist);
         $this->_updatePlaylists();
         return $this->response->withStatus(200)->withStringBody('OK');
     }
 
-    private function _updatePlaylists($type = null, $message = null)
+    private function _updatePlaylists($type = null, $message = null, $userID = null)
     {
-        Websocket::publishEvent('playlistsUpdated', ['json' => $this->_playlistsJson(), 'type' => $type, 'message' => $message]);
+        if ($userID == null) {
+            $userID = $this->Auth->user('id');
+        }
+        Websocket::publishEvent('playlistsUpdated', ['json' => $this->_playlistsJson(), 'type' => $type, 'message' => $message, 'userID' => $userID]);
     }
 }

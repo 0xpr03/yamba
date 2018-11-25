@@ -43,6 +43,8 @@ function addPlaylist(form) {
         obj[item.name] = item.value;
         return obj;
     }, {});
+    let successdiv = $('#add-playlist-success-div');
+    let errordiv = $('#add-playlist-error-div');
     $.ajax({
         method: 'get',
         url: '/Music/addPlaylist',
@@ -51,17 +53,18 @@ function addPlaylist(form) {
             if (response === 'OK') {
                 $('#close-add-playlist-modal').click();
             } else {
-                let successdiv = $('#add-playlist-success-div');
-                successdiv.show();
+                errordiv.hide();
                 successdiv.find('#add-playlist-success-span').text(response);
+                successdiv.show();
             }
             form.find('input[type=text]').val('');
         },
         error: function (response) {
             console.log(response);
-            let errordiv = $('#add-playlist-error-div');
-            errordiv.show();
+
+            successdiv.hide();
             errordiv.find('#add-playlist-error-span').text(response.responseText);
+            errordiv.show();
         }
     });
 }
