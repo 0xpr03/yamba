@@ -74,7 +74,6 @@
 </table>
 <script>
     getPlaylists();
-    $('#playlist-table').foundation();
     let form = $('#add-playlist-form');
     form.submit(function (event) {
         event.preventDefault();
