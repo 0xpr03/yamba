@@ -41,11 +41,12 @@ CREATE TABLE `instances` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `instance_store` (
-  `id` INT NOT NULL PRIMARY KEY,
+  `id` INT NOT NULL,
   `volume` INT NOT NULL,
   `index` INT NOT NULL,
   `position` INT NOT NULL,
   `random` BIT NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `queues` (
