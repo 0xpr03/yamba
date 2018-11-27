@@ -3,9 +3,9 @@ function fillPlaylistTable(playlists) {
     let content = "";
     playlists.forEach((playlist) => {
         content +=
-            '<tr>' +
+            '<tr onclick="renderPlaylist(\'' + playlist.id + '\')" style="cursor: pointer;">' +
             ' <td>' +
-            '  <a href="#" onclick="deletePlaylist(\'' + playlist.id + '\')">' +
+            '  <a href="#" onclick="event.stopPropagation(); deletePlaylist(\'' + playlist.id + '\')">' +
             '   <i style="color: red" class="fi-trash"></i>' +
             '  </a>' +
             ' </td>' +
@@ -16,6 +16,13 @@ function fillPlaylistTable(playlists) {
             '</tr>';
     });
     tableBody.html(content);
+}
+
+function renderPlaylist(id) {
+    /*$.ajax({
+        method: 'get',
+        
+    });*/
 }
 
 function deletePlaylist(playlist) {

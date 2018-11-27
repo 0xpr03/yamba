@@ -26,6 +26,10 @@
         <?= $this->element('playlists'); ?>
     </div>
     <div class="columns">
-
+        <table>
+            <thead></thead>
+            <tbody>
+            </tbody>
+        </table>
     </div>
 </div>
