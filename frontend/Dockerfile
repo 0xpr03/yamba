@@ -36,7 +36,8 @@ RUN apt-get update -q && apt-get install -qqy \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /var/www/html
+ENV workDir=/var/www/html
+WORKDIR $workDir
 
 # Install composer dependencies
 COPY public_html/composer.json ./
@@ -48,15 +49,15 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer install -n
 COPY public_html/config ./config
 
 # Define logsDir
-ENV cakeLogsDir=/var/log/cake/logs
+ENV cakeLogsDir=/var/log/cake
 
 # Override app config with default
 RUN cp ./config/app.default.php ./config/app.php \
     # Create and configure logs and tmp directory
-    && mkdir -p $cakeLogsDir tmp \
-    && chgrp -R www-data $cakeLogsDir tmp \
-    && chmod -R g+rw $cakeLogsDir tmp \
-    && ln -s $cakeLogsDir logs
+    && mkdir -p $cakeLogsDir logs tmp \
+    && chgrp -R www-data logs tmp \
+    && chmod -R g+rw logs tmp \
+    && ln -s $workDir/logs $cakeLogsDir/
 
 # Add source files
 COPY public_html/index.php ./
