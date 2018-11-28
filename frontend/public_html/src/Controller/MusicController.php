@@ -153,7 +153,15 @@ class MusicController extends AppController
     private function _playlistsJson()
     {
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
-        return json_encode($playlistTable->find('all')->select(['Playlists.id', 'Playlists.name'])->contain(['TitlesToPlaylists', 'AddTitlesJobs'])->orderDesc('created'));
+        $query = $playlistTable->find('all');
+        return json_encode($query->select([
+            'Playlists.id',
+            'Playlists.name',
+            'titles' => $query->func()->count('TitlesToPlaylists.title_id')
+        ])
+            ->leftJoinWith('TitlesToPlaylists')
+            ->group('Playlists.id')
+            ->orderDesc('created'));
     }
 
     public function getPlaylists()

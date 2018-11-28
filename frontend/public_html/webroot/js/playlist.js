@@ -11,7 +11,7 @@ function fillPlaylistTable(playlists) {
             ' </td>' +
             ' <td>' + playlist.name + '</td>' +
             ' <td>' +
-            '  <span class="badge badge-right">' + playlist.titles_to_playlists.length + '</span>' +
+            '  <span class="badge badge-right">' + playlist.titles + '</span>' +
             ' </td>' +
             '</tr>';
     });
