@@ -36,8 +36,5 @@ libpulse-sys = {version = "1.4", default-features = false }
 erased-serde = "0.3"
 libpulse-binding =  {version = "2.3", default-features = false}
 libpulse-glib-binding = { version = "2.3", default-features = false }
-
-[dependencies.vlc-rs]
-git = "https://github.com/0xpr03/vlc-rs"
-branch = "master"
-rev = "c37c697d57c5c299234e7892ec49102bd14a68e7"
+gstreamer-player = "0.12"
+gstreamer = "0.12"

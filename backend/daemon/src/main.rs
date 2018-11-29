@@ -19,7 +19,6 @@
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
-extern crate vlc;
 #[macro_use]
 extern crate clap;
 extern crate log4rs;
@@ -48,6 +47,8 @@ extern crate tokio_threadpool;
 extern crate mysql;
 extern crate chrono;
 extern crate erased_serde;
+extern crate gstreamer as gst;
+extern crate gstreamer_player as gst_player;
 extern crate hashbrown;
 extern crate libpulse_binding as pulse;
 extern crate libpulse_glib_binding as pglib;
