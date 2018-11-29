@@ -47,7 +47,6 @@ footer {
     padding-top: 2em;
 }
 
-
 /*
     Foundation adjustments
  */
@@ -63,11 +62,11 @@ footer {
     Navbar
  */
 nav.top-bar {
-       position: fixed;
-       width: 100%;
-       height: 2em;
-       z-index: 42;
-   }
+    position: fixed;
+    width: 100%;
+    height: 2em;
+    z-index: 42;
+}
 
 .header-font, .header-font:visited {
     color: #bdbdbd;
@@ -146,7 +145,7 @@ label.required {
 label.required:after {
     color: #e32;
     content: ' *';
-    display:inline;
+    display: inline;
 }
 
 .input.radius {
@@ -155,4 +154,18 @@ label.required:after {
 
 .button.radius {
     border-radius: 0.3em;
+}
+
+td.delete-title-button {
+    min-width: 32px;
+    width: 32px;
+    text-align: right;
+}
+
+.pointer {
+    cursor: pointer;
+}
+
+.red-trash {
+    color: red;
 }

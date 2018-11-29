@@ -18,7 +18,7 @@ function fillSongTable(playlist, titles) {
             ' <td>' + title.name + '</td>' +
             ' <td>' + (title.artist == null ? "" : title.artist) + '</td>' +
             ' <td>' + fancyTimeFormat(title.length) + '</td>' +
-            ' <td style="min-width: 32px; width: 32px; text-align: right">' +
+            ' <td class="delete-title-button">' +
             '  <a href="#" onclick="event.stopPropagation(); deleteTitle(\'' + playlist + '\', \'' + title.id + '\')">' +
             '   <span aria-hidden="true">&times;</span>' +
             '  </a>' +
@@ -61,10 +61,10 @@ function fillPlaylistTable(playlists) {
     let content = "";
     playlists.forEach((playlist) => {
         content +=
-            '<tr onclick="getTitles(\'' + playlist.id + '\')" style="cursor: pointer;">' +
+            '<tr class="pointer" onclick="getTitles(\'' + playlist.id + '\')">' +
             ' <td>' +
             '  <a href="#" onclick="event.stopPropagation(); deletePlaylist(\'' + playlist.id + '\')">' +
-            '   <i style="color: red" class="fi-trash"></i>' +
+            '   <i class="fi-trash red-trash"></i>' +
             '  </a>' +
             ' </td>' +
             ' <td>' + playlist.name + '</td>' +
