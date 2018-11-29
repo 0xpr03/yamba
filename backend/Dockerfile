@@ -20,18 +20,24 @@ RUN apt-get update -q && apt-get install -qqy \
     curl \
     sudo \
     gcc \
-    libssl-dev \
     pkg-config \
+    # ssl dev
+    libssl-dev \
+    # pulse dev
+    libpulse-dev \
+    # Install gstreamer
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
     gstreamer1.0-libav libgstrtspserver-1.0-dev \
     libgstreamer-plugins-bad1.0-dev \
+    # ?
     sqlite3 \
     libsqlite3-dev \
-    libpulse-dev \
+    # cleanup
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/* \
+    # install rust
     && curl -sf -L https://static.rust-lang.org/rustup.sh | sh
     
 # copy daemon
