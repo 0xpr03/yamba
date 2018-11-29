@@ -1,4 +1,4 @@
-FROM debian:stable-slim
+FROM ubuntu:18.10
 
 LABEL maintainers="Aron Heinecke <Ox0p54r36@t-online.de>, \
                    Oliver Habersetzer <oliver.habersetzer@gmail.com>, \
@@ -23,7 +23,11 @@ RUN apt-get update -q && apt-get install -qqy \
     gcc \
     libssl-dev \
     pkg-config \
-    libvlc-dev \
+    libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+    gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav libgstrtspserver-1.0-dev \
+    libgstreamer-plugins-bad1.0-dev \
     sqlite3 \
     libsqlite3-dev \
     libpulse-dev \
