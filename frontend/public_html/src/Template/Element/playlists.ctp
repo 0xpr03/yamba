@@ -20,7 +20,7 @@
 <table id="playlist-table" class="hover playlist-table">
     <thead>
     <tr>
-        <th colspan="3" style="font-weight: bold; padding: 0">
+        <th colspan="3" style="padding: 0">
             <button class="button expanded" data-open="add-playlist-modal"
                     style="margin-bottom:0;width: 100%; height: 100%"
                     onclick="$('#add-playlist-error-div').hide(); $('#add-playlist-success-div').hide()"><?= __('New Playlist') ?></button>
