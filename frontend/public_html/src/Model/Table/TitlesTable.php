@@ -23,7 +23,7 @@ class TitlesTable extends Table
     public function initialize(array $config)
     {
         parent::initialize($config);
-        $this->hasMany('TitlesToPlayists', [
+        $this->hasMany('TitlesToPlaylists', [
             'dependent' => true
         ]);
     }
