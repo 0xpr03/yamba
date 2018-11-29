@@ -75,12 +75,17 @@ mod ytdl_worker;
 
 use clap::{App, Arg, SubCommand};
 use failure::Fallible;
+use futures::sync::mpsc;
+use futures::Stream;
+use tokio::runtime;
 
 use std::fs::{metadata, DirBuilder, File};
 use std::io::Write;
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
+
+use playback::{PlayerEvent, PlayerEventType};
 
 const DEFAULT_CONFIG_NAME: &'static str = "00-config.toml";
 const CONF_DIR: &'static str = "conf";
@@ -166,43 +171,54 @@ fn main() -> Fallible<()> {
         }
         ("play-audio", Some(sub_m)) => {
             info!("Audio play testing..");
-            let instance = playback::Player::create_instance()?;
-            let mut player = playback::Player::new(instance)?;
+            gst::init()?;
+            let (send, recv) = mpsc::channel::<PlayerEvent>(10);
+            let mut player = playback::Player::new(send, "test-player")?;
             let path = get_path_for_existing_file(sub_m.value_of("file").unwrap()).unwrap();
-            player.set_file(&path)?;
-            player.play()?;
+            player.set_uri(&path.to_string_lossy());
+            player.play();
 
             debug!("File: {:?}", path);
-            while !player.ended()? {
-                trace!("Position: {}", player.get_position()?);
-                thread::sleep(Duration::from_millis(500));
-            }
+
+            tokio::run(recv.for_each(move |event| {
+                println!("Event: {:?}", event);
+                Ok(())
+            }));
+
             info!("Finished");
         }
         ("test-url", Some(sub_m)) => {
             info!("Url play testing..");
             {
-                let instance = playback::Player::create_instance()?;
-
-                let mut player = playback::Player::new(instance.clone())?;
+                gst::init()?;
+                let (send, recv) = mpsc::channel::<PlayerEvent>(10);
+                let (mut send_s, recv_s) = mpsc::channel::<bool>(1);
+                let player = playback::Player::new(send, "test-player")?;
                 let url = sub_m.value_of("url").unwrap();
-                for i in 0..100 {
-                    player.set_url(&url)?;
-                    player.play()?;
+                player.set_uri(&url);
+                player.play();
 
+                let mut runtime = runtime::Runtime::new()?;
+                {
                     debug!("url: {:?}", url);
-                    while !player.ended()? {
-                        trace!("Position: {}", player.get_position()?);
-                        thread::sleep(Duration::from_millis(250));
-                        // play around with volume
-                        player.set_volume((player.get_position()? * 1000.0) as i32 % 100)?;
-                    }
-                    println!("playthough finished {}", i);
+                    runtime.spawn(recv.for_each(move |event| {
+                        println!("Event: {:?}", event);
+                        match event.event_type {
+                            PlayerEventType::PositionUpdated => {
+                                player.set_volume((player.get_position() * 1000) as i32 % 100);
+                            }
+                            PlayerEventType::EndOfStream => {
+                                send_s.try_send(true).unwrap();
+                            }
+                            _ => {}
+                        }
+                        Ok(())
+                    }));
+
+                    runtime.block_on(recv_s.for_each(|b| Ok(()))).unwrap();
                 }
-                drop(player);
+                println!("playthough finished");
             }
-            info!("finished, waiting..");
-            thread::sleep(Duration::from_millis(5000));
             info!("Finished");
         }
         ("test-ts", Some(sub_m)) => {

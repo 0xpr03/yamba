@@ -18,13 +18,13 @@
 use failure::{self, Fallible};
 use futures::sync::mpsc;
 use futures::{Future, Sink, Stream};
+use gst;
 use hashbrown::HashMap;
 use hyper::{self, Body, Response};
 use mysql::Pool;
 use tokio::{self, runtime::Runtime};
 use tokio_signal::unix::{self, Signal};
 use tokio_threadpool::blocking;
-use vlc::Instance as PlayerInstance;
 
 use std::io;
 use std::net::SocketAddr;
@@ -45,7 +45,6 @@ pub struct Instance {
     volume: RwLock<i32>,
     ts_Settings: RwLock<TSSettings>,
     player: Player,
-    player_instance: Arc<Mutex<PlayerInstance>>,
 }
 
 /// Daemon init & handling
@@ -72,6 +71,7 @@ pub enum DaemonErr {
 /// Start runtime
 pub fn start_runtime() -> Fallible<()> {
     info!("Starting daemon..");
+    gst::init()?;
     let instances: Instances = Arc::new(RwLock::new(HashMap::new()));
     let ytdl = Arc::new(YtDL::new()?);
     let pool = db::init_pool_timeout()?;
