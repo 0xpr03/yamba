@@ -15,7 +15,6 @@ RUN apt-get update -q && apt-get install -qqy \
     # Install php
     libasound2-dev \
     xvfb \
-    vlc \
     python3 \
     libnss3 \
     curl \
