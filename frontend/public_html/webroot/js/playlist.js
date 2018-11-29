@@ -1,28 +1,11 @@
-function fillPlaylistTable(playlists) {
-    let tableBody = $('#playlist-table-body');
-    let content = "";
-    playlists.forEach((playlist) => {
-        content +=
-            '<tr onclick="renderPlaylist(\'' + playlist.id + '\')" style="cursor: pointer;">' +
-            ' <td>' +
-            '  <a href="#" onclick="event.stopPropagation(); deletePlaylist(\'' + playlist.id + '\')">' +
-            '   <i style="color: red" class="fi-trash"></i>' +
-            '  </a>' +
-            ' </td>' +
-            ' <td>' + playlist.name + '</td>' +
-            ' <td>' +
-            '  <span class="badge badge-right">' + playlist.titles + '</span>' +
-            ' </td>' +
-            '</tr>';
-    });
-    tableBody.html(content);
-}
-
-function renderPlaylist(id) {
-    /*$.ajax({
+function getTitles(playlist) {
+    $.ajax({
         method: 'get',
-        
-    });*/
+        url: '/Music/getTitles/' + playlist,
+        success: function (response) {
+            fillSongTable(playlist, response);
+        },
+    });
 }
 
 function deletePlaylist(playlist) {
@@ -43,6 +26,26 @@ function getPlaylists() {
             fillPlaylistTable(response);
         },
     });
+}
+
+function fillPlaylistTable(playlists) {
+    let tableBody = $('#playlist-table-body');
+    let content = "";
+    playlists.forEach((playlist) => {
+        content +=
+            '<tr onclick="getTitles(\'' + playlist.id + '\')" style="cursor: pointer;">' +
+            ' <td>' +
+            '  <a href="#" onclick="event.stopPropagation(); deletePlaylist(\'' + playlist.id + '\')">' +
+            '   <i style="color: red" class="fi-trash"></i>' +
+            '  </a>' +
+            ' </td>' +
+            ' <td>' + playlist.name + '</td>' +
+            ' <td>' +
+            '  <span class="badge badge-right">' + (playlist.hasToken === "1" ? '<i class="fi-refresh large"></i>' : playlist.titles) + '</span>' +
+            ' </td>' +
+            '</tr>';
+    });
+    tableBody.html(content);
 }
 
 function addPlaylist(form) {

@@ -70,7 +70,7 @@ class MusicController extends AppController
         }
 
         $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
-        $addTitleTable = TableRegistry::getTableLocator()->get('add_titles_jobs');
+        $addTitleTable = TableRegistry::getTableLocator()->get('AddTitlesJobs');
         try {
             $addTitle = $addTitleTable->get($token);
         } catch (RecordNotFoundException $e) {
@@ -127,7 +127,7 @@ class MusicController extends AppController
                 }
 
                 if ($response->getStatusCode() === 202) {
-                    $addTitleTable = TableRegistry::getTableLocator()->get('add_titles_jobs');
+                    $addTitleTable = TableRegistry::getTableLocator()->get('AddTitlesJobs');
                     $addTitle = $addTitleTable->newEntity();
                     $addTitle->set('backend_token', $response->json['request_id']);
                     $addTitle->set('playlist_id', $playlist->get('id'));
@@ -153,13 +153,21 @@ class MusicController extends AppController
     private function _playlistsJson()
     {
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
-        $query = $playlistTable->find('all');
+        $query = $playlistTable->find();
         return json_encode($query->select([
             'Playlists.id',
             'Playlists.name',
-            'titles' => $query->func()->count('TitlesToPlaylists.title_id')
+            'titles' => $query->func()->count('TitlesToPlaylists.title_id'),
+            'hasToken' => $query->newExpr()
+                ->addCase(
+                    [$query->newExpr()->isNotNull('AddTitlesJobs.backend_token')],
+                    [true, false],
+                    ['boolean', 'boolean']
+                )
+
         ])
             ->leftJoinWith('TitlesToPlaylists')
+            ->contain('AddTitlesJobs')
             ->group('Playlists.id')
             ->orderDesc('created'));
     }
