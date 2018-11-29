@@ -17,7 +17,7 @@
 */
 ?>
 
-<table id="playlist-table" class="hover playlist-table">
+<table id="playlist-table" class="hover">
     <thead>
     <tr>
         <th colspan="3" style="padding: 0">
