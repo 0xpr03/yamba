@@ -49,6 +49,22 @@ class ApiComponent extends Component
         );
     }
 
+    /**
+     * @param String $title_id
+     * @return Client\Response
+     */
+    public function deleteTitle($title_id)
+    {
+        $http = new Client();
+        return $http->post($this->backendAddress . '/delete/titles',
+            json_encode([
+                'titles' => [
+                    $title_id
+                ]
+            ])
+        );
+    }
+
     public function cancelJobs()
     {
 

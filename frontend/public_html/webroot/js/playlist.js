@@ -8,14 +8,42 @@ function getTitles(playlist) {
     });
 }
 
-function deletePlaylist(playlist) {
-    $.ajax({
-        method: 'get',
-        url: '/Music/deletePlaylist',
-        data: {'id': playlist},
-        success: function (response) {
-        },
+function fillSongTable(playlist, titles) {
+    let tableBody = $('#titles-table-body');
+    tableBody.attr('data-playlist-id', playlist);
+    let content = "";
+    titles.forEach((title) => {
+        content +=
+            '<tr>' +
+            ' <td>' + title.name + '</td>' +
+            ' <td>' + (title.artist == null ? "" : title.artist) + '</td>' +
+            ' <td>' + fancyTimeFormat(title.length) + '</td>' +
+            ' <td style="min-width: 32px; width: 32px; text-align: right">' +
+            '  <a href="#" onclick="event.stopPropagation(); deleteTitle(\'' + playlist + '\', \'' + title.id + '\')">' +
+            '   <span aria-hidden="true">&times;</span>' +
+            '  </a>' +
+            ' </td>' +
+            '</tr>';
     });
+    tableBody.html(content);
+}
+
+function fancyTimeFormat(time) {
+    // Hours, minutes and seconds
+    var hrs = ~~(time / 3600);
+    var mins = ~~((time % 3600) / 60);
+    var secs = ~~time % 60;
+
+    // Output like "1:01" or "4:03:59" or "123:03:59"
+    var ret = "";
+
+    if (hrs > 0) {
+        ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
+    }
+
+    ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+    ret += "" + secs;
+    return ret;
 }
 
 function getPlaylists() {
@@ -76,5 +104,24 @@ function addPlaylist(form) {
             errordiv.find('#add-playlist-error-span').text(response.responseText);
             errordiv.show();
         }
+    });
+}
+
+function deleteTitle(playlist, title) {
+    $.ajax({
+        method: 'get',
+        url: '/Music/deleteTitle/' + playlist + '/' + title,
+        success: function (response) {
+        },
+    });
+}
+
+function deletePlaylist(playlist) {
+    $.ajax({
+        method: 'get',
+        url: '/Music/deletePlaylist',
+        data: {'id': playlist},
+        success: function (response) {
+        },
     });
 }

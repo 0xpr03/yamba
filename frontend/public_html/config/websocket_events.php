@@ -22,5 +22,11 @@ return [
             'includeAllNotAuthenticated' => true,
             'includeAllAuthenticated' => true
         ]
+    ],
+    'titlesUpdated' => [
+        'audience' => [
+            'includeAllNotAuthenticated' => true,
+            'includeAllAuthenticated' => true
+        ]
     ]
 ];

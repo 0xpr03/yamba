@@ -197,6 +197,38 @@ class MusicController extends AppController
         return $this->response->withStatus(200)->withStringBody('OK');
     }
 
+    public function deleteTitle($playlist_id, $title_id)
+    {
+        $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
+        $titlesToPlaylistTable->delete($titlesToPlaylistTable->get([$title_id, $playlist_id]));
+        if (!$titlesToPlaylistTable->find()->where(['title_id' => $title_id])->count()) {
+            try {
+                $this->Api->deleteTitle($title_id);
+            } catch (Exception $e) {
+                return $this->response->withStatus(500)->withStringBody('Unable to connect to backend');
+            }
+        }
+        $this->_updatePlaylists();
+        $this->_updateTitles($playlist_id);
+        return $this->response->withStatus(200)->withStringBody('OK');
+    }
+
+    private function _updateTitles($playlist_id)
+    {
+        Websocket::publishEvent('titlesUpdated', ['json' => $this->_titlesJson($playlist_id), 'playlist' => $playlist_id]);
+    }
+
+    private function _titlesJson($playlist_id)
+    {
+        $titlesTable = TableRegistry::getTableLocator()->get('Titles');
+        return json_encode($titlesTable->find()->leftJoinWith('TitlesToPlaylists')->where(['TitlesToPlaylists.playlist_id' => $playlist_id]));
+    }
+
+    public function getTitles($playlist_id)
+    {
+        return $this->response->withType('json')->withStringBody($this->_titlesJson($playlist_id));
+    }
+
     private function _updatePlaylists($type = null, $message = null, $userID = null)
     {
         if ($userID == null) {
