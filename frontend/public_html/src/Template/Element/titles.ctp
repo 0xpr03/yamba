@@ -17,7 +17,7 @@
 */
 ?>
 
-<table>
+<table class="hover">
     <thead>
     <tr>
         <th>Name</th>

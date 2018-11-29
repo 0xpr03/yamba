@@ -14,7 +14,7 @@ function fillSongTable(playlist, titles) {
     let content = "";
     titles.forEach((title) => {
         content +=
-            '<tr>' +
+            '<tr class="pointer" onclick="/*TODO play title*/">' +
             ' <td>' + title.name + '</td>' +
             ' <td>' + (title.artist == null ? "" : title.artist) + '</td>' +
             ' <td>' + fancyTimeFormat(title.length) + '</td>' +
