@@ -10,7 +10,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -q && apt-get install -qqy \
     # Install tools
-    atom \
+    nano \
     net-tools \
     # Install php
     libasound2-dev \
