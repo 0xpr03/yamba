@@ -32,18 +32,19 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use api;
 use db;
-use models::{Queue, TSSettings};
-use playback::Player;
+use models::{Queue, SongMin, TSSettings};
+use playback::{PlaybackSender, Player};
 use rpc;
 use ts::TSInstance;
 use ytdl::YtDL;
 use ytdl_worker;
 
+use SETTINGS;
+
 pub struct Instance {
     id: i32,
     ts_instance: TSInstance,
-    volume: RwLock<i32>,
-    ts_Settings: RwLock<TSSettings>,
+    current_song: RwLock<Option<SongMin>>,
     player: Player,
 }
 
@@ -66,6 +67,12 @@ pub enum DaemonErr {
     APICreationError(#[cause] failure::Error),
     #[fail(display = "Error on shutdown of runtime")]
     ShutdownError(#[cause] io::Error),
+}
+
+/// Format player name
+/// Standardizes the naming required for identification
+fn format_player_name(id: &i32) -> String {
+    format!("player#{}", id)
 }
 
 /// Start runtime
@@ -129,7 +136,21 @@ fn load_instances(instances: Instances, pool: Pool) -> Fallible<()> {
     Ok(())
 }
 
-//fn create_instance_from_id(id: &i32) -> Instance {}
+/// Load & create single instance by ID
+fn create_instance_from_id(
+    id: &i32,
+    pool: &Pool,
+    player_send: PlaybackSender,
+) -> Fallible<Instance> {
+    let data = db::load_instance_data(&pool, id)?;
+
+    Ok(Instance {
+        ts_instance: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
+        id: data.id,
+        player: Player::new(player_send, &format_player_name(id))?,
+        current_song: RwLock::new(None),
+    })
+}
 
 /// Parse socket address
 pub fn parse_socket_address(ip: &str, port: u16) -> Fallible<SocketAddr> {
