@@ -92,12 +92,14 @@ pub fn get_instance_ids(pool: &Pool) -> Fallible<Vec<i32>> {
 }
 
 /// Load data for specified instance ID
-pub fn load_instance_data(pool: &Pool, id: i32) -> Fallible<TSSettings> {
+pub fn load_instance_data(pool: &Pool, id: &i32) -> Fallible<TSSettings> {
     let mut result = pool.prep_exec(
         "SELECT id, host,port,identity,cid,name,password,autostart from `instances`",
         (&id,),
     )?;
-    let row = result.next().ok_or(DatabaseErr::InstanceNotFoundErr(id))?;
+    let row = result
+        .next()
+        .ok_or(DatabaseErr::InstanceNotFoundErr(id.clone()))?;
 
     let (id, host, port, identity, cid, name, password, autostart) = from_row_opt(row?)?;
     Ok(TSSettings {
