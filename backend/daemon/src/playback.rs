@@ -53,8 +53,6 @@ pub struct PlayerEvent {
 
 #[derive(Fail, Debug)]
 pub enum PlaybackErr {
-    #[fail(display = "Player Instance error {}", _0)]
-    Instance(&'static str),
     #[fail(display = "Playback Media error {}", _0)]
     Media(&'static str),
     #[fail(display = "Player error {}", _0)]
