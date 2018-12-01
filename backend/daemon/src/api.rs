@@ -112,7 +112,7 @@ pub enum RequestType {
 }
 
 //const COUNTER: Arc<Atomic<u32>> = Arc::new(Atomic::new(0));
-
+/// API main handler for requests
 fn api(req: Request<Body>, counter: Arc<Atomic<u32>>, channel: APIChannel) -> BoxFut {
     let mut response: Response<Body> = Response::new(Body::empty());
     let (parts, body) = req.into_parts();
@@ -137,7 +137,7 @@ fn api(req: Request<Body>, counter: Arc<Atomic<u32>>, channel: APIChannel) -> Bo
     }))
 }
 
-/// Request abstraction, parses input json to struct, calls handler on the result
+/// Request abstraction, parses input json to specified struct, calls handler on the result
 fn handle_request<'a, T, F>(
     req_counter: Arc<Atomic<u32>>,
     data: &'a [u8],
@@ -193,6 +193,7 @@ fn new_playlist(
     Ok(())
 }
 
+/// Check config for API startup, returns error is not clean for startup
 pub fn check_config() -> Fallible<()> {
     let _ = daemon::parse_socket_address(&SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port)?;
     Ok(())
