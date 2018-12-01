@@ -30,6 +30,23 @@ pub struct Song {
     pub last_used: NaiveDateTime,
 }
 
+impl Song {
+    /// Convert Song into minimal song model
+    pub fn into_song_min(self) -> SongMin {
+        SongMin {
+            id: self.id,
+            source: self.source,
+        }
+    }
+}
+
+/// Minimal song representation as required for playback
+#[derive(Debug, Clone, Deserialize)]
+pub struct SongMin {
+    pub id: String,
+    pub source: String,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Playlist {
     pub id: String,
