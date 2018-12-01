@@ -124,14 +124,19 @@ pub fn start_runtime() -> Fallible<()> {
 
 /// Load instances
 /// Stops previous instances
-fn load_instances(instances: Instances, pool: Pool) -> Fallible<()> {
-    let mut instances = instances.write().expect("Main RwLock poisoned!");
+fn load_instances(instances: Instances, pool: Pool, player_send: PlaybackSender) -> Fallible<()> {
+    let mut instances = instances.write().expect("Main RwLock is poisoned!");
     instances.clear();
-    let instance_ids = db::get_instance_ids(&pool)?;
+    let instance_ids = db::get_autostart_instance_ids(&pool)?;
     for id in instance_ids {
-        let data = db::load_instance_data(&pool, id)?;
-
-        //instances.insert(id, instance);
+        let instance = match create_instance_from_id(&id, &pool, player_send.clone()) {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Unable to load instance ID {}: {}", id, e);
+                continue;
+            }
+        };
+        instances.insert(id, instance);
     }
     Ok(())
 }
