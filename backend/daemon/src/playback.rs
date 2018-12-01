@@ -17,6 +17,7 @@
 
 use failure::Fallible;
 use futures::sync::mpsc::Sender;
+use glib::FlagsClass;
 use gst::prelude::*;
 use gst_player::{self, Cast, Error, PlayerConfig};
 
@@ -58,6 +59,8 @@ pub enum PlaybackErr {
     Media(&'static str),
     #[fail(display = "Player error {}", _0)]
     Player(&'static str),
+    #[fail(display = "Can't play file, non UTF8 path: {}", _0)]
+    InvalidFilePath(String),
 }
 
 /// Player struct holding the player for one instance
@@ -86,6 +89,20 @@ impl Player {
         config.set_position_update_interval(250);
         config.set_name(name);
         player.set_config(config).unwrap();
+
+        let playbin = player.get_pipeline();
+        let flags = playbin.get_property("flags")?;
+        let flags_class = FlagsClass::new(flags.type_())
+            .ok_or(PlaybackErr::Player("Unable to create new flags obj!"))?;
+        let flags = flags_class
+            .builder_with_value(flags)
+            .ok_or(PlaybackErr::Player("Couldn't create flags builder!"))?
+            .unset_by_nick("text")
+            .unset_by_nick("video")
+            .build()
+            .ok_or(PlaybackErr::Player("Couldn't build flags!"))?;
+
+        playbin.set_property("flags", &flags)?;
 
         player.connect_uri_loaded(|player, uri| {
             player.play();

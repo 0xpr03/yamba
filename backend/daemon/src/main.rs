@@ -47,6 +47,7 @@ extern crate tokio_threadpool;
 extern crate mysql;
 extern crate chrono;
 extern crate erased_serde;
+extern crate glib;
 extern crate gstreamer as gst;
 extern crate gstreamer_player as gst_player;
 extern crate hashbrown;

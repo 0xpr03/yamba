@@ -38,3 +38,4 @@ libpulse-binding =  {version = "2.3", default-features = false}
 libpulse-glib-binding = { version = "2.3", default-features = false }
 gstreamer-player = "0.12"
 gstreamer = "0.12"
+glib = "0.6"
