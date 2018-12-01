@@ -14,10 +14,6 @@
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::ffi::{CStr, CString};
-use std::path::Path;
-use std::sync::{Arc, Mutex};
-use std::vec::Vec;
 
 use failure::Fallible;
 use futures::sync::mpsc::Sender;
