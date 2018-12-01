@@ -15,7 +15,6 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/// Audio controller. Handling audio devices
 use failure::Fallible;
 
 use std::boxed::Box;
