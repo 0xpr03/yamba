@@ -17,6 +17,8 @@
 
 use chrono::naive::NaiveDateTime;
 
+/// Database models
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Song {
     pub id: String,

@@ -25,6 +25,8 @@ use failure::Fallible;
 
 use {CONF_DIR, DEFAULT_CONFIG_NAME};
 
+/// Config handler
+
 #[derive(Fail, Debug)]
 pub enum ConfigErr {
     #[fail(display = "Unable to open default config {}", _0)]

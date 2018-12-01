@@ -47,7 +47,7 @@ pub struct Instance {
     player: Player,
 }
 
-/// Daemon init & handling
+/// Daemon init & startup of all servers
 
 // type used by rpc & api
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;

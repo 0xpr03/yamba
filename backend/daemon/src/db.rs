@@ -34,6 +34,8 @@ use SETTINGS;
 
 use models::TSSettings;
 
+/// DB stuff
+
 #[derive(Fail, Debug)]
 pub enum DatabaseErr {
     #[fail(display = "Couldn't find data for ID {}", _0)]

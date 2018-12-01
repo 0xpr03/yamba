@@ -24,6 +24,8 @@ use futures::sync::mpsc::Sender;
 use gst::prelude::*;
 use gst_player::{self, Cast, Error, PlayerConfig};
 
+/// Playback abstraction
+
 #[derive(Clone, Debug)]
 pub enum PlaybackState {
     Stopped,

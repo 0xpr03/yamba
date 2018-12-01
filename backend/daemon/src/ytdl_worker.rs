@@ -34,6 +34,8 @@ use SETTINGS;
 
 use db;
 
+/// Worker for ytdl tasks
+
 /// Initialize ytdl worker
 /// Has to be called after init of senders
 pub fn create_ytdl_worker(

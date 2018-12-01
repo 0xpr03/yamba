@@ -31,6 +31,8 @@ use pulse::context::{flags, Context, State};
 use pulse::mainloop::standard::{IterateResult, Mainloop};
 use pulse::proplist::{properties, Proplist};
 
+/// Audio controller. Handling audio devices
+
 pub struct Device {}
 
 type CMainloop = Rc<RefCell<Mainloop>>;

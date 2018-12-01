@@ -34,6 +34,8 @@ use rusqlite::{self, Connection};
 use models::TSSettings;
 use SETTINGS;
 
+/// TS Instance
+
 const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
 const TS_ENV_ID: &'static str = "ID_YAMBA";
 const TS_SETTINGS_FILE: &'static str = "settings.db";

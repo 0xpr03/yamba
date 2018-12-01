@@ -87,6 +87,8 @@ use std::time::Duration;
 
 use playback::{PlayerEvent, PlayerEventType};
 
+/// Main
+
 const DEFAULT_CONFIG_NAME: &'static str = "00-config.toml";
 const CONF_DIR: &'static str = "conf";
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");

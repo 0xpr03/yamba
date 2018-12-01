@@ -33,6 +33,8 @@ use sha2::{Digest, Sha256};
 use http;
 use SETTINGS;
 
+/// Ytdl handler
+
 const UPDATE_VERSION_KEY: &'static str = "latest";
 // key in the json map
 const VERSIONS_KEY: &'static str = "versions";

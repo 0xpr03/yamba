@@ -21,6 +21,8 @@ use daemon::{self, APIChannel, BoxFut};
 use SETTINGS;
 use USERAGENT;
 
+/// API server for frontend requests
+
 #[macro_export]
 macro_rules! enum_number {
     ($name:ident { $($variant:ident = $value:expr, )* }) => {
