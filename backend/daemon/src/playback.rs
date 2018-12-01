@@ -20,6 +20,8 @@ use futures::sync::mpsc::Sender;
 use gst::prelude::*;
 use gst_player::{self, Cast, Error, PlayerConfig};
 
+use std::path::Path;
+
 /// Playback abstraction
 
 #[derive(Clone, Debug)]
@@ -157,10 +159,21 @@ impl Player {
         self.player.set_volume(f64::from(volume) / 100.0);
     }
 
-    /// Set url as media
+    /// Set uri as media
     pub fn set_uri(&self, url: &str) {
         self.player.set_uri(url);
         self.player.set_video_track_enabled(false);
+    }
+
+    /// Set file as media
+    pub fn set_file(&self, file: &Path) -> Fallible<()> {
+        self.set_uri(&format!(
+            "file://{}",
+            file.to_str().ok_or(PlaybackErr::InvalidFilePath(
+                file.to_string_lossy().into_owned()
+            ))?
+        ));
+        Ok(())
     }
 
     /// Get position in song as seconds
