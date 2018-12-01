@@ -71,9 +71,11 @@ unsafe impl Send for Player {}
 
 unsafe impl Sync for Player {}
 
+pub type PlaybackSender = Sender<PlayerEvent>;
+
 impl Player {
     /// Create new Player with given instance
-    pub fn new(events: Sender<PlayerEvent>, name: &str) -> Fallible<Player> {
+    pub fn new(events: PlaybackSender, name: &str) -> Fallible<Player> {
         debug!("player init");
         let dispatcher = gst_player::PlayerGMainContextSignalDispatcher::new(None);
         let player = gst_player::Player::new(
