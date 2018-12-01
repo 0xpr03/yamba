@@ -33,6 +33,7 @@ pub enum PlaybackState {
     Playing,
 }
 
+/// Player event types
 #[derive(Clone, Debug)]
 pub enum PlayerEventType {
     MediaInfoUpdated,
@@ -44,6 +45,7 @@ pub enum PlayerEventType {
     Buffering,
 }
 
+/// Player event
 #[derive(Clone, Debug)]
 pub struct PlayerEvent {
     pub id: String,
@@ -60,6 +62,7 @@ pub enum PlaybackErr {
     Player(&'static str),
 }
 
+/// Player struct holding the player for one instance
 pub struct Player {
     player: gst_player::Player,
 }
@@ -151,7 +154,7 @@ impl Player {
         Ok(Player { player })
     }
 
-    /// Set volume
+    /// Set volume as value between 0 and 100
     pub fn set_volume(&self, volume: i32) {
         self.player.set_volume(f64::from(volume) / 100.0);
     }
@@ -162,6 +165,7 @@ impl Player {
         self.player.set_video_track_enabled(false);
     }
 
+    /// Get position in song as seconds
     pub fn get_position(&self) -> i32 {
         let clock = self.player.get_position();
         let mut position: i32 = 0;
