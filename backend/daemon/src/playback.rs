@@ -18,6 +18,7 @@
 use failure::Fallible;
 use futures::sync::mpsc::Sender;
 use glib::FlagsClass;
+use gst;
 use gst::prelude::*;
 use gst_player::{self, Cast, Error, PlayerConfig};
 
@@ -59,11 +60,14 @@ pub enum PlaybackErr {
     Player(&'static str),
     #[fail(display = "Can't play file, non UTF8 path: {}", _0)]
     InvalidFilePath(String),
+    #[fail(display = "Error during GST call: {}", _0)]
+    GST(&'static str),
 }
 
 /// Player struct holding the player for one instance
 pub struct Player {
     player: gst_player::Player,
+    pulsesink: gst::Element,
 }
 
 unsafe impl Send for Player {}
@@ -101,6 +105,12 @@ impl Player {
             .ok_or(PlaybackErr::Player("Couldn't build flags!"))?;
 
         playbin.set_property("flags", &flags)?;
+
+        let pulsesink = gst::ElementFactory::make("pulsesink", name)
+            .ok_or(PlaybackErr::GST("Couldn't create pulsesink"))?;
+        playbin
+            .set_property("audio-sink", &pulsesink)
+            .map_err(|_| PlaybackErr::GST("Couldn't set audio sink to playbin!"))?;
 
         player.connect_uri_loaded(|player, uri| {
             player.play();
@@ -166,7 +176,7 @@ impl Player {
                 }).unwrap();
         });
 
-        Ok(Player { player })
+        Ok(Player { player, pulsesink })
     }
 
     /// Set volume as value between 0 and 100
@@ -210,6 +220,13 @@ impl Player {
     /// Play current media
     pub fn play(&self) {
         self.player.play();
+    }
+
+    /// Set pulse device for player
+    pub fn set_pulse_device(&self, device: &str) -> Fallible<()> {
+        self.pulsesink
+            .set_property("device", &device)
+            .map_err(|_| PlaybackErr::GST("Can't set pulse device!").into())
     }
 }
 
