@@ -17,7 +17,7 @@
 
 use failure::{self, Fallible};
 use futures::sync::mpsc;
-use futures::{Future, Sink, Stream};
+use futures::{future, Future, Sink, Stream};
 use gst;
 use hashbrown::HashMap;
 use hyper::{self, Body, Response};
@@ -102,18 +102,18 @@ pub fn start_runtime() -> Fallible<()> {
     ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());
 
     info!("Daemon initialized");
-    match rt.block_on(
-        Signal::new(unix::libc::SIGINT)
-            .flatten_stream()
-            .into_future()
-            .select(
-                Signal::new(unix::libc::SIGTERM)
-                    .flatten_stream()
-                    .into_future(),
-            ),
-    ) {
+    let ft_sigint = Signal::new(unix::libc::SIGINT)
+        .flatten_stream()
+        .into_future();
+    let ft_sigterm = Signal::new(unix::libc::SIGTERM)
+        .flatten_stream()
+        .into_future();
+    let ftb_sigquit = Signal::new(unix::libc::SIGQUIT)
+        .flatten_stream()
+        .into_future();
+    match rt.block_on(future::select_all(vec![ft_sigint, ft_sigterm, ftb_sigquit])) {
         Err(e) => {
-            let ((err, _), _) = e;
+            let ((err, _), _, _) = e;
             return Err(DaemonErr::ShutdownError(err).into());
         }
         Ok(_) => (),
