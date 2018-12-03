@@ -25,12 +25,13 @@ RUN apt-get update -q && apt-get install -qqy \
     libssl-dev \
     # pulse dev
     libpulse-dev \
-    # Install gstreamer
+    # Install gstreamer requirements
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
     gstreamer1.0-libav libgstrtspserver-1.0-dev \
     libgstreamer-plugins-bad1.0-dev \
+    libglib2.0-dev \
     # ?
     sqlite3 \
     libsqlite3-dev \
