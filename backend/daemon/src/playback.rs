@@ -16,11 +16,14 @@
  */
 
 use failure::Fallible;
-use futures::sync::mpsc::Sender;
+use futures::sync::mpsc::{Receiver, Sender};
+use futures::Stream;
 use glib::FlagsClass;
 use gst;
 use gst::prelude::*;
 use gst_player::{self, Cast, Error, PlayerConfig};
+use mysql::Pool;
+use tokio::runtime;
 
 use std::path::Path;
 use std::sync::Arc;
@@ -271,6 +274,45 @@ impl Player {
             .set_property("device", &device)
             .map_err(|_| PlaybackErr::GST("Can't set pulse device!").into())
     }
+}
+
+/// Register event handler for playback in daemon
+pub fn create_playback_server(
+    runtime: &mut runtime::Runtime,
+    tx: Receiver<PlayerEvent>,
+    pool: Pool,
+) -> Fallible<()> {
+    let stream = tx.for_each(move |event| {
+        match event.event_type {
+            PlayerEventType::VolumeChanged(v) => {
+                debug!("Audio changed to {} for {}", v, event.id);
+            }
+            PlayerEventType::EndOfStream => {
+                debug!("End of stream for {}", event.id);
+            }
+            PlayerEventType::StateChanged(state) => {
+                debug!("State changed for {}: {:?}", event.id, state);
+            }
+            PlayerEventType::Buffering => {
+                debug!("Player {} is buffering", event.id);
+            }
+            _ => (),
+        }
+        Ok(())
+    });
+
+    /*
+    MediaInfoUpdated,
+    PositionUpdated,
+    EndOfStream,
+    StateChanged(PlaybackState),
+    VolumeChanged(f64),
+    Error(gst_player::Error),
+    Buffering,
+    */
+
+    runtime.spawn(stream);
+    Ok(())
 }
 
 #[cfg(test)]

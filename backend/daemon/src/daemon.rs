@@ -33,7 +33,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use api;
 use db;
 use models::{Queue, SongMin, TSSettings};
-use playback::{PlaybackSender, Player};
+use playback::{self, PlaybackSender, Player, PlayerEvent};
 use rpc;
 use ts::TSInstance;
 use ytdl::YtDL;
@@ -95,11 +95,13 @@ pub fn start_runtime() -> Fallible<()> {
     };
 
     let (tx, rx) = mpsc::channel::<api::APIRequest>(100);
+    let (player_tx, player_rx) = mpsc::channel::<PlayerEvent>(10);
 
     let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
 
     rpc::create_rpc_server(&mut rt).map_err(|e| DaemonErr::RPCCreationError(e))?;
     api::create_api_server(&mut rt, tx.clone()).map_err(|e| DaemonErr::APICreationError(e))?;
+    playback::create_playback_server(&mut rt, player_rx, pool.clone())?;
     ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());
 
     info!("Daemon initialized");
