@@ -23,6 +23,9 @@ use gst::prelude::*;
 use gst_player::{self, Cast, Error, PlayerConfig};
 
 use std::path::Path;
+use std::sync::Arc;
+
+use daemon::ID;
 
 /// Playback abstraction
 
@@ -48,7 +51,7 @@ pub enum PlayerEventType {
 /// Player event
 #[derive(Clone, Debug)]
 pub struct PlayerEvent {
-    pub id: String,
+    pub id: ID,
     pub event_type: PlayerEventType,
 }
 
@@ -68,6 +71,8 @@ pub enum PlaybackErr {
 pub struct Player {
     player: gst_player::Player,
     pulsesink: gst::Element,
+    name: String,
+    id: Arc<i32>,
 }
 
 unsafe impl Send for Player {}
@@ -78,8 +83,11 @@ pub type PlaybackSender = Sender<PlayerEvent>;
 
 impl Player {
     /// Create new Player with given instance
-    pub fn new(events: PlaybackSender, name: &str) -> Fallible<Player> {
+    pub fn new<T: Into<ID>>(events: PlaybackSender, id: T) -> Fallible<Player> {
         debug!("player init");
+
+        let id = id.into(); // share it across all events
+
         let dispatcher = gst_player::PlayerGMainContextSignalDispatcher::new(None);
         let player = gst_player::Player::new(
             None,
@@ -89,7 +97,10 @@ impl Player {
         // Get position updates every 250ms.
         let mut config = player.get_config();
         config.set_position_update_interval(250);
-        config.set_name(name);
+
+        let name = Player::get_name_by_id(&*id);
+
+        config.set_name(&name);
         player.set_config(config).unwrap();
 
         let playbin = player.get_pipeline();
@@ -106,7 +117,7 @@ impl Player {
 
         playbin.set_property("flags", &flags)?;
 
-        let pulsesink = gst::ElementFactory::make("pulsesink", name)
+        let pulsesink = gst::ElementFactory::make("pulsesink", name.as_str())
             .ok_or(PlaybackErr::GST("Couldn't create pulsesink"))?;
         playbin
             .set_property("audio-sink", &pulsesink)
@@ -117,23 +128,25 @@ impl Player {
         });
 
         let events_clone = events.clone();
+        let id_clone = id.clone();
         player.connect_end_of_stream(move |player| {
             let mut events = events_clone.clone();
-            let player_id = player.get_name();
+            let id = id_clone.clone();
             events
                 .try_send(PlayerEvent {
-                    id: player_id,
+                    id,
                     event_type: PlayerEventType::EndOfStream,
                 }).unwrap();
         });
 
         let events_clone = events.clone();
+        let id_clone = id.clone();
         player.connect_media_info_updated(move |player, info| {
             let mut events = events_clone.clone();
-            let player_id = player.get_name();
+            let id = id_clone.clone();
             events
                 .try_send(PlayerEvent {
-                    id: player_id,
+                    id,
                     event_type: PlayerEventType::MediaInfoUpdated,
                 }).unwrap();
         });
@@ -143,6 +156,7 @@ impl Player {
         });
 
         let events_clone = events.clone();
+        let id_clone = id.clone();
         player.connect_state_changed(move |player, state| {
             let mut events = events_clone.clone();
             let state = match state {
@@ -152,10 +166,10 @@ impl Player {
                 _ => None,
             };
             if let Some(s) = state {
-                let player_id = player.get_name();
+                let id = id_clone.clone();
                 events
                     .try_send(PlayerEvent {
-                        id: player_id,
+                        id,
                         event_type: PlayerEventType::StateChanged(s),
                     }).unwrap();
             }
@@ -166,17 +180,38 @@ impl Player {
         });
 
         let events_clone = events.clone();
+        let id_clone = id.clone();
         player.connect_error(move |player, error| {
             let mut events = events_clone.clone();
-            let player_id = player.get_name();
+            let id = id_clone.clone();
             events
                 .try_send(PlayerEvent {
-                    id: player_id,
+                    id,
                     event_type: PlayerEventType::Error(error.clone()),
                 }).unwrap();
         });
 
-        Ok(Player { player, pulsesink })
+        Ok(Player {
+            player,
+            pulsesink,
+            name: Player::get_name_by_id(&id),
+            id,
+        })
+    }
+
+    /// Get player name, used to identify on sound systems
+    pub fn get_name(&self) -> String {
+        Player::get_name_by_id(&self.id)
+    }
+
+    /// Get ID of player
+    pub fn get_id(&self) -> i32 {
+        *self.id
+    }
+
+    /// Get player name by id, used to identify on sound systems
+    pub fn get_name_by_id(id: &i32) -> String {
+        format!("YAMBA_Player{}", id)
     }
 
     /// Set volume as value between 0 and 100
@@ -240,13 +275,15 @@ mod tests {
     use std::time::Duration;
     use tokio::runtime::{self, Runtime};
 
+    const TEST_ID: Arc<i32> = Arc::new(-1);
+
     #[test]
     fn test_playback() {
         println!("test");
         gst::init().unwrap();
         let (mut sender, recv) = mpsc::channel::<PlayerEvent>(20);
 
-        let player = Player::new(sender.clone(), "player1").unwrap();
+        let player = Player::new(sender.clone(), TEST_ID).unwrap();
         let mut runtime = Runtime::new().unwrap();
 
         let stream = recv.for_each(move |event| {
@@ -258,10 +295,11 @@ mod tests {
         player.set_uri("https://cdn.online-convert.com/example-file/audio/ogg/example.ogg");
         player.play();
         let mut vol = 0;
-        sender.try_send(PlayerEvent {
-            id: String::from("test"),
-            event_type: PlayerEventType::Buffering,
-        });
+        sender
+            .try_send(PlayerEvent {
+                id: TEST_ID,
+                event_type: PlayerEventType::Buffering,
+            }).unwrap();
         loop {
             if vol > 100 {
                 vol = 0;
@@ -270,10 +308,11 @@ mod tests {
             vol += 10;
             thread::sleep(Duration::from_millis(500));
             println!("Volume: {}", vol);
-            sender.try_send(PlayerEvent {
-                id: String::from("test"),
-                event_type: PlayerEventType::Buffering,
-            });
+            sender
+                .try_send(PlayerEvent {
+                    id: TEST_ID,
+                    event_type: PlayerEventType::Buffering,
+                }).unwrap();
         }
     }
 }
