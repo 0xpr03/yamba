@@ -104,6 +104,14 @@ pub fn start_runtime() -> Fallible<()> {
     playback::create_playback_server(&mut rt, player_rx, pool.clone())?;
     ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());
 
+    match load_instances(&instances, pool.clone(), player_tx) {
+        Ok(_) => (),
+        Err(e) => {
+            error!("Unable to load instances: {}", e);
+            return Err(DaemonErr::InitializationError(format!("{}", e)).into());
+        }
+    }
+
     info!("Daemon initialized");
     let ft_sigint = Signal::new(unix::libc::SIGINT)
         .flatten_stream()
