@@ -36,6 +36,7 @@ pub struct Device {}
 
 type CMainloop = Rc<RefCell<Mainloop>>;
 type CContext = Rc<RefCell<Context>>;
+pub type SinkID = u32;
 
 #[derive(Fail, Debug)]
 pub enum AudioErr {
@@ -56,6 +57,42 @@ pub enum AudioErr {
     #[fail(display = "Couldn't load sink, received invalid ID")]
     SinkLoadErr,
 }
+
+/// Set source of process to specified source_id
+pub fn set_process_source(
+    mainloop: CMainloop,
+    context: CContext,
+    process: u32,
+    source_id: SinkID,
+) -> Fallible<()> {
+    let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
+    let success_ref = success.clone();
+    context.borrow().introspect().move_source_output_by_index(
+        process,
+        source_id,
+        Some(Box::new(move |v| {
+            let b = v;
+            trace!("Process source input set: {}", v);
+            *success_ref.lock().unwrap() = Some(b);
+        })),
+    );
+
+    while success.lock().unwrap().is_none() {
+        match mainloop.borrow_mut().iterate(false) {
+            IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
+            IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
+            IterateResult::Success(_) => {}
+        }
+    }
+    let mut v = success.lock().unwrap();
+    if !v.take().unwrap() {
+        return Err(AudioErr::SinkUnloadErr.into());
+    }
+    Ok(())
+}
+
+/// Get application source ID
+//pub fn get_application_source_id(application: u32) -> Fallible<u32> {}
 
 /// Delete virtual sink
 pub fn delete_virtual_sink(mainloop: CMainloop, context: CContext, sink_id: u32) -> Fallible<()> {
