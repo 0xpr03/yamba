@@ -42,7 +42,7 @@ use ytdl_worker;
 use SETTINGS;
 
 pub struct Instance {
-    id: i32,
+    id: ID,
     ts_instance: TSInstance,
     current_song: RwLock<Option<SongMin>>,
     player: Player,
@@ -50,10 +50,11 @@ pub struct Instance {
 
 /// Daemon init & startup of all servers
 
-// type used by rpc & api
+// types used by rpc, api, playback daemons
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 pub type APIChannel = mpsc::Sender<api::APIRequest>;
 pub type Instances<'a> = Arc<RwLock<HashMap<i32, Instance>>>;
+pub type ID = Arc<i32>;
 
 #[derive(Fail, Debug)]
 pub enum DaemonErr {
@@ -124,7 +125,7 @@ pub fn start_runtime() -> Fallible<()> {
 
 /// Load instances
 /// Stops previous instances
-fn load_instances(instances: Instances, pool: Pool, player_send: PlaybackSender) -> Fallible<()> {
+fn load_instances(instances: &Instances, pool: Pool, player_send: PlaybackSender) -> Fallible<()> {
     let mut instances = instances.write().expect("Main RwLock is poisoned!");
     instances.clear();
     let instance_ids = db::get_autostart_instance_ids(&pool)?;
@@ -149,10 +150,12 @@ fn create_instance_from_id(
 ) -> Fallible<Instance> {
     let data = db::load_instance_data(&pool, id)?;
 
+    let id = Arc::new(data.id);
+
     Ok(Instance {
         ts_instance: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
-        id: data.id,
-        player: Player::new(player_send, &format_player_name(id))?,
+        player: Player::new(player_send, id.clone())?,
+        id: id,
         current_song: RwLock::new(None),
     })
 }
