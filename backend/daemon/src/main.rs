@@ -208,7 +208,7 @@ fn main() -> Fallible<()> {
                         println!("Event: {:?}", event);
                         match event.event_type {
                             PlayerEventType::PositionUpdated => {
-                                player.set_volume((player.get_position() * 1000) as i32 % 100);
+                                player.set_volume(f64::from(player.get_position()) / 1000.0);
                             }
                             PlayerEventType::EndOfStream => {
                                 send_s.try_send(true).unwrap();

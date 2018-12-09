@@ -175,8 +175,16 @@ impl Player {
             }
         });
 
-        player.connect_volume_changed(|player| {
-            let player_id = player.get_name();
+        let events_clone = events.clone();
+        let id_clone = id.clone();
+        player.connect_volume_changed(move |player| {
+            let mut events = events_clone.clone();
+            let id = id_clone.clone();
+            events
+                .try_send(PlayerEvent {
+                    id,
+                    event_type: PlayerEventType::VolumeChanged(player.get_volume()),
+                }).unwrap();
         });
 
         let events_clone = events.clone();
@@ -215,8 +223,8 @@ impl Player {
     }
 
     /// Set volume as value between 0 and 100
-    pub fn set_volume(&self, volume: i32) {
-        self.player.set_volume(f64::from(volume) / 100.0);
+    pub fn set_volume(&self, volume: f64) {
+        self.player.set_volume(volume);
     }
 
     /// Set uri as media
@@ -304,7 +312,7 @@ mod tests {
             if vol > 100 {
                 vol = 0;
             }
-            player.set_volume(vol);
+            player.set_volume(f64::from(vol) / 100.0);
             vol += 10;
             thread::sleep(Duration::from_millis(500));
             println!("Volume: {}", vol);
