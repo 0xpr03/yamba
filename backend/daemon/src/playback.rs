@@ -325,7 +325,10 @@ mod tests {
     use std::time::Duration;
     use tokio::runtime::{self, Runtime};
 
-    const TEST_ID: Arc<i32> = Arc::new(-1);
+    lazy_static! {
+        // simplify downloader, perform startup_test just once, this also tests it on the fly
+        static ref TEST_ID: Arc<i32> = Arc::new(-1);
+    }
 
     #[test]
     fn test_playback() {
@@ -333,7 +336,7 @@ mod tests {
         gst::init().unwrap();
         let (mut sender, recv) = mpsc::channel::<PlayerEvent>(20);
 
-        let player = Player::new(sender.clone(), TEST_ID).unwrap();
+        let player = Player::new(sender.clone(), TEST_ID.clone()).unwrap();
         let mut runtime = Runtime::new().unwrap();
 
         let stream = recv.for_each(move |event| {
@@ -347,7 +350,7 @@ mod tests {
         let mut vol = 0;
         sender
             .try_send(PlayerEvent {
-                id: TEST_ID,
+                id: TEST_ID.clone(),
                 event_type: PlayerEventType::Buffering,
             }).unwrap();
         loop {
@@ -360,7 +363,7 @@ mod tests {
             println!("Volume: {}", vol);
             sender
                 .try_send(PlayerEvent {
-                    id: TEST_ID,
+                    id: TEST_ID.clone(),
                     event_type: PlayerEventType::Buffering,
                 }).unwrap();
         }
