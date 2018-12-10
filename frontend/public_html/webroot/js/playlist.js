@@ -5,6 +5,9 @@ function getTitles(playlist) {
         success: function (response) {
             fillSongTable(playlist, response);
         },
+        error: function (response) {
+            flash('alert', 'Unable to fetch titles');
+        }
     });
 }
 
@@ -42,6 +45,9 @@ function getPlaylists() {
         success: function (response) {
             fillPlaylistTable(response);
         },
+        error: function (response) {
+            flash('alert', 'Unable to fetch playlists');
+        }
     });
 }
 
