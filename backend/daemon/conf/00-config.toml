@@ -27,8 +27,8 @@ rpc_bind_ip = "127.0.0.1"
 api_bind_port = 1338
 api_bind_ip = "127.0.0.1"
 # api callback data, daemon to frontend
-api_callback_ip = "127.0.0.1"
-api_callback_port = "1339"
+api_callback_ip = "127.0.0.1" # safe default, use 0.0.0.0 only if you know noone can access from external
+api_callback_port = "82"
 
 
 [db]
