@@ -156,7 +156,7 @@ label.required:after {
     border-radius: 0.3em;
 }
 
-td.delete-title-button {
+td.title-button {
     min-width: 32px;
     width: 32px;
     text-align: right;

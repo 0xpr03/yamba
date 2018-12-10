@@ -24,6 +24,7 @@
         <th>Artist</th>
         <th>Length</th>
         <th></th>
+        <th></th>
     </tr>
     </thead>
     <tbody id="titles-table-body">

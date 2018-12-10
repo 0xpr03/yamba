@@ -18,7 +18,12 @@ function fillSongTable(playlist, titles) {
             ' <td>' + title.name + '</td>' +
             ' <td>' + (title.artist == null ? "" : title.artist) + '</td>' +
             ' <td>' + fancyTimeFormat(title.length) + '</td>' +
-            ' <td class="delete-title-button">' +
+            ' <td class="title-button">' +
+            '  <a href="#" onclick="event.stopPropagation(); deleteTitle(\'' + playlist + '\', \'' + title.id + '\')">' +
+            '   <i class="fi-list"></i>' +
+            '  </a>' +
+            ' </td>' +
+            ' <td class="title-button">' +
             '  <a href="#" onclick="event.stopPropagation(); deleteTitle(\'' + playlist + '\', \'' + title.id + '\')">' +
             '   <span aria-hidden="true">&times;</span>' +
             '  </a>' +
@@ -81,38 +86,24 @@ function addPlaylist(form) {
         obj[item.name] = item.value;
         return obj;
     }, {});
-    let successdiv = $('#add-playlist-success-div');
-    let errordiv = $('#add-playlist-error-div');
     $.ajax({
         method: 'get',
         url: '/Music/addPlaylist',
         data: {'name': formData.name, 'url': formData.url},
         success: function (response) {
-            if (response === 'OK') {
-                $('#close-add-playlist-modal').click();
-            } else {
-                errordiv.hide();
-                successdiv.find('#add-playlist-success-span').text(response);
-                successdiv.show();
-            }
+            ajaxSuccessFlash(response);
             form.find('input[type=text]').val('');
         },
-        error: function (response) {
-            console.log(response);
-
-            successdiv.hide();
-            errordiv.find('#add-playlist-error-span').text(response.responseText);
-            errordiv.show();
-        }
+        error: ajaxErrorFlash
     });
+    $('#close-add-playlist-modal').click();
 }
 
 function deleteTitle(playlist, title) {
     $.ajax({
         method: 'get',
         url: '/Music/deleteTitle/' + playlist + '/' + title,
-        success: function (response) {
-        },
+        error: ajaxErrorFlash
     });
 }
 
@@ -121,7 +112,15 @@ function deletePlaylist(playlist) {
         method: 'get',
         url: '/Music/deletePlaylist',
         data: {'id': playlist},
-        success: function (response) {
-        },
+        error: ajaxErrorFlash
     });
+}
+
+function ajaxSuccessFlash(response) {
+    flash('success', response.responseText);
+}
+
+function ajaxErrorFlash(response) {
+    console.log(response);
+    flash('alert', response.responseText);
 }
