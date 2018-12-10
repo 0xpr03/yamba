@@ -252,12 +252,13 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-
+    use SETTINGS;
     #[test]
+    #[ignore]
     fn header_test() {
         api_send_callback(
             "localhost",
-            9000,
+            SETTINGS.main.api_callback_port,
             "music/addSongs/",
             &CallbackErrorType::NoError,
         ).unwrap();
