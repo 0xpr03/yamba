@@ -14,4 +14,8 @@ set -a
 source config/database.env
 source config/database_root.env
 set +a
-time sudo -E docker-compose up $1
+if getent group docker | grep -q $USER; then
+    time docker-compose up $1
+else
+    time sudo -E docker-compose up $1
+fi
