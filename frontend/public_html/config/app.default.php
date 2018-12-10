@@ -68,7 +68,7 @@ return [
      *   You should treat it as extremely sensitive data.
      */
     'Security' => [
-        'salt' => env('YAMBA_SECURITY_SALT', 'fa3f462a32c8ca7e39d6cf8ae0a49a4aa8fc6ac612704d914023c7994ba747e0'),
+        'salt' => env('YAMBA_SECURITY_SALT', '__SALT__'),
     ],
 
     /**
