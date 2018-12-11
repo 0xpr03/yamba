@@ -14,7 +14,7 @@ RUN apt-get update -q && apt-get install -qqy \
     net-tools \
     libasound2-dev \
     xvfb \
-    python3 \
+    python \
     libnss3 \
     curl \
     sudo \
