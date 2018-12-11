@@ -81,10 +81,8 @@ pub fn init_pool_timeout() -> Fallible<Pool> {
 /// Get instance ids with enabled autostart
 pub fn get_autostart_instance_ids(pool: &Pool) -> Fallible<Vec<i32>> {
     let instances: Fallible<Vec<i32>> = pool
-        .prep_exec(
-            "SELECT id from `instances` WHERE a `autostart` = ?",
-            (true,),
-        )?.map(|result| {
+        .prep_exec("SELECT id from `instances` WHERE `autostart` = ?", (true,))?
+        .map(|result| {
             let (id,) = from_row_opt::<(i32,)>(result?)?;
             Ok(id)
         }).collect();
