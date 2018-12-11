@@ -14,7 +14,7 @@ RUN apt-get update -q && apt-get install -qqy \
     net-tools \
     libasound2-dev \
     xvfb \
-    python \
+    python3 \
     libnss3 \
     curl \
     sudo \
@@ -56,5 +56,5 @@ RUN cargo build
 
 WORKDIR /opt/yamba/daemon/target/debug
 
-CMD /opt/yamba/daemon/target/debug/yamba-backend test-ts -h ek.proctet.net -p 7998
-#CMD /opt/yamba/daemon/target/debug/yamba-backend
+RUN ln -s $(which python3) /usr/local/bin/python
+CMD /opt/yamba/daemon/target/debug/yamba-backend
