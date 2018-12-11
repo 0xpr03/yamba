@@ -117,7 +117,7 @@ fn main() -> Fallible<()> {
         .subcommand(SubCommand::with_name("init").about("Initialize database on first execution"))
         .subcommand(
             SubCommand::with_name("play-audio")
-                .about("Test command to play audio")
+                .about("Test command to play audio, requires existing pulse device.")
                 .arg(
                     Arg::with_name("file")
                         .short("f")
@@ -128,7 +128,7 @@ fn main() -> Fallible<()> {
                 ),
         ).subcommand(
             SubCommand::with_name("test-url")
-                .about("Test playback on url, for test use")
+                .about("Test command to play audio from url, requires existing pulse device.")
                 .arg(
                     Arg::with_name("url")
                         .short("u")
@@ -173,7 +173,7 @@ fn main() -> Fallible<()> {
             );
         }
         ("play-audio", Some(sub_m)) => {
-            info!("Audio play testing..");
+            info!("Audio playback testing..");
             gst::init()?;
             let (send, recv) = mpsc::channel::<PlayerEvent>(10);
             let mut player = playback::Player::new(send, -1)?;
