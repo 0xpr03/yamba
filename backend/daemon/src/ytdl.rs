@@ -302,7 +302,11 @@ impl YtDL {
         if result.status.success() {
             Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())
         } else {
-            Err(YtDLErr::ResponseError("Process errored".into()).into())
+            Err(YtDLErr::ResponseError(format!(
+                "Process errored, response: {}; {}",
+                String::from_utf8_lossy(&result.stdout).trim().to_string(),
+                String::from_utf8_lossy(&result.stderr).trim().to_string()
+            )).into())
         }
     }
 
