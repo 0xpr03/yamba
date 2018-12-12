@@ -11,26 +11,10 @@ function getTitles(playlist) {
 function fillSongTable(playlist, titles) {
     let tableBody = $('#titles-table-body');
     tableBody.attr('data-playlist-id', playlist);
-    let content = "";
     titles.forEach((title) => {
-        content +=
-            '<tr class="pointer" onclick="/*TODO play title*/">' +
-            ' <td>' + title.name + '</td>' +
-            ' <td>' + (title.artist == null ? "" : title.artist) + '</td>' +
-            ' <td>' + fancyTimeFormat(title.length) + '</td>' +
-            ' <td class="title-button">' +
-            '  <a href="#" onclick="event.stopPropagation(); deleteTitle(\'' + playlist + '\', \'' + title.id + '\')">' +
-            '   <i class="fi-list"></i>' +
-            '  </a>' +
-            ' </td>' +
-            ' <td class="title-button">' +
-            '  <a href="#" onclick="event.stopPropagation(); deleteTitle(\'' + playlist + '\', \'' + title.id + '\')">' +
-            '   <span aria-hidden="true">&times;</span>' +
-            '  </a>' +
-            ' </td>' +
-            '</tr>';
+       title.length = fancyTimeFormat(title.length);
     });
-    tableBody.html(content);
+    tableBody.html(Mustache.render(titlesTemplate, {playlist: playlist, titles: titles}));
 }
 
 function fancyTimeFormat(time) {
@@ -63,22 +47,7 @@ function getPlaylists() {
 
 function fillPlaylistTable(playlists) {
     let tableBody = $('#playlist-table-body');
-    let content = "";
-    playlists.forEach((playlist) => {
-        content +=
-            '<tr class="pointer" onclick="getTitles(\'' + playlist.id + '\')">' +
-            ' <td>' +
-            '  <a href="#" onclick="event.stopPropagation(); deletePlaylist(\'' + playlist.id + '\')">' +
-            '   <i class="fi-trash red-trash"></i>' +
-            '  </a>' +
-            ' </td>' +
-            ' <td>' + playlist.name + '</td>' +
-            ' <td>' +
-            '  <span class="badge badge-right">' + (playlist.hasToken === "1" ? '<i class="fi-refresh large"></i>' : playlist.titles) + '</span>' +
-            ' </td>' +
-            '</tr>';
-    });
-    tableBody.html(content);
+    tableBody.html(Mustache.render(playlistsTemplate, playlists));
 }
 
 function addPlaylist(form) {
@@ -117,10 +86,9 @@ function deletePlaylist(playlist) {
 }
 
 function ajaxSuccessFlash(response) {
-    flash('success', response.responseText);
+    flash('success', response);
 }
 
 function ajaxErrorFlash(response) {
-    console.log(response);
-    flash('alert', response.responseText);
+    flash('alert', response);
 }

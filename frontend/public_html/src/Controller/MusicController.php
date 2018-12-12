@@ -148,7 +148,7 @@ class MusicController extends AppController
                     }
                 } else {
                     $status = 200;
-                    $message = 'OK';
+                    $message = 'Your playlist has been created';
                 }
             } else {
                 $message = 'Could not save the playlist';
@@ -165,7 +165,7 @@ class MusicController extends AppController
     {
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
         $query = $playlistTable->find();
-        return json_encode($query->select([
+        $res = $query->select([
             'Playlists.id',
             'Playlists.name',
             'titles' => $query->func()->count('TitlesToPlaylists.title_id'),
@@ -180,7 +180,11 @@ class MusicController extends AppController
             ->leftJoinWith('TitlesToPlaylists')
             ->contain('AddTitlesJobs')
             ->group('Playlists.id')
-            ->orderDesc('created'));
+            ->orderDesc('created')->toList();
+        foreach ($res as $p) {
+            $p->hasToken = (bool)$p->hasToken;
+        }
+        return json_encode(['playlists' => $res]);
     }
 
     public function getPlaylists()

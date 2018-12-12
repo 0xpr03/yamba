@@ -1,3 +1,22 @@
+let flashTemplate;
+let titlesTemplate;
+let playlistsTemplate;
+
+$.get('mustache/flash.mst', function(template) {
+    flashTemplate = template;
+    Mustache.parse(flashTemplate);
+});
+
+$.get('mustache/titles.mst', function(template) {
+    titlesTemplate = template;
+    Mustache.parse(titlesTemplate);
+});
+
+$.get('mustache/playlists.mst', function(template) {
+    playlistsTemplate = template;
+    Mustache.parse(playlistsTemplate);
+});
+
 App.Controllers.MusicIndexController = Frontend.AppController.extend({
     startup: function () {
         App.Websocket.onEvent('playlistsUpdated', function (payload) {
@@ -18,12 +37,11 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
 
 function flash(type, message) {
     if (message !== undefined) {
-        let flash = $('#websocket-flash-div');
-        flash.addClass(type);
-        flash.find('#websocket-flash-span').text(message);
-        flash.show();
+        let id = guid();
+        let flash = Mustache.render(flashTemplate, {id: id, type: type, message: message});
+        $('div.main').prepend(flash);
         setTimeout(function () {
-            flash.hide()
+            $('#flash-' + id).hide()
         }, 5000);
     }
 }
