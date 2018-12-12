@@ -26,6 +26,7 @@ use std::thread;
 use std::time::Duration;
 
 use pulse;
+use pulse::callbacks::ListResult;
 use pulse::context::{flags, Context, State};
 use pulse::mainloop::standard::{IterateResult, Mainloop};
 use pulse::proplist::{properties, Proplist};
@@ -35,6 +36,82 @@ use pulse::proplist::{properties, Proplist};
 type CMainloop = Arc<Mutex<Mainloop>>;
 type CContext = Arc<Mutex<Context>>;
 pub type SinkID = u32;
+
+/// Pulse audio module-null-sink
+pub struct NullSink {
+    id: SinkID,
+    monitor: SinkID,
+    context: CContext,
+    mainloop: CMainloop,
+}
+
+/// Enum for async filtering a sink via PA calls
+#[derive(PartialEq, Eq)]
+enum SinkFilterResult {
+    None,
+    Error,
+    Finished(SinkID),
+}
+
+impl NullSink {
+    /// Create new null sink
+    pub fn new(mainloop: CMainloop, context: CContext, name: &str) -> Fallible<NullSink> {
+        let sink_id: Arc<Mutex<Option<u32>>> = Arc::new(Mutex::new(None));
+        let sink_id_ref = sink_id.clone();
+        let params = format!(
+            "sinke_name={},sink_properties=device.description={}",
+            name, name
+        );
+
+        {
+            let context_l = context
+                .lock()
+                .map_err(|_| AudioErr::LockError("PA Context"))?;
+
+            context_l
+                .introspect()
+                .load_module("module-null-sink", &params, move |v| {
+                    let b: u32 = v;
+                    trace!("Module load: {}", v);
+                    *sink_id_ref.lock().unwrap() = Some(b);
+                });
+
+            let mut mainloop_l = mainloop
+                .lock()
+                .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
+
+            while sink_id.lock().unwrap().is_none() {
+                match mainloop_l.iterate(false) {
+                    IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
+                    IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
+                    IterateResult::Success(v) => {}
+                }
+            }
+        }
+
+        let mut id = sink_id.lock().unwrap();
+        let id = id.take().unwrap();
+        if id == ::std::u32::MAX {
+            // undocumented, happens on invalid params
+            return Err(AudioErr::SinkLoadErr.into());
+        }
+
+        Ok(NullSink {
+            monitor: get_sink_monitor(&mainloop, &context, id)?,
+            id: id,
+            mainloop,
+            context,
+        })
+    }
+}
+
+impl Drop for NullSink {
+    fn drop(&mut self) {
+        if let Err(e) = delete_virtual_sink(self.mainloop.clone(), self.context.clone(), self.id) {
+            warn!("Unable to delete sink {}", self.id);
+        }
+    }
+}
 
 #[derive(Fail, Debug)]
 pub enum AudioErr {
@@ -54,6 +131,56 @@ pub enum AudioErr {
     SinkUnloadErr,
     #[fail(display = "Couldn't load sink, received invalid ID")]
     SinkLoadErr,
+    #[fail(display = "Error when retrieving sinks")]
+    SinkRetrieveErr,
+    #[fail(display = "Couldn't aquire lock for {}", _0)]
+    LockError(&'static str),
+}
+
+/// Retrieve monitor ID of sink
+fn get_sink_monitor(mainloop: &CMainloop, context: &CContext, sink: SinkID) -> Fallible<SinkID> {
+    let success: Arc<Mutex<SinkFilterResult>> = Arc::new(Mutex::new(SinkFilterResult::None));
+    let success_ref = success.clone();
+
+    let context = context
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Context"))?;
+    context
+        .introspect()
+        .get_source_info_list(move |res| match res {
+            ListResult::Item(source) => {
+                if source.monitor_of_sink == Some(sink) {
+                    *success_ref.lock().unwrap() = SinkFilterResult::Finished(source.index);
+                }
+            }
+            ListResult::End => {
+                *success_ref.lock().unwrap() = SinkFilterResult::None;
+            }
+            ListResult::Error => {
+                warn!("Error at fetching PA sources list");
+                *success_ref.lock().unwrap() = SinkFilterResult::Error;
+            }
+        });
+
+    let mut mainloop = mainloop
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
+
+    while *success.lock().unwrap() == SinkFilterResult::None {
+        match mainloop.iterate(false) {
+            IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
+            IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
+            IterateResult::Success(_) => {}
+        }
+    }
+
+    let value = match *success.lock().unwrap() {
+        SinkFilterResult::Finished(v) => v,
+        SinkFilterResult::None => panic!("Unreachable!"),
+        SinkFilterResult::Error => return Err(AudioErr::SinkRetrieveErr.into()),
+    };
+
+    Ok(value)
 }
 
 /// Set source of process to specified source_id
@@ -96,9 +223,6 @@ pub fn set_process_source(
     Ok(())
 }
 
-/// Get application source ID
-//pub fn get_application_source_id(application: u32) -> Fallible<u32> {}
-
 /// Delete virtual sink
 fn delete_virtual_sink(mainloop: CMainloop, context: CContext, sink_id: SinkID) -> Fallible<()> {
     let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
@@ -128,38 +252,6 @@ fn delete_virtual_sink(mainloop: CMainloop, context: CContext, sink_id: SinkID) 
         return Err(AudioErr::SinkUnloadErr.into());
     }
     Ok(())
-}
-
-/// Create virtual sink
-pub fn create_virtual_sink(mainloop: CMainloop, context: CContext, name: &str) -> Fallible<u32> {
-    let sink_id: Arc<Mutex<Option<u32>>> = Arc::new(Mutex::new(None));
-    let sink_id_ref = sink_id.clone();
-    let params = format!("sink_properties=device.description=Yamba_Device",);
-    context
-        .borrow()
-        .introspect()
-        .load_module("module-null-sink", &params, move |v| {
-            let b: u32 = v;
-            trace!("Module load: {}", v);
-            *sink_id_ref.lock().unwrap() = Some(b);
-        });
-
-    while sink_id.lock().unwrap().is_none() {
-        match mainloop.borrow_mut().iterate(false) {
-            IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
-            IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
-            IterateResult::Success(v) => {}
-        }
-    }
-
-    let mut v = sink_id.lock().unwrap();
-    let v = v.take().unwrap();
-    if v == ::std::u32::MAX {
-        // undocumented, happens on invalid params
-        return Err(AudioErr::SinkLoadErr.into());
-    }
-
-    Ok(v)
 }
 
 /// Init pulse audio context
@@ -229,11 +321,9 @@ mod test {
     fn virtual_sink_test() {
         let (mloop, context) = init().unwrap();
 
-        let sink_1 = create_virtual_sink(mloop.clone(), context.clone(), "sink1").unwrap();
-        println!("sink1 id:{}", sink_1);
+        let sink_1 = NullSink::new(mloop.clone(), context.clone(), "sink1").unwrap();
 
-        let sink_2 = create_virtual_sink(mloop.clone(), context.clone(), "sink2").unwrap();
-        println!("sink2 id:{}", sink_2);
+        let sink_2 = NullSink::new(mloop.clone(), context.clone(), "sink2").unwrap();
 
         println!("Sinks created..");
         // let mut a = String::from("");
@@ -241,16 +331,12 @@ mod test {
         // reader.read_line(&mut a);
         thread::sleep(Duration::from_millis(500));
 
-        delete_virtual_sink(mloop.clone(), context.clone(), sink_1).unwrap();
+        drop(sink_1);
 
         println!("Deleted first sink");
         thread::sleep(Duration::from_millis(500));
 
-        delete_virtual_sink(mloop.clone(), context.clone(), sink_2).unwrap();
+        drop(sink_2);
         println!("Deleted second sink");
-
-        let res = delete_virtual_sink(mloop.clone(), context.clone(), sink_2);
-        assert!(res.is_err());
-        println!("Tested double unload");
     }
 }
