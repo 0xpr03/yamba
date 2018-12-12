@@ -32,10 +32,8 @@ use pulse::proplist::{properties, Proplist};
 
 /// Audio controller. Handling audio devices
 
-pub struct Device {}
-
-type CMainloop = Rc<RefCell<Mainloop>>;
-type CContext = Rc<RefCell<Context>>;
+type CMainloop = Arc<Mutex<Mainloop>>;
+type CContext = Arc<Mutex<Context>>;
 pub type SinkID = u32;
 
 #[derive(Fail, Debug)]
@@ -67,7 +65,10 @@ pub fn set_process_source(
 ) -> Fallible<()> {
     let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
     let success_ref = success.clone();
-    context.borrow().introspect().move_source_output_by_index(
+    let context = context
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Context"))?;
+    context.introspect().move_source_output_by_index(
         process,
         source_id,
         Some(Box::new(move |v| {
@@ -77,8 +78,12 @@ pub fn set_process_source(
         })),
     );
 
+    let mut mainloop = mainloop
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
+
     while success.lock().unwrap().is_none() {
-        match mainloop.borrow_mut().iterate(false) {
+        match mainloop.iterate(false) {
             IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
             IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
             IterateResult::Success(_) => {}
@@ -95,20 +100,24 @@ pub fn set_process_source(
 //pub fn get_application_source_id(application: u32) -> Fallible<u32> {}
 
 /// Delete virtual sink
-pub fn delete_virtual_sink(mainloop: CMainloop, context: CContext, sink_id: u32) -> Fallible<()> {
+fn delete_virtual_sink(mainloop: CMainloop, context: CContext, sink_id: SinkID) -> Fallible<()> {
     let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
     let success_ref = success.clone();
-    context
-        .borrow()
-        .introspect()
-        .unload_module(sink_id, move |v| {
-            let b = v;
-            trace!("Module unload: {}", v);
-            *success_ref.lock().unwrap() = Some(b);
-        });
+    let context = context
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Context"))?;
+    context.introspect().unload_module(sink_id, move |v| {
+        let b = v;
+        trace!("Module unload: {}", v);
+        *success_ref.lock().unwrap() = Some(b);
+    });
+
+    let mut mainloop = mainloop
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
 
     while success.lock().unwrap().is_none() {
-        match mainloop.borrow_mut().iterate(false) {
+        match mainloop.iterate(false) {
             IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
             IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
             IterateResult::Success(_) => {}
@@ -160,36 +169,47 @@ pub fn init() -> Fallible<(CMainloop, CContext)> {
     proplist
         .sets(properties::APPLICATION_NAME, "yamba")
         .map_err(|_| AudioErr::PropSetErr)?;
-    let mainloop = Rc::new(RefCell::new(Mainloop::new().unwrap()));
-    let context = Rc::new(RefCell::new(
-        Context::new_with_proplist(mainloop.borrow().deref(), "yamba", &proplist)
+    let mainloop = Arc::new(Mutex::new(Mainloop::new().unwrap()));
+
+    let mut mainloop_l = mainloop
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
+
+    let context = Arc::new(Mutex::new(
+        Context::new_with_proplist(mainloop_l.deref(), "yamba", &proplist)
             .ok_or(AudioErr::ContextCreateErr)?,
     ));
-    context
-        .borrow_mut()
-        .connect(None, flags::NOFLAGS, None)
-        .map_err(|v| AudioErr::ContextConnectErr(v))?;
 
-    loop {
-        match mainloop.borrow_mut().iterate(false) {
-            IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
-            IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
-            IterateResult::Success(_) => {}
-        }
-        match context.borrow().get_state() {
-            State::Ready => {
-                break;
+    {
+        let mut context_l = context
+            .lock()
+            .map_err(|_| AudioErr::LockError("PA Context"))?;
+
+        context_l
+            .connect(None, flags::NOFLAGS, None)
+            .map_err(|v| AudioErr::ContextConnectErr(v))?;
+
+        loop {
+            match mainloop_l.iterate(false) {
+                IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
+                IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
+                IterateResult::Success(_) => {}
             }
-            State::Failed => return Err(AudioErr::ContextConnectingErr("State: Failed").into()),
-            State::Terminated => {
-                return Err(AudioErr::ContextConnectingErr("State: Terminated").into())
+            match context_l.get_state() {
+                State::Ready => {
+                    break;
+                }
+                State::Failed => return Err(AudioErr::ContextConnectingErr("State: Failed").into()),
+                State::Terminated => {
+                    return Err(AudioErr::ContextConnectingErr("State: Terminated").into())
+                }
+                _ => {}
             }
-            _ => {}
         }
     }
     debug!("Audio context ready");
 
-    Ok((mainloop, context))
+    Ok((mainloop.clone(), context))
 }
 
 #[cfg(test)]
