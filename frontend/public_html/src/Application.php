@@ -59,7 +59,7 @@ class Application extends BaseApplication
             $this->addPlugin(\DebugKit\Plugin::class);
         }
 
-        Plugin::load('Websocket', ['bootstrap' => true, 'routes' => true]);
+        $this->addPlugin('Websocket', ['bootstrap' => true, 'routes' => true]);
     }
 
     /**
