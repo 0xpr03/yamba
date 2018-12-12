@@ -7,21 +7,25 @@ services:
     image: mariadb:10.3.10-bionic
     restart: always
     ports:
-    - 3306:3306
+      - 3306:3306
     volumes:
-    - ./dbInit:/docker-entrypoint-initdb.d
-    - ./database:/var/lib/mysql
+      - ./dbInit:/docker-entrypoint-initdb.d
+#      - ./database:/var/lib/mysql
     env_file:
-    - ./config/database.env
-    - ./config/database_root.env
+      - ./config/database.env
+      - ./config/database_root.env
+    environment:
+      MYSQL_DATABASE: "${YAMBA_DATABASE_DATABASE}"
+      MYSQL_USER: "${YAMBA_DATABASE_USER}"
+      MYSQL_PASSWORD: "${YAMBA_DATABASE_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${YAMBA_DATABASE_ROOT_PASSWORD}"
 
   frontend:
     build: ./frontend
     ports:
       - 9000:80
-    volumes:
-      - ./downloads:/var/yamba/downloads
-      - ./frontend/public_html:/var/www/html
+#    volumes:
+#      - ./frontend/public_html:/var/www/html
     env_file:
       - ./config/frontend.env
       - ./config/database.env
@@ -29,8 +33,14 @@ services:
 
   backend:
     build: ./backend
+    volumes:
+#      - ./backend/daemon/target/debug:/opt/yamba/daemon/target/debug
+      - ./backend/ts3client:/opt/ts3client
     env_file:
       - ./config/backend.env
-      - ./config/database.env
-    volumes:
-      - ./backend/ts3client:/opt/ts3client
+    environment:
+      yamba_db__host: "${YAMBA_DATABASE_HOST}"
+      yamba_db__port: "${YAMBA_DATABASE_PORT}"
+      yamba_db__user: "${YAMBA_DATABASE_USER}"
+      yamba_db__db: "${YAMBA_DATABASE_DATABASE}"
+      yamba_db__password: "${YAMBA_DATABASE_PASSWORD}"

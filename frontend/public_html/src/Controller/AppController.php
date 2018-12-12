@@ -50,14 +50,17 @@ class AppController extends Controller
         $this->loadComponent('Flash');
         $this->loadComponent('Auth', [
             'loginAction' => [
+                'prefix' => false,
                 'controller' => 'Users',
                 'action' => 'login',
             ],
             'loginRedirect' => [
+                'prefix' => false,
                 'controller' => 'Music',
                 'action' => 'index'
             ],
             'logoutRedirect' => [
+                'prefix' => false,
                 'controller' => 'Users',
                 'action' => 'login',
             ],
@@ -76,7 +79,7 @@ class AppController extends Controller
          * Enable the following component for recommended CakePHP security settings.
          * see https://book.cakephp.org/3.0/en/controllers/components/security.html
          */
-        //$this->loadComponent('Security');
+        $this->loadComponent('Security');
         $this->loadComponent('FrontendBridge.FrontendBridge');
     }
 

@@ -20,6 +20,8 @@ use Cake\Core\Plugin;
 use Cake\Error\Middleware\ErrorHandlerMiddleware;
 use Cake\Http\BaseApplication;
 use Cake\Http\Middleware\CsrfProtectionMiddleware;
+use Cake\Http\Response;
+use Cake\Http\ServerRequest;
 use Cake\Routing\Middleware\AssetMiddleware;
 use Cake\Routing\Middleware\RoutingMiddleware;
 
@@ -57,7 +59,7 @@ class Application extends BaseApplication
             $this->addPlugin(\DebugKit\Plugin::class);
         }
 
-        Plugin::load('Websocket', ['bootstrap' => true, 'routes' => true]);
+        $this->addPlugin('Websocket', ['bootstrap' => true, 'routes' => true]);
     }
 
     /**
@@ -85,9 +87,24 @@ class Application extends BaseApplication
             ->add(new RoutingMiddleware($this, '_cake_routes_'))
 
             // Add csrf middleware.
-            ->add(new CsrfProtectionMiddleware([
-                'httpOnly' => true
-            ]));
+            ->add(function (
+                ServerRequest $request,
+                Response $response,
+                callable $next
+            ) {
+                $params = $request->getAttribute('params');
+                if ($params['controller'] !== 'Music' || $params['action'] !== 'addTitles') {
+                    $csrf = new CsrfProtectionMiddleware([
+                        'httpOnly' => true
+                    ]);
+
+                    // This will invoke the CSRF middleware's `__invoke()` handler,
+                    // just like it would when being registered via `add()`.
+                    return $csrf($request, $response, $next);
+                }
+
+                return $next($request, $response);
+            });
 
         return $middlewareQueue;
     }

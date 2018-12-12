@@ -14,6 +14,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
+
 use jsonrpc_lite::{Error, Id, JsonRpc};
 
 use daemon::{self, BoxFut};
@@ -25,6 +26,8 @@ use hyper::{Body, Request, Response, Server};
 use serde_json::{self, to_value};
 use tokio::runtime;
 use SETTINGS;
+
+/// RPC server for client callbacks
 
 #[derive(Fail, Debug)]
 pub enum RPCErr {
@@ -55,6 +58,7 @@ fn rpc(req: Request<Body>) -> BoxFut {
     }))
 }
 
+/// Check config for RPC, throws an error if not ok for starting
 pub fn check_config() -> Fallible<()> {
     let _ = daemon::parse_socket_address(&SETTINGS.main.rpc_bind_ip, SETTINGS.main.rpc_bind_port)?;
     Ok(())

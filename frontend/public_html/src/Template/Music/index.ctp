@@ -22,6 +22,6 @@
         <?= $this->element('playlists'); ?>
     </div>
     <div class="columns">
-
+        <?= $this->element('titles'); ?>
     </div>
 </div>

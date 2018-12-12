@@ -1,3 +1,8 @@
 /target/
 /ytdl/
 /.vscode/
+/ts/
+*.code-workspace
+*.mp3
+*.mp4
+*.json

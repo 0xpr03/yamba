@@ -20,7 +20,7 @@ $port = parse_url(env('HTTP_HOST'), PHP_URL_PORT);
 if (empty($port)) $port = 81; //This needs to be the port specified in the nginx websocket proxy pass
 
 return [
-    'password_minlength' => env('PASSWORD_MINLENGTH', 3),
+    'password_minlength' => env('YAMBA_PASSWORD_MINLENGTH', 3),
     'Websocket' => [
         'ssl' => false,
         'host' => '127.0.0.1',
@@ -47,8 +47,8 @@ return [
             'engine' => 'josegonzalez\Queuesadilla\Engine\MysqlEngine',
             'database' => 'queuesadilla',
             'host' => 'database',
-            'user' => env('DATABASE_USERNAME', 'root'),
-            'pass' => env('ROOT_PASSWORD', '1234fuenf'),
+            'user' => env('YAMBA_DATABASE_USERNAME'),
+            'pass' => env('YAMBA_DATABASE_ROOT_PASSWORD'),
         ],
     ],
 ];

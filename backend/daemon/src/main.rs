@@ -19,7 +19,6 @@
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
-extern crate vlc;
 #[macro_use]
 extern crate clap;
 extern crate log4rs;
@@ -43,6 +42,19 @@ extern crate serde_urlencoded;
 extern crate sha2;
 extern crate tokio;
 extern crate tokio_signal;
+extern crate tokio_threadpool;
+#[macro_use]
+extern crate mysql;
+extern crate chrono;
+extern crate erased_serde;
+extern crate glib;
+extern crate gstreamer as gst;
+extern crate gstreamer_player as gst_player;
+extern crate hashbrown;
+extern crate libpulse_binding as pulse;
+extern crate libpulse_glib_binding as pglib;
+extern crate libpulse_sys as pulse_sys;
+extern crate metrohash;
 
 use std::alloc::System;
 
@@ -50,23 +62,33 @@ use std::alloc::System;
 static GLOBAL: System = System;
 
 mod api;
+mod audio;
 mod config;
 mod daemon;
+mod db;
 mod http;
 mod models;
 mod playback;
 mod rpc;
 mod ts;
 mod ytdl;
+mod ytdl_worker;
 
 use clap::{App, Arg, SubCommand};
 use failure::Fallible;
+use futures::sync::mpsc;
+use futures::Stream;
+use tokio::runtime;
 
 use std::fs::{metadata, DirBuilder, File};
 use std::io::Write;
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
+
+use playback::{PlayerEvent, PlayerEventType};
+
+/// Main
 
 const DEFAULT_CONFIG_NAME: &'static str = "00-config.toml";
 const CONF_DIR: &'static str = "conf";
@@ -78,6 +100,7 @@ lazy_static! {
         info!("Loading config..");
         config::init_settings().unwrap()
     };
+    static ref USERAGENT: String = format!("YAMBA v{}", VERSION);
 }
 
 fn main() -> Fallible<()> {
@@ -94,7 +117,7 @@ fn main() -> Fallible<()> {
         .subcommand(SubCommand::with_name("init").about("Initialize database on first execution"))
         .subcommand(
             SubCommand::with_name("play-audio")
-                .about("Test command to play audio")
+                .about("Test command to play audio, requires existing pulse device.")
                 .arg(
                     Arg::with_name("file")
                         .short("f")
@@ -105,7 +128,7 @@ fn main() -> Fallible<()> {
                 ),
         ).subcommand(
             SubCommand::with_name("test-url")
-                .about("Test playback on url, for test use")
+                .about("Test command to play audio from url, requires existing pulse device.")
                 .arg(
                     Arg::with_name("url")
                         .short("u")
@@ -125,7 +148,7 @@ fn main() -> Fallible<()> {
                 ).arg(
                     Arg::with_name("port")
                         .short("p")
-                        .required(true)
+                        .required(false)
                         .takes_value(true)
                         .help("port address"),
                 ).arg(
@@ -150,44 +173,55 @@ fn main() -> Fallible<()> {
             );
         }
         ("play-audio", Some(sub_m)) => {
-            info!("Audio play testing..");
-            let instance = playback::Player::create_instance()?;
-            let mut player = playback::Player::new(&instance)?;
+            info!("Audio playback testing..");
+            gst::init()?;
+            let (send, recv) = mpsc::channel::<PlayerEvent>(10);
+            let mut player = playback::Player::new(send, -1)?;
             let path = get_path_for_existing_file(sub_m.value_of("file").unwrap()).unwrap();
-            player.set_file(&path)?;
-            player.play()?;
+            player.set_uri(&path.to_string_lossy());
+            player.play();
 
             debug!("File: {:?}", path);
-            while !player.ended() {
-                trace!("Position: {}", player.get_position());
-                thread::sleep(Duration::from_millis(500));
-            }
+
+            tokio::run(recv.for_each(move |event| {
+                println!("Event: {:?}", event);
+                Ok(())
+            }));
+
             info!("Finished");
         }
         ("test-url", Some(sub_m)) => {
             info!("Url play testing..");
-            let instance = playback::Player::create_instance()?;
             {
-                let mut player = playback::Player::new(&instance)?;
+                gst::init()?;
+                let (send, recv) = mpsc::channel::<PlayerEvent>(10);
+                let (mut send_s, recv_s) = mpsc::channel::<bool>(1);
+                let player = playback::Player::new(send, -1)?;
                 let url = sub_m.value_of("url").unwrap();
-                for i in 0..100 {
-                    player.set_url(&url)?;
-                    player.play()?;
+                player.set_uri(&url);
+                player.play();
 
+                let mut runtime = runtime::Runtime::new()?;
+                {
                     debug!("url: {:?}", url);
-                    while !player.ended() {
-                        trace!("Position: {}", player.get_position());
-                        thread::sleep(Duration::from_millis(250));
-                        // play around with volume
-                        player.set_volume((player.get_position() * 1000.0) as i32 % 100)?;
-                    }
-                    println!("playthough finished {}", i);
+                    runtime.spawn(recv.for_each(move |event| {
+                        println!("Event: {:?}", event);
+                        match event.event_type {
+                            PlayerEventType::PositionUpdated => {
+                                player.set_volume(f64::from(player.get_position()) / 1000.0);
+                            }
+                            PlayerEventType::EndOfStream => {
+                                send_s.try_send(true).unwrap();
+                            }
+                            _ => {}
+                        }
+                        Ok(())
+                    }));
+
+                    runtime.block_on(recv_s.for_each(|b| Ok(()))).unwrap();
                 }
-                drop(player);
+                println!("playthough finished");
             }
-            drop(instance);
-            info!("finished, waiting..");
-            thread::sleep(Duration::from_millis(5000));
             info!("Finished");
         }
         ("test-ts", Some(sub_m)) => {
@@ -197,22 +231,27 @@ fn main() -> Fallible<()> {
                 SETTINGS.ts.dir, SETTINGS.ts.start_binary
             );
             let addr = sub_m.value_of("host").unwrap();
-            let port = sub_m.value_of("port").unwrap().parse::<u16>().unwrap();
-            let cid = sub_m
-                .value_of("cid")
-                .unwrap_or("-1")
-                .parse::<i32>()
-                .unwrap();
+            let port = sub_m.value_of("port").map(|v| v.parse::<u16>().unwrap());
+            let cid = sub_m.value_of("cid").map(|v| v.parse::<i32>().unwrap());
 
-            let _instance = ts::TSInstance::spawn(
-                0,
-                addr,
+            let settings = models::TSSettings {
+                id: 0,
+                host: addr.to_string(),
                 port,
-                "",
+                identity: "".to_string(),
                 cid,
-                "Test Bot Instance",
-                &SETTINGS.main.rpc_bind_port,
-            )?;
+                name: "Test Bot Instance".to_string(),
+                password: None,
+                autostart: true,
+            };
+
+            let _instance = match ts::TSInstance::spawn(&settings, &SETTINGS.main.rpc_bind_port) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Error at instance start: {}", e);
+                    return Err(e);
+                }
+            };
 
             info!("Started, starting RPC server..");
 

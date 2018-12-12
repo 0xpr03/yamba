@@ -20,14 +20,18 @@
 <nav class="top-bar" data-topbar role="navigation">
     <div class="top-bar-left">
         <ul class="menu" data-dropdown-menu>
-            <li><a href="#" class="logo-font" onclick="fetchContent('/', 'content')">Yamba</a></li>
+            <li>
+                <a href="/" class="logo-font">
+                    <img src="/img/logo-silhouette.svg">
+                </a>
+            </li>
         </ul>
     </div>
     <div class="top-bar-right">
         <ul class="menu">
             <?php if($this->request->getSession()->read('Auth.User')) { ?>
             <li class="divider">
-                <a href="#" class="header-font" onclick="fetchContent('/Accounts/settings', 'accSettings')" title="Account Settings"><i class="fi-widget"></i></a>
+                <a href="/accounts/settings" class="header-font" title="Account Settings"><i class="fi-widget"></i></a>
             </li>
             <li class="divider"><?= $this->Html->link(
                 'Logout',

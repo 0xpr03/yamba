@@ -26,14 +26,20 @@ rpc_bind_ip = "127.0.0.1"
 # api server binding socket
 api_bind_port = 1338
 api_bind_ip = "127.0.0.1"
+# api callback data, daemon to frontend
+api_callback_ip = "127.0.0.1" # safe default, use 0.0.0.0 only if you know noone can access from external
+api_callback_port = "82"
 
 
 [db]
 port = 3306
 user = "yamba"
 use_password = false
-password = ""
+password = "password"
 db = "yamba"
+host = "127.0.0.1"
+# retry db connection on startup, seconds
+retry_time=60
 
 [ytdl]
 dir="ytdl"
@@ -53,7 +59,5 @@ timeout_version=10
 dir = "ts"
 # start script/executable
 start_binary = "ts3client_linux_amd64"
-# additional arguments to pass at first to xvfb
-additional_args_xvfb = ["--auto-servernum", "--server-args=-screen 0 640x480x24:32"]
 # additional arguments to pass at first to the binary
 additional_args_binary= []

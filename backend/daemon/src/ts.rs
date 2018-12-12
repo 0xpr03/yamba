@@ -25,12 +25,16 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::thread;
 use std::time::Duration;
+use std::vec::Vec;
 
 use std::env::current_dir;
 
 use rusqlite::{self, Connection};
 
+use models::TSSettings;
 use SETTINGS;
+
+/// TS Instance
 
 const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
 const TS_ENV_ID: &'static str = "ID_YAMBA";
@@ -40,7 +44,7 @@ const TS_SETTINGS_FILE: &'static str = "settings.db";
 pub enum TSInstanceErr {
     #[fail(display = "Database Error on configuring instance {}", _0)]
     Database(#[cause] rusqlite::Error),
-    #[fail(display = "Instance spawn error {}", _0)]
+    #[fail(display = "TS Instance spawn error {}", _0)]
     SpawnError(#[cause] io::Error),
     #[fail(display = "Pipe error processing ytdl output {}", _0)]
     PipeError(String),
@@ -70,6 +74,7 @@ impl Drop for TSInstance {
 }
 
 /// TS Instance, kills itself on drop
+#[derive(Debug)]
 pub struct TSInstance {
     id: i32,
     process: Child,
@@ -77,22 +82,25 @@ pub struct TSInstance {
 
 impl TSInstance {
     /// Create a new instance controller
-    /// ID is used on callbacks
-    pub fn spawn(
-        id: i32,
-        address: &str,
-        port: u16,
-        password: &str,
-        cid: i32,
-        name: &str,
-        rpc_port: &u16,
-    ) -> Fallible<TSInstance> {
-        let ts_url = serde_urlencoded::to_string(vec![
-            ("port".to_owned(), port.to_string()),
-            ("nickname".to_owned(), name.to_string()),
-            ("password".to_owned(), password.to_string()),
-            ("cid".to_owned(), cid.to_string()),
-        ])?;
+    /// Created from TSSettings model
+    /// rpc port is for callbacks used by the yamba plugin
+    pub fn spawn(settings: &TSSettings, rpc_port: &u16) -> Fallible<TSInstance> {
+        let mut params = Vec::new();
+        if let Some(v) = settings.port {
+            params.push(("port".to_owned(), v.to_string()));
+        }
+
+        if let Some(v) = settings.cid {
+            params.push(("cid".to_owned(), v.to_string()));
+        }
+
+        if let Some(ref v) = settings.password {
+            params.push(("password".to_owned(), v.to_string()));
+        }
+
+        params.push(("nickname".to_owned(), settings.name.to_string()));
+
+        let ts_url = serde_urlencoded::to_string(params)?;
         let path_binary = PathBuf::from(&SETTINGS.ts.dir);
         let path_binary = path_binary.join(&SETTINGS.ts.start_binary);
         let library_path = format!(
@@ -100,7 +108,7 @@ impl TSInstance {
             env::var("LD_LIBRARY_PATH").unwrap_or("".to_string())
         );
 
-        let path = current_dir()?.join("ts").join(format!("{}", id));
+        let path = current_dir()?.join("ts").join(format!("{}", settings.id));
         DirBuilder::new()
             .recursive(true)
             .create(&path)
@@ -115,13 +123,13 @@ impl TSInstance {
             .env("KDEDIR", "")
             .env("KDEDIRS", "")
             .env("TS3_CONFIG_DIR", path.to_string_lossy().into_owned())
-            .env(TS_ENV_ID, id.to_string())
+            .env(TS_ENV_ID, settings.id.to_string())
             .env(TS_ENV_CALLBACK, rpc_port.to_string())
             .args(&["--auto-servernum", "--server-args=-screen 0 640x480x24:32"])
             .arg(path_binary.to_string_lossy().to_mut())
             .args(&SETTINGS.ts.additional_args_binary)
             .arg("-nosingleinstance")
-            .arg(format!("ts3server://{}?{}", address, ts_url));
+            .arg(format!("ts3server://{}?{}", settings.host, ts_url));
         trace!("TS Workdir: {}", &SETTINGS.ts.dir);
         trace!("CMD: {:?}", cmd);
 
@@ -130,7 +138,7 @@ impl TSInstance {
 
         if !path.exists() {
             info!("Missing instance settings, creating..");
-            let mut child = cmd.spawn()?;
+            let mut child = cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?;
             thread::sleep(Duration::from_millis(5000));
             child.kill()?;
             TSInstance::wait_for_child_timeout(1000, &mut child)?;
@@ -145,7 +153,7 @@ impl TSInstance {
         }
 
         Ok(TSInstance {
-            id,
+            id: settings.id.clone(), // TODO decide for non copy solution
             process: cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?,
         })
     }

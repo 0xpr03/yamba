@@ -15,14 +15,14 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::env::current_dir;
 use std::fs::{remove_file, rename, set_permissions, DirBuilder, File};
+use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead, BufReader, ErrorKind, Read};
 use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, RwLock};
-
-use std::env::current_dir;
-use std::path::{Path, PathBuf};
 use std::thread;
 
 use failure::{Fallible, ResultExt};
@@ -33,6 +33,8 @@ use sha2::{Digest, Sha256};
 use http;
 use SETTINGS;
 
+/// Ytdl handler
+
 const UPDATE_VERSION_KEY: &'static str = "latest";
 // key in the json map
 const VERSIONS_KEY: &'static str = "versions";
@@ -41,18 +43,6 @@ const VERSION_BIN_KEY: &'static str = "bin";
 // key for versions sub group
 const VERSION_SHA_INDEX: usize = 1;
 const YTDL_NAME: &'static str = "youtube-dl"; // name of the python program file
-
-const KEY_LENGTH: &'static str = "duration";
-const KEY_TITLE: &'static str = "fulltitle";
-const KEY_FOMATS: &'static str = "formats";
-// list of available formats
-const KEY_FORMAT: &'static str = "format";
-// format name of entry
-const KEY_FORMAT_URL: &'static str = "url";
-const KEY_FORMAT_CODEC_AUDIO: &'static str = "acodec";
-const KEY_FORMAT_CODEC_VIDEO: &'static str = "vcodec";
-const KEY_ID: &'static str = "id";
-const KEY_DECODER: &'static str = "extractor_key";
 
 lazy_static! {
     static ref LOCK: Arc<RwLock<()>> = Arc::new(RwLock::new(()));
@@ -66,6 +56,8 @@ pub struct Track {
     pub duration: Option<f64>,
     pub formats: Vec<Format>,
     pub protocol: Option<String>,
+    pub webpage_url: String,
+    pub artist: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -81,6 +73,13 @@ pub struct Format {
     pub acodec: Option<String>,
     // audio codec
     pub http_headers: HttpHeaders,
+}
+
+impl Hash for Track {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.title.hash(state);
+        self.extractor.hash(state);
+    }
 }
 
 impl Track {
@@ -292,6 +291,7 @@ impl YtDL {
     fn cmd_base(&self) -> Command {
         let mut cmd = Command::new(self.get_exec_path());
         cmd.current_dir(&self.base);
+        cmd.arg("--no-warnings");
         cmd
     }
 
@@ -302,7 +302,11 @@ impl YtDL {
         if result.status.success() {
             Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())
         } else {
-            Err(YtDLErr::ResponseError("Process errored".into()).into())
+            Err(YtDLErr::ResponseError(format!(
+                "Process errored, response: {}; {}",
+                String::from_utf8_lossy(&result.stdout).trim().to_string(),
+                String::from_utf8_lossy(&result.stderr).trim().to_string()
+            )).into())
         }
     }
 

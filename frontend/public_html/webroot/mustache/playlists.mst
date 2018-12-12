@@ -1,0 +1,20 @@
+{{#playlists}}
+<tr class="pointer" onclick="getTitles('{{id}}')">
+    <td>
+        <a href="#" onclick="event.stopPropagation(); deletePlaylist('{{id}}')">
+            <i class="fi-trash red-trash"></i>
+        </a>
+    </td>
+    <td>{{name}}</td>
+    <td>
+        <span class="badge badge-right">
+            {{#hasToken}}
+                <i class="fi-refresh large"></i>
+            {{/hasToken}}
+            {{^hasToken}}
+                {{titles}}
+            {{/hasToken}}
+        </span>
+    </td>
+</tr>
+{{/playlists}}

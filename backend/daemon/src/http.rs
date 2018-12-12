@@ -26,6 +26,8 @@ use std::time::Duration;
 
 use SETTINGS;
 
+/// Http request abstraction for blocking http requests
+
 /// Header type for get requests
 pub enum HeaderType {
     /// Html browser request

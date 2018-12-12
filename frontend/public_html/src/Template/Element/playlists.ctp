@@ -17,10 +17,10 @@
 */
 ?>
 
-<table class="hover playlist-table">
+<table id="playlist-table" class="hover">
     <thead>
     <tr>
-        <th colspan="3" style="font-weight: bold; padding: 0">
+        <th colspan="3" style="padding: 0">
             <button class="button expanded" data-open="add-playlist-modal"
                     style="margin-bottom:0;width: 100%; height: 100%"><?= __('New Playlist') ?></button>
             <div class="reveal small" id="add-playlist-modal" data-reveal>
@@ -50,18 +50,20 @@
                             <?= $this->Form->submit('Create Playlist', ['class' => 'button expanded radius']); ?>
                         </div>
                     </div>
-                    <div id="add-playlist-error-div" class="row callout alert" style="display:none" data-closable>
-                        <span id="add-playlist-error-span"></span>
-                        <button class="close-button" aria-label="Dismiss alert" type="button" data-close>
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
                 </fieldset>
                 <?= $this->Form->end() ?>
             </div>
         </th>
     </tr>
     </thead>
-    <tbody id="playlist-table">
+    <tbody id="playlist-table-body">
     </tbody>
 </table>
+<script>
+    getPlaylists();
+    let form = $('#add-playlist-form');
+    form.submit(function (event) {
+        event.preventDefault();
+        addPlaylist(form);
+    });
+</script>

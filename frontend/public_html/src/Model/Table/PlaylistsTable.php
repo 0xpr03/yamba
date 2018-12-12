@@ -24,7 +24,10 @@ class PlaylistsTable extends Table
     public function initialize(array $config)
     {
         parent::initialize($config);
-        $this->hasMany('titles_to_playlists', [
+        $this->hasMany('TitlesToPlaylists', [
+            'dependent' => true
+        ]);
+        $this->hasOne('AddTitlesJobs', [
             'dependent' => true
         ]);
     }

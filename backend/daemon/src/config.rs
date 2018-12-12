@@ -25,6 +25,8 @@ use failure::Fallible;
 
 use {CONF_DIR, DEFAULT_CONFIG_NAME};
 
+/// Config handler
+
 #[derive(Fail, Debug)]
 pub enum ConfigErr {
     #[fail(display = "Unable to open default config {}", _0)]
@@ -51,7 +53,6 @@ pub struct ConfigRoot {
 pub struct ConfigTS {
     pub dir: String,
     pub start_binary: String,
-    pub additional_args_xvfb: Vec<String>,
     pub additional_args_binary: Vec<String>,
 }
 
@@ -62,15 +63,19 @@ pub struct ConfigMain {
     pub rpc_bind_ip: String,
     pub api_bind_port: u16,
     pub api_bind_ip: String,
+    pub api_callback_port: u16,
+    pub api_callback_ip: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigDB {
-    pub port: i16,
+    pub host: String,
+    pub port: u16,
     pub user: String,
     pub use_password: bool,
     pub password: String,
     pub db: String,
+    pub retry_time: u16,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -86,6 +91,7 @@ pub struct ConfigYtDL {
 /// Init settings
 pub fn init_settings() -> Fallible<ConfigRoot> {
     let settings = load_settings()?;
+    trace!("{:?}", settings);
     let parsed = settings.try_into::<ConfigRoot>()?;
     Ok(parsed)
 }

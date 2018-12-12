@@ -36,7 +36,7 @@ return [
      * appropriate file to src/Mailer/Transport. Transports should be named
      * 'YourTransport.php', where 'Your' is the name of the transport.
      */
-    'emailVerification' => filter_var(env('EMAIL_VERIFICATION', false), FILTER_VALIDATE_BOOLEAN),
+    'emailVerification' => filter_var(env('YAMBA_EMAIL_VERIFICATION', false), FILTER_VALIDATE_BOOLEAN),
 
     'EmailTransport' => [
         'default' => [
