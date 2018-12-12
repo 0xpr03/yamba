@@ -184,7 +184,7 @@ class MusicController extends AppController
         foreach ($res as $p) {
             $p->hasToken = (bool)$p->hasToken;
         }
-        return json_encode(['playlists' => $res]);
+        return json_encode($res);
     }
 
     public function getPlaylists()

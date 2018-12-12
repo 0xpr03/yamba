@@ -53,7 +53,7 @@ function getPlaylists() {
 
 function fillPlaylistTable(playlists) {
     let tableBody = $('#playlist-table-body');
-    tableBody.html(Mustache.render(playlistsTemplate, playlists));
+    tableBody.html(Mustache.render(playlistsTemplate, {playlists: playlists}));
 }
 
 function addPlaylist(form) {
