@@ -296,7 +296,7 @@ pub fn create_playback_server(
             PlayerEventType::Buffering => {
                 debug!("Player {} is buffering", event.id);
             }
-            _ => (),
+            v => debug!("Event: {:?}", v),
         }
         Ok(())
     });
@@ -312,6 +312,7 @@ pub fn create_playback_server(
     */
 
     runtime.spawn(stream);
+    debug!("Running ");
     Ok(())
 }
 
