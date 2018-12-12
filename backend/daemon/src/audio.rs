@@ -49,8 +49,9 @@ pub struct NullSink {
 #[derive(PartialEq, Eq)]
 enum SinkFilterResult {
     None,
+    Running,
     Error,
-    Finished(SinkID),
+    Some(SinkID),
 }
 
 impl NullSink {
@@ -59,8 +60,8 @@ impl NullSink {
         let sink_id: Arc<Mutex<Option<u32>>> = Arc::new(Mutex::new(None));
         let sink_id_ref = sink_id.clone();
         let params = format!(
-            "sinke_name={},sink_properties=device.description={}",
-            name, name
+            "sink_properties=device.description={}", //  sinke_name={}
+            name,                                    // name
         );
 
         {
@@ -96,8 +97,17 @@ impl NullSink {
             return Err(AudioErr::SinkLoadErr.into());
         }
 
+        // unload sink on monitor failure
+        let monitor = match get_module_monitor(&mainloop, &context, id) {
+            Ok(v) => v,
+            Err(e) => {
+                delete_virtual_sink(mainloop, context, id)?;
+                return Err(e);
+            }
+        };
+
         Ok(NullSink {
-            monitor: get_sink_monitor(&mainloop, &context, id)?,
+            monitor,
             id: id,
             mainloop,
             context,
@@ -131,30 +141,34 @@ pub enum AudioErr {
     SinkUnloadErr,
     #[fail(display = "Couldn't load sink, received invalid ID")]
     SinkLoadErr,
-    #[fail(display = "Error when retrieving sinks")]
-    SinkRetrieveErr,
+    #[fail(display = "Error when retrieving sinks {}", _0)]
+    SinkRetrieveErr(&'static str),
     #[fail(display = "Couldn't aquire lock for {}", _0)]
     LockError(&'static str),
 }
 
 /// Retrieve monitor ID of sink
-fn get_sink_monitor(mainloop: &CMainloop, context: &CContext, sink: SinkID) -> Fallible<SinkID> {
-    let success: Arc<Mutex<SinkFilterResult>> = Arc::new(Mutex::new(SinkFilterResult::None));
+fn get_module_monitor(mainloop: &CMainloop, context: &CContext, sink: SinkID) -> Fallible<SinkID> {
+    let success: Arc<Mutex<SinkFilterResult>> = Arc::new(Mutex::new(SinkFilterResult::Running));
     let success_ref = success.clone();
 
     let context = context
         .lock()
         .map_err(|_| AudioErr::LockError("PA Context"))?;
+
     context
         .introspect()
         .get_source_info_list(move |res| match res {
             ListResult::Item(source) => {
-                if source.monitor_of_sink == Some(sink) {
-                    *success_ref.lock().unwrap() = SinkFilterResult::Finished(source.index);
+                if source.owner_module == Some(sink) {
+                    *success_ref.lock().unwrap() = SinkFilterResult::Some(source.index);
                 }
             }
             ListResult::End => {
-                *success_ref.lock().unwrap() = SinkFilterResult::None;
+                let mut success_l = success_ref.lock().unwrap();
+                if *success_l == SinkFilterResult::Running {
+                    *success_l = SinkFilterResult::None;
+                }
             }
             ListResult::Error => {
                 warn!("Error at fetching PA sources list");
@@ -166,7 +180,7 @@ fn get_sink_monitor(mainloop: &CMainloop, context: &CContext, sink: SinkID) -> F
         .lock()
         .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
 
-    while *success.lock().unwrap() == SinkFilterResult::None {
+    while *success.lock().unwrap() == SinkFilterResult::Running {
         match mainloop.iterate(false) {
             IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
             IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
@@ -175,9 +189,15 @@ fn get_sink_monitor(mainloop: &CMainloop, context: &CContext, sink: SinkID) -> F
     }
 
     let value = match *success.lock().unwrap() {
-        SinkFilterResult::Finished(v) => v,
-        SinkFilterResult::None => panic!("Unreachable!"),
-        SinkFilterResult::Error => return Err(AudioErr::SinkRetrieveErr.into()),
+        SinkFilterResult::Some(v) => v,
+        SinkFilterResult::Running => {
+            // don't panic, or we'll not cleanup, could be enhanced with auto drop before monitor id resolution
+            return Err(AudioErr::SinkRetrieveErr("Unreachable state: Running!").into());
+        }
+        SinkFilterResult::Error => return Err(AudioErr::SinkRetrieveErr("Unknown").into()),
+        SinkFilterResult::None => {
+            return Err(AudioErr::SinkRetrieveErr("No matching monitor found!").into())
+        }
     };
 
     Ok(value)
