@@ -56,8 +56,8 @@ impl NullSink {
         let sink_id: Arc<Mutex<Option<u32>>> = Arc::new(Mutex::new(None));
         let sink_id_ref = sink_id.clone();
         let params = format!(
-            "sink_properties=device.description={}", //  sinke_name={}
-            name,                                    // name
+            r#"sink_name="{}" sink_properties=device.description="{}""#,
+            name, name,
         );
 
         {
