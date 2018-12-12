@@ -18,12 +18,8 @@
 use failure::Fallible;
 
 use std::boxed::Box;
-use std::cell::RefCell;
 use std::ops::Deref;
-use std::rc::Rc;
-use std::sync::{atomic, Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
 
 use pulse;
 use pulse::callbacks::ListResult;
