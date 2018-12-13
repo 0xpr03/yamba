@@ -503,6 +503,10 @@ mod test {
 
         let sink_2 = NullSink::new(mloop.clone(), context.clone(), "sink2").unwrap();
 
+        sink_2.mute_sink(true).unwrap();
+        sink_1.set_source_as_default().unwrap();
+        sink_1.set_sink_as_default().unwrap();
+
         println!("Sinks created..");
         // let mut a = String::from("");
         // let reader = ::std::io::stdin();
@@ -512,8 +516,6 @@ mod test {
         drop(sink_1);
 
         println!("Deleted first sink");
-        thread::sleep(Duration::from_millis(500));
-
         drop(sink_2);
         println!("Deleted second sink");
     }
