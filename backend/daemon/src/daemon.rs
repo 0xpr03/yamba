@@ -103,7 +103,8 @@ pub fn start_runtime() -> Fallible<()> {
         false => {
             return Err(DaemonErr::InitializationError(
                 "Startup check failed for ytdl engine!".into(),
-            ).into())
+            )
+            .into())
         }
     };
 
@@ -125,7 +126,7 @@ pub fn start_runtime() -> Fallible<()> {
     playback::create_playback_server(&mut rt, player_rx, pool.clone())?;
     ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());
 
-    match load_instances(&instances, pool.clone(), player_tx) {
+    match load_instances(&instances, pool.clone(), player_tx, &mainloop, &context) {
         Ok(_) => (),
         Err(e) => {
             error!("Unable to load instances: {}", e);
@@ -146,6 +147,7 @@ pub fn start_runtime() -> Fallible<()> {
     match rt.block_on(future::select_all(vec![ft_sigint, ft_sigterm, ftb_sigquit])) {
         Err(e) => {
             let ((err, _), _, _) = e;
+            info!("Shutting down daemon..");
             return Err(DaemonErr::ShutdownError(err).into());
         }
         Ok(_) => (),
@@ -156,18 +158,25 @@ pub fn start_runtime() -> Fallible<()> {
 
 /// Load instances
 /// Stops previous instances
-fn load_instances(instances: &Instances, pool: Pool, player_send: PlaybackSender) -> Fallible<()> {
+fn load_instances(
+    instances: &Instances,
+    pool: Pool,
+    player_send: PlaybackSender,
+    mainloop: &CMainloop,
+    context: &CContext,
+) -> Fallible<()> {
     let mut instances = instances.write().expect("Main RwLock is poisoned!");
     instances.clear();
     let instance_ids = db::get_autostart_instance_ids(&pool)?;
     for id in instance_ids {
-        let instance = match create_instance_from_id(&id, &pool, player_send.clone()) {
-            Ok(v) => v,
-            Err(e) => {
-                error!("Unable to load instance ID {}: {}", id, e);
-                continue;
-            }
-        };
+        let instance =
+            match create_instance_from_id(&id, &pool, player_send.clone(), &mainloop, &context) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Unable to load instance ID {}: {}", id, e);
+                    continue;
+                }
+            };
         instances.insert(id, instance);
     }
     Ok(())
@@ -178,6 +187,8 @@ fn create_instance_from_id(
     id: &i32,
     pool: &Pool,
     player_send: PlaybackSender,
+    mainloop: &CMainloop,
+    context: &CContext,
 ) -> Fallible<Instance> {
     let data = db::load_instance_data(&pool, id)?;
 
@@ -186,6 +197,8 @@ fn create_instance_from_id(
     Ok(Instance {
         voip: InstanceType::Teamspeak(Teamspeak {
             ts: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
+            sink: NullSink::new(mainloop.clone(), context.clone(), format!("sink{}", &id))?,
+        }),
         player: Player::new(player_send, id.clone())?,
         id: id,
         current_song: RwLock::new(None),
