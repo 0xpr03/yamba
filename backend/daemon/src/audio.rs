@@ -128,6 +128,44 @@ impl NullSink {
             context,
         })
     }
+
+    /// Set sink volume
+    pub fn mute_sink(&self, mute: bool) -> Fallible<()> {
+        let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
+        let success_ref = success.clone();
+        let context = self
+            .context
+            .lock()
+            .map_err(|_| AudioErr::LockError("PA Context"))?;
+        context.introspect().set_sink_mute_by_index(
+            self.sink,
+            mute,
+            Some(Box::new(move |v| {
+                let b = v;
+                trace!("Sink mute: {}", v);
+                *success_ref.lock().unwrap() = Some(b);
+            })),
+        );
+
+        let mut mainloop = self
+            .mainloop
+            .lock()
+            .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
+
+        while success.lock().unwrap().is_none() {
+            match mainloop.iterate(false) {
+                IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
+                IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
+                IterateResult::Success(_) => {}
+            }
+        }
+        let mut v = success.lock().unwrap();
+        if !v.take().unwrap() {
+            return Err(AudioErr::SinkUnloadErr.into());
+        }
+        Ok(())
+    }
+
 }
 
 impl Drop for NullSink {
