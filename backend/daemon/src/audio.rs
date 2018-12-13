@@ -36,14 +36,16 @@ pub type SinkID = u32;
 /// Pulse audio module-null-sink
 pub struct NullSink {
     id: SinkID,
+    name: String,
     monitor: SinkID,
+    sink: SinkID,
     context: CContext,
     mainloop: CMainloop,
 }
 
 /// Enum for async filtering a sink via PA calls
 #[derive(PartialEq, Eq)]
-enum SinkFilterResult {
+enum DeviceFilterResult {
     None,
     Running,
     Error,
@@ -52,9 +54,16 @@ enum SinkFilterResult {
 
 impl NullSink {
     /// Create new null sink
-    pub fn new(mainloop: CMainloop, context: CContext, name: &str) -> Fallible<NullSink> {
+    pub fn new<T: Into<String>>(
+        mainloop: CMainloop,
+        context: CContext,
+        name: T,
+    ) -> Fallible<NullSink> {
         let sink_id: Arc<Mutex<Option<u32>>> = Arc::new(Mutex::new(None));
         let sink_id_ref = sink_id.clone();
+
+        let name = name.into();
+
         let params = format!(
             r#"sink_name="{}" sink_properties=device.description="{}""#,
             name, name,
@@ -93,8 +102,16 @@ impl NullSink {
             return Err(AudioErr::SinkLoadErr.into());
         }
 
-        // unload sink on monitor failure
-        let monitor = match get_module_monitor(&mainloop, &context, id) {
+        // unload sink on monitor resolve failure
+        let monitor = match get_module_device(&mainloop, &context, id, ChildType::Monitor) {
+            Ok(v) => v,
+            Err(e) => {
+                delete_virtual_sink(mainloop, context, id)?;
+                return Err(e);
+            }
+        };
+
+        let sink = match get_module_device(&mainloop, &context, id, ChildType::Sink) {
             Ok(v) => v,
             Err(e) => {
                 delete_virtual_sink(mainloop, context, id)?;
@@ -104,6 +121,8 @@ impl NullSink {
 
         Ok(NullSink {
             monitor,
+            sink,
+            name,
             id: id,
             mainloop,
             context,
@@ -137,46 +156,84 @@ pub enum AudioErr {
     SinkUnloadErr,
     #[fail(display = "Couldn't load sink, received invalid ID")]
     SinkLoadErr,
+    #[fail(display = "PA call wasn't successfull for {}", _0)]
+    ResultInvalid(&'static str),
     #[fail(display = "Error when retrieving sinks {}", _0)]
     SinkRetrieveErr(&'static str),
     #[fail(display = "Couldn't aquire lock for {}", _0)]
     LockError(&'static str),
 }
 
-/// Retrieve monitor ID of sink
-fn get_module_monitor(mainloop: &CMainloop, context: &CContext, sink: SinkID) -> Fallible<SinkID> {
-    let success: Arc<Mutex<SinkFilterResult>> = Arc::new(Mutex::new(SinkFilterResult::Running));
+/// Child type for module child resolving
+enum ChildType {
+    Sink,
+    Monitor,
+}
+
+/// Retrieve device ID of module, type specified by child_type
+fn get_module_device(
+    mainloop: &CMainloop,
+    context: &CContext,
+    sink: SinkID,
+    child_type: ChildType,
+) -> Fallible<SinkID> {
+    let success: Arc<Mutex<DeviceFilterResult>> = Arc::new(Mutex::new(DeviceFilterResult::Running));
     let success_ref = success.clone();
 
     let context = context
         .lock()
         .map_err(|_| AudioErr::LockError("PA Context"))?;
 
-    context
-        .introspect()
-        .get_source_info_list(move |res| match res {
-            ListResult::Item(source) => {
-                if source.owner_module == Some(sink) {
-                    *success_ref.lock().unwrap() = SinkFilterResult::Some(source.index);
-                }
-            }
-            ListResult::End => {
-                let mut success_l = success_ref.lock().unwrap();
-                if *success_l == SinkFilterResult::Running {
-                    *success_l = SinkFilterResult::None;
-                }
-            }
-            ListResult::Error => {
-                warn!("Error at fetching PA sources list");
-                *success_ref.lock().unwrap() = SinkFilterResult::Error;
-            }
-        });
+    match child_type {
+        ChildType::Monitor => {
+            context
+                .introspect()
+                .get_source_info_list(move |res| match res {
+                    ListResult::Item(source) => {
+                        if source.owner_module == Some(sink) {
+                            *success_ref.lock().unwrap() = DeviceFilterResult::Some(source.index);
+                        }
+                    }
+                    ListResult::End => {
+                        let mut success_l = success_ref.lock().unwrap();
+                        if *success_l == DeviceFilterResult::Running {
+                            *success_l = DeviceFilterResult::None;
+                        }
+                    }
+                    ListResult::Error => {
+                        warn!("Error at fetching PA sources list");
+                        *success_ref.lock().unwrap() = DeviceFilterResult::Error;
+                    }
+                });
+        }
+        ChildType::Sink => {
+            context
+                .introspect()
+                .get_sink_info_list(move |res| match res {
+                    ListResult::Item(source) => {
+                        if source.owner_module == Some(sink) {
+                            *success_ref.lock().unwrap() = DeviceFilterResult::Some(source.index);
+                        }
+                    }
+                    ListResult::End => {
+                        let mut success_l = success_ref.lock().unwrap();
+                        if *success_l == DeviceFilterResult::Running {
+                            *success_l = DeviceFilterResult::None;
+                        }
+                    }
+                    ListResult::Error => {
+                        warn!("Error at fetching PA device list");
+                        *success_ref.lock().unwrap() = DeviceFilterResult::Error;
+                    }
+                });
+        }
+    }
 
     let mut mainloop = mainloop
         .lock()
         .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
 
-    while *success.lock().unwrap() == SinkFilterResult::Running {
+    while *success.lock().unwrap() == DeviceFilterResult::Running {
         match mainloop.iterate(false) {
             IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
             IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
@@ -185,14 +242,14 @@ fn get_module_monitor(mainloop: &CMainloop, context: &CContext, sink: SinkID) ->
     }
 
     let value = match *success.lock().unwrap() {
-        SinkFilterResult::Some(v) => v,
-        SinkFilterResult::Running => {
-            // don't panic, or we'll not cleanup, could be enhanced with auto drop before monitor id resolution
+        DeviceFilterResult::Some(v) => v,
+        DeviceFilterResult::Running => {
+            // don't panic, or we'll not cleanup, could be enhanced with auto drop before device id resolution
             return Err(AudioErr::SinkRetrieveErr("Unreachable state: Running!").into());
         }
-        SinkFilterResult::Error => return Err(AudioErr::SinkRetrieveErr("Unknown").into()),
-        SinkFilterResult::None => {
-            return Err(AudioErr::SinkRetrieveErr("No matching monitor found!").into())
+        DeviceFilterResult::Error => return Err(AudioErr::SinkRetrieveErr("Unknown").into()),
+        DeviceFilterResult::None => {
+            return Err(AudioErr::SinkRetrieveErr("No matching device found!").into())
         }
     };
 
@@ -234,7 +291,7 @@ pub fn set_process_source(
     }
     let mut v = success.lock().unwrap();
     if !v.take().unwrap() {
-        return Err(AudioErr::SinkUnloadErr.into());
+        return Err(AudioErr::ResultInvalid("set process source").into());
     }
     Ok(())
 }
