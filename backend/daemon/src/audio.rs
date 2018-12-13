@@ -29,8 +29,8 @@ use pulse::proplist::{properties, Proplist};
 
 /// Audio controller. Handling audio devices
 
-type CMainloop = Arc<Mutex<Mainloop>>;
-type CContext = Arc<Mutex<Context>>;
+pub type CMainloop = Arc<Mutex<Mainloop>>;
+pub type CContext = Arc<Mutex<Context>>;
 pub type SinkID = u32;
 
 /// Pulse audio module-null-sink

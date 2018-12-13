@@ -31,6 +31,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, RwLock};
 
 use api;
+use audio::{self, CContext, CMainloop, NullSink};
 use db;
 use models::{Queue, SongMin, TSSettings};
 use playback::{self, PlaybackSender, Player, PlayerEvent};
@@ -96,6 +97,14 @@ pub fn start_runtime() -> Fallible<()> {
 
     let (tx, rx) = mpsc::channel::<api::APIRequest>(100);
     let (player_tx, player_rx) = mpsc::channel::<PlayerEvent>(10);
+
+    let (mainloop, context) = audio::init()?;
+
+    // sink to avoid errors due to no sink existing & avoid glitches
+    let default_sink = NullSink::new(mainloop.clone(), context.clone(), "default_sink")?;
+    default_sink.mute_sink(true)?;
+    default_sink.set_source_as_default()?;
+    default_sink.set_sink_as_default()?;
 
     let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
 
