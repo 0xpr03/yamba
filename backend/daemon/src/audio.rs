@@ -166,6 +166,40 @@ impl NullSink {
         Ok(())
     }
 
+    /// Set source of NullSink as default
+    /// Note: Uses its name
+    pub fn set_source_as_default(&self) -> Fallible<()> {
+        let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
+        let success_ref = success.clone();
+        let mut context = self
+            .context
+            .lock()
+            .map_err(|_| AudioErr::LockError("PA Context"))?;
+        context.set_default_source(&format!("{}.monitor", self.name), move |v| {
+            let b = v;
+            trace!("Source default: {}", v);
+            *success_ref.lock().unwrap() = Some(b);
+        });
+
+        let mut mainloop = self
+            .mainloop
+            .lock()
+            .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
+
+        while success.lock().unwrap().is_none() {
+            match mainloop.iterate(false) {
+                IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
+                IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
+                IterateResult::Success(_) => {}
+            }
+        }
+        let mut v = success.lock().unwrap();
+        // if !v.take().unwrap() {
+        //     return Err(AudioErr::ResultInvalid("set source as default").into());
+        // }
+        Ok(())
+    }
+
 }
 
 impl Drop for NullSink {
