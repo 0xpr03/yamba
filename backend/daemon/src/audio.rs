@@ -459,8 +459,8 @@ fn get_module_ids(
                 }
             }
             ListResult::End => {
-                let mut success_l = finish_ref.lock().unwrap();
-                *success_l = true;
+                let mut finish_l = finish_ref.lock().unwrap();
+                *finish_l = false;
             }
             ListResult::Error => {
                 warn!("Error during pa module retrieval!");
@@ -559,6 +559,13 @@ mod test {
         println!("Audio init test ran");
         thread::sleep(Duration::from_secs(1));
         println!("Ended");
+    }
+
+    #[test]
+    fn module_unload_test() {
+        let (mloop, context) = init().unwrap();
+
+        unload_problematic_modules(&mloop, &context).unwrap();
     }
 
     #[test]
