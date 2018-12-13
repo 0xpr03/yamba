@@ -194,9 +194,9 @@ impl NullSink {
             }
         }
         let mut v = success.lock().unwrap();
-        // if !v.take().unwrap() {
-        //     return Err(AudioErr::ResultInvalid("set source as default").into());
-        // }
+        if !v.take().unwrap() {
+            return Err(AudioErr::ResultInvalid("set source as default").into());
+        }
         Ok(())
     }
 
