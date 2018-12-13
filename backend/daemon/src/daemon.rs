@@ -113,6 +113,8 @@ pub fn start_runtime() -> Fallible<()> {
 
     let (mainloop, context) = audio::init()?;
 
+    audio::unload_problematic_modules(&mainloop, &context)?;
+
     // sink to avoid errors due to no sink existing & avoid glitches
     let default_sink = NullSink::new(mainloop.clone(), context.clone(), "default_sink")?;
     default_sink.mute_sink(true)?;

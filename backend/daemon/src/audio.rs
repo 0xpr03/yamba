@@ -106,7 +106,7 @@ impl NullSink {
         let monitor = match get_module_device(&mainloop, &context, id, ChildType::Monitor) {
             Ok(v) => v,
             Err(e) => {
-                delete_virtual_sink(mainloop, context, id)?;
+                delete_virtual_sink(&mainloop, &context, id)?;
                 return Err(e);
             }
         };
@@ -114,7 +114,7 @@ impl NullSink {
         let sink = match get_module_device(&mainloop, &context, id, ChildType::Sink) {
             Ok(v) => v,
             Err(e) => {
-                delete_virtual_sink(mainloop, context, id)?;
+                delete_virtual_sink(&mainloop, &context, id)?;
                 return Err(e);
             }
         };
@@ -237,7 +237,7 @@ impl NullSink {
 
 impl Drop for NullSink {
     fn drop(&mut self) {
-        if let Err(e) = delete_virtual_sink(self.mainloop.clone(), self.context.clone(), self.id) {
+        if let Err(e) = delete_virtual_sink(&self.mainloop, &self.context, self.id) {
             warn!("Unable to delete sink {}", self.id);
         }
     }
@@ -402,7 +402,7 @@ pub fn set_process_source(
 }
 
 /// Delete virtual sink
-fn delete_virtual_sink(mainloop: CMainloop, context: CContext, sink_id: SinkID) -> Fallible<()> {
+fn delete_virtual_sink(mainloop: &CMainloop, context: &CContext, sink_id: SinkID) -> Fallible<()> {
     let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
     let success_ref = success.clone();
     let context = context
@@ -429,6 +429,72 @@ fn delete_virtual_sink(mainloop: CMainloop, context: CContext, sink_id: SinkID) 
     if !v.take().unwrap() {
         return Err(AudioErr::SinkUnloadErr.into());
     }
+    Ok(())
+}
+
+/// Retrieve currently loaded modules of specified name
+fn get_module_ids(
+    mainloop: &CMainloop,
+    context: &CContext,
+    modules: Vec<String>,
+) -> Fallible<Vec<SinkID>> {
+    let finish: Arc<Mutex<bool>> = Arc::new(Mutex::new(true));
+    let finish_ref = finish.clone();
+    let list: Arc<Mutex<Vec<SinkID>>> = Arc::new(Mutex::new(Vec::new()));
+    let list_ref = list.clone();
+
+    let context = context
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Context"))?;
+
+    context
+        .introspect()
+        .get_module_info_list(move |res| match res {
+            ListResult::Item(module) => {
+                if let Some(ref name) = module.name {
+                    if modules.contains(&name.to_string()) {
+                        let mut list_l = list_ref.lock().unwrap();
+                        list_l.push(module.index);
+                    }
+                }
+            }
+            ListResult::End => {
+                let mut success_l = finish_ref.lock().unwrap();
+                *success_l = true;
+            }
+            ListResult::Error => {
+                warn!("Error during pa module retrieval!");
+            }
+        });
+    let mut mainloop = mainloop
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
+
+    while *finish.lock().unwrap() {
+        match mainloop.iterate(false) {
+            IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
+            IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
+            IterateResult::Success(_) => {}
+        }
+    }
+
+    let lock = Arc::try_unwrap(list).expect("Lock still has multiple owners");
+    Ok(lock.into_inner().expect("Mutex cannot be locked"))
+}
+
+/// Disables modules creating problems during run of yamba
+/// This includes stream device restore and switch of stream when a new device comes online
+pub fn unload_problematic_modules(mainloop: &CMainloop, context: &CContext) -> Fallible<()> {
+    let modules: Vec<String> = vec![
+        String::from("module-switch-on-connect"),
+        String::from("module-stream-restore"),
+    ];
+    let ids = get_module_ids(mainloop, context, modules)?;
+
+    for id in ids {
+        delete_virtual_sink(mainloop, context, id)?;
+    }
+
     Ok(())
 }
 
@@ -508,10 +574,10 @@ mod test {
         sink_1.set_sink_as_default().unwrap();
 
         println!("Sinks created..");
-        // let mut a = String::from("");
-        // let reader = ::std::io::stdin();
-        // reader.read_line(&mut a);
-        thread::sleep(Duration::from_millis(500));
+        let mut a = String::from("");
+        let reader = ::std::io::stdin();
+        reader.read_line(&mut a);
+        // thread::sleep(Duration::from_millis(5000));
 
         drop(sink_1);
 
