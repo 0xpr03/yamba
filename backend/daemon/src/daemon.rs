@@ -42,11 +42,23 @@ use ytdl_worker;
 
 use SETTINGS;
 
+/// Base for each instance
 pub struct Instance {
     id: ID,
-    ts_instance: TSInstance,
+    voip: InstanceType,
     current_song: RwLock<Option<SongMin>>,
     player: Player,
+}
+
+/// Instance type for different VoIP systems
+pub enum InstanceType {
+    Teamspeak(Teamspeak),
+}
+
+/// Teamspeak specific VoIP instance
+pub struct Teamspeak {
+    ts: TSInstance,
+    sink: NullSink,
 }
 
 /// Daemon init & startup of all servers
@@ -172,7 +184,8 @@ fn create_instance_from_id(
     let id = Arc::new(data.id);
 
     Ok(Instance {
-        ts_instance: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
+        voip: InstanceType::Teamspeak(Teamspeak {
+            ts: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
         player: Player::new(player_send, id.clone())?,
         id: id,
         current_song: RwLock::new(None),
