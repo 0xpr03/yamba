@@ -2,3 +2,4 @@
 !daemon
 !ts3plugin
 !ts3-start.sh
+!entrypoint.sh

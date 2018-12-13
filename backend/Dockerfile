@@ -40,6 +40,10 @@ RUN apt-get update -q && apt-get install -qqy \
     && rm -rf /var/lib/apt/lists/* \
     # install rust
     && curl -sf -L https://static.rust-lang.org/rustup.sh | sh
+
+# copy entrypoint
+COPY ./entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
     
 # copy daemon
 COPY ./daemon/src /opt/yamba/daemon/src
@@ -56,6 +60,7 @@ WORKDIR /opt/yamba/ts3plugin
 RUN cargo build
 
 WORKDIR /opt/yamba/daemon/target/debug
-
 RUN ln -s $(which python3) /usr/local/bin/python
-CMD /opt/yamba/daemon/target/debug/yamba-backend
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD "/opt/yamba/daemon/target/debug/yamba-backend"
