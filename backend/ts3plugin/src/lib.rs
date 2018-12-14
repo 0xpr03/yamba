@@ -38,6 +38,8 @@ use ts3plugin::*;
 jsonrpc_client!(
     #[derive(Debug)]
     pub struct BackendRPCClient {
+    // Call when connected
+    pub fn connected(&mut self, id: i32) -> RpcRequest<()>;
     // Return: message
     pub fn heartbeat(&mut self, id : i32) -> RpcRequest<(String)>;
 
@@ -249,6 +251,60 @@ impl Plugin for MyTsPlugin {
     }
     fn configurable() -> ConfigureOffer {
         ConfigureOffer::No
+    }
+
+    fn connect_status_change(
+        &mut self,
+        api: &mut TsApi,
+        server_id: ServerId,
+        status: ConnectStatus,
+        error: ts3plugin::Error,
+    ) {
+        api.log_or_print(
+            format!(
+                "Connection status on {:?} : {:?} error: {:?}",
+                server_id, status, error
+            ),
+            PLUGIN_NAME_I,
+            LogLevel::Debug,
+        );
+
+        // No connection possible / got dc
+        // Disconnected check possibly too fuzzy, triggers on short dcs?
+        if status == ConnectStatus::Disconnected
+            || error == ts3plugin::Error::FailedConnectionInitialisation
+        {
+            match self.killer.send(()) {
+                Ok(_) => (),
+                Err(e) => api.log_or_print(
+                    format!("Unable to stop heartbeat\nReason: {}", e),
+                    PLUGIN_NAME_I,
+                    LogLevel::Error,
+                ),
+            }
+        }
+
+        if status == ConnectStatus::ConnectionEstablished {
+            let mut rpc_api = self.client_mut.lock().unwrap();
+            match rpc_api.connected(*ID.as_ref().unwrap()).call() {
+                Ok(_) => (),
+                Err(e) => {
+                    api.log_or_print(
+                        format!("Error trying to signal connected state to backend: {}", e),
+                        PLUGIN_NAME_I,
+                        LogLevel::Error,
+                    );
+                    match self.killer.send(()) {
+                        Ok(_) => (),
+                        Err(e) => api.log_or_print(
+                            format!("Unable to stop heartbeat\nReason: {}", e),
+                            PLUGIN_NAME_I,
+                            LogLevel::Error,
+                        ),
+                    }
+                }
+            } // if we don't get this through, we're not gonna receive any audio
+        }
     }
 
     fn new(api: &mut TsApi) -> Result<Box<MyTsPlugin>, InitError> {
