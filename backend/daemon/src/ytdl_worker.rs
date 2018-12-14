@@ -45,41 +45,43 @@ pub fn create_ytdl_worker(
     pool: Pool,
 ) {
     let worker_future = rx.for_each(move |request| {
-        let ytdl = ytdl.clone();
-        let pool = pool.clone();
-        debug!("Received work request: {:?}", request);
-        use api::RequestType;
-        let start = Instant::now();
-        let response = match request.request_type {
-            RequestType::Playlist(v) => {
-                handle_request(v, request.request_id, ytdl, pool, handle_playlist)
-            }
-        };
+        let _ = blocking(|| {
+            let ytdl = ytdl_c.clone();
+            let pool = pool.clone();
+            debug!("Received work request: {:?}", request);
+            use api::RequestType;
+            let start = Instant::now();
+            let response = match request.request_type {
+                RequestType::Playlist(v) => {
+                    handle_request(v, request.request_id, ytdl, pool, handle_playlist)
+                }
+            };
 
-        let response: Box<Serialize> = match response {
-            Ok(v) => Box::new(v),
-            Err(e) => Box::new(e),
-        };
+            let response: Box<Serialize> = match response {
+                Ok(v) => Box::new(v),
+                Err(e) => Box::new(e),
+            };
 
-        let end = start.elapsed();
-        debug!(
-            "Request took {}{:03}ms to process",
-            end.as_secs(),
-            end.subsec_millis()
-        );
-        if request.callback {
-            //SETTINGS.
-            // todo callback
-            match api::api_send_callback(
-                &SETTINGS.main.api_callback_ip,
-                SETTINGS.main.api_callback_port,
-                "music/addTitles",
-                &response,
-            ) {
-                Ok(_) => info!("Callback successfull"),
-                Err(e) => warn!("Callback errored: {}", e),
+            let end = start.elapsed();
+            debug!(
+                "Request took {}{:03}ms to process",
+                end.as_secs(),
+                end.subsec_millis()
+            );
+            if request.callback {
+                //SETTINGS.
+                // todo callback
+                match api::api_send_callback(
+                    &SETTINGS.main.api_callback_ip,
+                    SETTINGS.main.api_callback_port,
+                    "music/addTitles",
+                    &response,
+                ) {
+                    Ok(_) => info!("Callback successfull"),
+                    Err(e) => warn!("Callback errored: {}", e),
+                }
             }
-        }
+        });
         Ok(())
     });
     runtime.spawn(worker_future);
