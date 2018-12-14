@@ -31,14 +31,14 @@ use pulse::proplist::{properties, Proplist};
 
 pub type CMainloop = Arc<Mutex<Mainloop>>;
 pub type CContext = Arc<Mutex<Context>>;
-pub type SinkID = u32;
+pub type DeviceID = u32;
 
 /// Pulse audio module-null-sink
 pub struct NullSink {
-    id: SinkID,
+    id: DeviceID,
     name: String,
-    monitor: SinkID,
-    sink: SinkID,
+    monitor: DeviceID,
+    sink: DeviceID,
     context: CContext,
     mainloop: CMainloop,
 }
@@ -49,7 +49,7 @@ enum DeviceFilterResult {
     None,
     Running,
     Error,
-    Some(SinkID),
+    Some(DeviceID),
 }
 
 impl NullSink {
@@ -279,9 +279,9 @@ enum ChildType {
 fn get_module_device(
     mainloop: &CMainloop,
     context: &CContext,
-    sink: SinkID,
+    sink: DeviceID,
     child_type: ChildType,
-) -> Fallible<SinkID> {
+) -> Fallible<DeviceID> {
     let success: Arc<Mutex<DeviceFilterResult>> = Arc::new(Mutex::new(DeviceFilterResult::Running));
     let success_ref = success.clone();
 
@@ -366,7 +366,7 @@ pub fn set_process_source(
     mainloop: CMainloop,
     context: CContext,
     process: u32,
-    source_id: SinkID,
+    source_id: DeviceID,
 ) -> Fallible<()> {
     let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
     let success_ref = success.clone();
@@ -402,7 +402,8 @@ pub fn set_process_source(
 }
 
 /// Delete virtual sink
-fn delete_virtual_sink(mainloop: &CMainloop, context: &CContext, sink_id: SinkID) -> Fallible<()> {
+fn delete_virtual_sink(mainloop: &CMainloop, context: &CContext, sink_id: DeviceID,
+) -> Fallible<()> {
     let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
     let success_ref = success.clone();
     let context = context
@@ -437,10 +438,10 @@ fn get_module_ids(
     mainloop: &CMainloop,
     context: &CContext,
     modules: Vec<String>,
-) -> Fallible<Vec<SinkID>> {
+) -> Fallible<Vec<DeviceID>> {
     let finish: Arc<Mutex<bool>> = Arc::new(Mutex::new(true));
     let finish_ref = finish.clone();
-    let list: Arc<Mutex<Vec<SinkID>>> = Arc::new(Mutex::new(Vec::new()));
+    let list: Arc<Mutex<Vec<DeviceID>>> = Arc::new(Mutex::new(Vec::new()));
     let list_ref = list.clone();
 
     let context = context
