@@ -103,7 +103,7 @@ impl NullSink {
         }
 
         // unload sink on monitor resolve failure
-        let monitor = match get_module_device(&mainloop, &context, id, ChildType::Monitor) {
+        let monitor = match get_module_device(&mainloop, &context, id, ChildType::Source) {
             Ok(v) => v,
             Err(e) => {
                 delete_virtual_sink(&mainloop, &context, id)?;
@@ -272,7 +272,7 @@ pub enum AudioErr {
 /// Child type for module child resolving
 enum ChildType {
     Sink,
-    Monitor,
+    Source,
 }
 
 /// Retrieve device ID of module, type specified by child_type
@@ -290,7 +290,7 @@ fn get_module_device(
         .map_err(|_| AudioErr::LockError("PA Context"))?;
 
     match child_type {
-        ChildType::Monitor => {
+        ChildType::Source => {
             context
                 .introspect()
                 .get_source_info_list(move |res| match res {
