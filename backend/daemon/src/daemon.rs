@@ -29,6 +29,7 @@ use tokio_threadpool::blocking;
 use std::io;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, RwLock};
+use std::time::Instant;
 
 use api;
 use audio::{self, CContext, CMainloop, NullSink};
@@ -48,6 +49,7 @@ pub struct Instance {
     voip: InstanceType,
     current_song: RwLock<Option<SongMin>>,
     player: Player,
+    db: Pool,
 }
 
 /// Instance type for different VoIP systems
@@ -59,6 +61,7 @@ pub enum InstanceType {
 pub struct Teamspeak {
     ts: TSInstance,
     sink: NullSink,
+    updated: RwLock<Instant>,
 }
 
 /// Daemon init & startup of all servers
@@ -200,10 +203,12 @@ fn create_instance_from_id(
         voip: InstanceType::Teamspeak(Teamspeak {
             ts: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
             sink: NullSink::new(mainloop.clone(), context.clone(), format!("sink{}", &id))?,
+            updated: RwLock::new(Instant::now()),
         }),
         player: Player::new(player_send, id.clone())?,
         id: id,
         current_song: RwLock::new(None),
+        db: pool.clone(),
     })
 }
 
