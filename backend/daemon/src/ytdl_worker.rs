@@ -18,14 +18,15 @@
 use erased_serde::Serialize;
 use failure::Fallible;
 use futures::sync::mpsc;
-use futures::Stream;
+use futures::{Future, Stream};
 use mysql::Pool;
 use tokio::runtime::Runtime;
+use tokio::timer::Interval;
 use tokio_threadpool::blocking;
 
 use std::boxed::Box;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use api::{self, APIRequest, CallbackError, CallbackErrorType};
 use ytdl::YtDL;
@@ -44,6 +45,7 @@ pub fn create_ytdl_worker(
     ytdl: Arc<YtDL>,
     pool: Pool,
 ) {
+    let ytdl_c = ytdl.clone();
     let worker_future = rx.for_each(move |request| {
         let _ = blocking(|| {
             let ytdl = ytdl_c.clone();
@@ -85,6 +87,20 @@ pub fn create_ytdl_worker(
         Ok(())
     });
     runtime.spawn(worker_future);
+
+    let ytdl = ytdl.clone();
+    let updater = Interval::new_interval(Duration::from_secs(
+        u64::from(SETTINGS.ytdl.update_intervall) * 3600,
+    ))
+    .for_each(move |_| {
+        let _ = blocking(|| match ytdl.update_downloader() {
+            Ok(_) => (),
+            Err(e) => warn!("Error when updating ytdl: {}", e),
+        });
+        Ok(())
+    })
+    .map_err(|_| {});
+    runtime.spawn(updater);
 }
 
 fn handle_playlist(
