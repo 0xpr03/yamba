@@ -233,6 +233,80 @@ impl NullSink {
         }
         Ok(())
     }
+
+    /// Set own monitor for process source
+    pub fn set_monitor_for_process(&self, process: u32) -> Fallible<()> {
+        let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
+        let success_ref = success.clone();
+        let context = self
+            .context
+            .lock()
+            .map_err(|_| AudioErr::LockError("PA Context"))?;
+        context.introspect().move_source_output_by_index(
+            process,
+            get_process_device(&self.mainloop, &self.context, process, DeviceType::Source)?,
+            Some(Box::new(move |v| {
+                let b = v;
+                trace!("Process source input set: {}", v);
+                *success_ref.lock().unwrap() = Some(b);
+            })),
+        );
+
+        let mut mainloop = self
+            .mainloop
+            .lock()
+            .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
+
+        while success.lock().unwrap().is_none() {
+            match mainloop.iterate(false) {
+                IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
+                IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
+                IterateResult::Success(_) => {}
+            }
+        }
+        let mut v = success.lock().unwrap();
+        if !v.take().unwrap() {
+            return Err(AudioErr::ResultInvalid("set process source").into());
+        }
+        Ok(())
+    }
+
+    /// Set own sink for process output
+    pub fn set_sink_for_process(&self, process: u32) -> Fallible<()> {
+        let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
+        let success_ref = success.clone();
+        let context = self
+            .context
+            .lock()
+            .map_err(|_| AudioErr::LockError("PA Context"))?;
+        context.introspect().move_sink_input_by_index(
+            process,
+            get_process_device(&self.mainloop, &self.context, process, DeviceType::Sink)?,
+            Some(Box::new(move |v| {
+                let b = v;
+                trace!("Process source input set: {}", v);
+                *success_ref.lock().unwrap() = Some(b);
+            })),
+        );
+
+        let mut mainloop = self
+            .mainloop
+            .lock()
+            .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
+
+        while success.lock().unwrap().is_none() {
+            match mainloop.iterate(false) {
+                IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
+                IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
+                IterateResult::Success(_) => {}
+            }
+        }
+        let mut v = success.lock().unwrap();
+        if !v.take().unwrap() {
+            return Err(AudioErr::ResultInvalid("set process source").into());
+        }
+        Ok(())
+    }
 }
 
 impl Drop for NullSink {
@@ -361,8 +435,100 @@ fn get_module_device(
     Ok(value)
 }
 
+/// Get device by process id
+fn get_process_device(
+    mainloop: &CMainloop,
+    context: &CContext,
+    process: u32,
+    deviceType: DeviceType,
+) -> Fallible<DeviceID> {
+    let success: Arc<Mutex<DeviceFilterResult>> = Arc::new(Mutex::new(DeviceFilterResult::Running));
+    let success_ref = success.clone();
+
+    let context = context
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Context"))?;
+
+    match deviceType {
+        DeviceType::Source => {
+            let process_str = process.to_string();
+            context
+                .introspect()
+                .get_source_output_info_list(move |res| {
+                    let process_str = process.to_string();
+                    match res {
+                        ListResult::Item(source) => {
+                            if source.proplist.gets("application.process.id") == Some(process_str) {
+                                *success_ref.lock().unwrap() =
+                                    DeviceFilterResult::Some(source.index);
+                            }
+                        }
+                        ListResult::End => {
+                            let mut success_l = success_ref.lock().unwrap();
+                            if *success_l == DeviceFilterResult::Running {
+                                *success_l = DeviceFilterResult::None;
+                            }
+                        }
+                        ListResult::Error => {
+                            warn!("Error at fetching PA sources list");
+                            *success_ref.lock().unwrap() = DeviceFilterResult::Error;
+                        }
+                    }
+                });
+        }
+        DeviceType::Sink => {
+            context.introspect().get_sink_input_info_list(move |res| {
+                let process_str = process.to_string();
+                match res {
+                    ListResult::Item(source) => {
+                        if source.proplist.gets("application.process.id") == Some(process_str) {
+                            *success_ref.lock().unwrap() = DeviceFilterResult::Some(source.index);
+                        }
+                    }
+                    ListResult::End => {
+                        let mut success_l = success_ref.lock().unwrap();
+                        if *success_l == DeviceFilterResult::Running {
+                            *success_l = DeviceFilterResult::None;
+                        }
+                    }
+                    ListResult::Error => {
+                        warn!("Error at fetching PA sources list");
+                        *success_ref.lock().unwrap() = DeviceFilterResult::Error;
+                    }
+                }
+            });
+        }
+    }
+
+    let mut mainloop = mainloop
+        .lock()
+        .map_err(|_| AudioErr::LockError("PA Mainloop"))?;
+
+    while *success.lock().unwrap() == DeviceFilterResult::Running {
+        match mainloop.iterate(false) {
+            IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
+            IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
+            IterateResult::Success(_) => {}
+        }
+    }
+
+    let value = match *success.lock().unwrap() {
+        DeviceFilterResult::Some(v) => v,
+        DeviceFilterResult::Running => {
+            // don't panic, or we'll not cleanup, could be enhanced with auto drop before device id resolution
+            return Err(AudioErr::SinkRetrieveErr("Unreachable state: Running!").into());
+        }
+        DeviceFilterResult::Error => return Err(AudioErr::SinkRetrieveErr("Unknown").into()),
+        DeviceFilterResult::None => {
+            return Err(AudioErr::SinkRetrieveErr("No matching device found!").into())
+        }
+    };
+
+    Ok(value)
+}
+
 /// Set source of process to specified source_id
-pub fn set_process_source(
+fn set_process_source(
     mainloop: CMainloop,
     context: CContext,
     process: u32,
@@ -402,7 +568,10 @@ pub fn set_process_source(
 }
 
 /// Delete virtual sink
-fn delete_virtual_sink(mainloop: &CMainloop, context: &CContext, sink_id: DeviceID,
+fn delete_virtual_sink(
+    mainloop: &CMainloop,
+    context: &CContext,
+    sink_id: DeviceID,
 ) -> Fallible<()> {
     let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
     let success_ref = success.clone();
@@ -567,6 +736,17 @@ mod test {
         let (mloop, context) = init().unwrap();
 
         unload_problematic_modules(&mloop, &context).unwrap();
+    }
+
+    /// Test for retrieving the process device, requires a running PA client, thus only manually usable
+    #[test]
+    #[ignore]
+    fn get_process_device_test() {
+        let (mloop, context) = init().unwrap();
+
+        const PROCESS: u32 = 14604;
+
+        get_process_device(&mloop, &context, PROCESS, DeviceType::Source).unwrap();
     }
 
     #[test]
