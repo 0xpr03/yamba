@@ -103,7 +103,7 @@ impl NullSink {
         }
 
         // unload sink on monitor resolve failure
-        let monitor = match get_module_device(&mainloop, &context, id, ChildType::Source) {
+        let monitor = match get_module_device(&mainloop, &context, id, DeviceType::Source) {
             Ok(v) => v,
             Err(e) => {
                 delete_virtual_sink(&mainloop, &context, id)?;
@@ -111,7 +111,7 @@ impl NullSink {
             }
         };
 
-        let sink = match get_module_device(&mainloop, &context, id, ChildType::Sink) {
+        let sink = match get_module_device(&mainloop, &context, id, DeviceType::Sink) {
             Ok(v) => v,
             Err(e) => {
                 delete_virtual_sink(&mainloop, &context, id)?;
@@ -270,7 +270,7 @@ pub enum AudioErr {
 }
 
 /// Child type for module child resolving
-enum ChildType {
+enum DeviceType {
     Sink,
     Source,
 }
@@ -280,7 +280,7 @@ fn get_module_device(
     mainloop: &CMainloop,
     context: &CContext,
     sink: DeviceID,
-    child_type: ChildType,
+    child_type: DeviceType,
 ) -> Fallible<DeviceID> {
     let success: Arc<Mutex<DeviceFilterResult>> = Arc::new(Mutex::new(DeviceFilterResult::Running));
     let success_ref = success.clone();
@@ -290,7 +290,7 @@ fn get_module_device(
         .map_err(|_| AudioErr::LockError("PA Context"))?;
 
     match child_type {
-        ChildType::Source => {
+        DeviceType::Source => {
             context
                 .introspect()
                 .get_source_info_list(move |res| match res {
@@ -311,7 +311,7 @@ fn get_module_device(
                     }
                 });
         }
-        ChildType::Sink => {
+        DeviceType::Sink => {
             context
                 .introspect()
                 .get_sink_info_list(move |res| match res {
