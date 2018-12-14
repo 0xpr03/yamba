@@ -18,7 +18,6 @@
 use failure::Fallible;
 
 use metrohash::MetroHash128;
-use mysql::chrono::prelude::NaiveDateTime;
 use mysql::error::Error as MySqlError;
 use mysql::{from_row_opt, Opts, OptsBuilder, Pool};
 
@@ -40,8 +39,6 @@ use models::TSSettings;
 pub enum DatabaseErr {
     #[fail(display = "Couldn't find data for ID {}", _0)]
     InstanceNotFoundErr(i32),
-    #[fail(display = "DB error: {}", _0)]
-    DBError(#[cause] MySqlError),
 }
 
 /// Init db connection pool
@@ -85,7 +82,8 @@ pub fn get_autostart_instance_ids(pool: &Pool) -> Fallible<Vec<i32>> {
         .map(|result| {
             let (id,) = from_row_opt::<(i32,)>(result?)?;
             Ok(id)
-        }).collect();
+        })
+        .collect();
     instances
 }
 

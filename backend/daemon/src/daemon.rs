@@ -17,24 +17,23 @@
 
 use failure::{self, Fallible};
 use futures::sync::mpsc;
-use futures::{future, Future, Sink, Stream};
+use futures::{future, Future, Stream};
 use gst;
 use hashbrown::HashMap;
 use hyper::{self, Body, Response};
 use mysql::Pool;
 use tokio::{self, runtime::Runtime};
 use tokio_signal::unix::{self, Signal};
-use tokio_threadpool::blocking;
 
 use std::io;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
 use api;
 use audio::{self, CContext, CMainloop, NullSink};
 use db;
-use models::{Queue, SongMin, TSSettings};
+use models::SongMin;
 use playback::{self, PlaybackSender, Player, PlayerEvent};
 use rpc;
 use ts::TSInstance;

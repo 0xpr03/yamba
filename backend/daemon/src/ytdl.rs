@@ -21,7 +21,7 @@ use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead, BufReader, ErrorKind, Read};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::{Arc, RwLock};
 use std::thread;
 
@@ -230,9 +230,11 @@ impl YtDL {
             .collect::<Fallible<Vec<Track>>>()?;
 
         match stderr_worker_handle.join() {
-            Ok(Ok(v)) => if v.len() > 0 {
-                return Err(YtDLErr::ResponseError(format!("stderr: {}", v)).into());
-            },
+            Ok(Ok(v)) => {
+                if v.len() > 0 {
+                    return Err(YtDLErr::ResponseError(format!("stderr: {}", v)).into());
+                }
+            }
             Ok(Err(e)) => return Err(e),
             Err(e) => return Err(YtDLErr::ThreadPanic(format!("stderr worker {:?}", e)).into()),
         }
@@ -306,7 +308,8 @@ impl YtDL {
                 "Process errored, response: {}; {}",
                 String::from_utf8_lossy(&result.stdout).trim().to_string(),
                 String::from_utf8_lossy(&result.stderr).trim().to_string()
-            )).into())
+            ))
+            .into())
         }
     }
 
@@ -491,7 +494,8 @@ mod test {
         let output = DOWNLOADER
             .get_url_info(
                 "https://soundcloud.com/djsusumu/alan-walker-faded-susumu-melbourne-bounce-edit",
-            ).unwrap();
+            )
+            .unwrap();
         assert_eq!(Some(144.0), output.duration);
         assert_eq!(Some("https".into()), output.protocol);
     }

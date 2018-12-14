@@ -15,12 +15,12 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use failure::{Fallible, ResultExt};
+use failure::Fallible;
 use serde_urlencoded;
 
 use std::env;
-use std::fs::{read_dir, DirBuilder, OpenOptions};
-use std::io::{self, Error};
+use std::fs::DirBuilder;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::thread;
@@ -46,10 +46,6 @@ pub enum TSInstanceErr {
     Database(#[cause] rusqlite::Error),
     #[fail(display = "TS Instance spawn error {}", _0)]
     SpawnError(#[cause] io::Error),
-    #[fail(display = "Pipe error processing ytdl output {}", _0)]
-    PipeError(String),
-    #[fail(display = "Thread panicked at {}", _0)]
-    ThreadPanic(String),
     #[fail(display = "TS Instance config creation error for IO {}", _0)]
     ConfigCreationIOError(#[cause] io::Error),
     #[fail(display = "TS Instance config creation error {}", _0)]
@@ -146,7 +142,8 @@ impl TSInstance {
                 warn!("Unable to create configuration, no db existing!");
                 return Err(TSInstanceErr::ConfigCreationError(
                     "No settings db, creation failed!".into(),
-                ).into());
+                )
+                .into());
             }
             info!("Configuring..");
             TSInstance::configure_settings(&path)?;

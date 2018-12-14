@@ -15,7 +15,6 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 #![recursion_limit = "1024"]
-#[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
@@ -37,14 +36,6 @@ extern crate jsonrpc_lite;
 #[macro_use]
 extern crate serde_json;
 extern crate atomic;
-extern crate rusqlite;
-extern crate serde_urlencoded;
-extern crate sha2;
-extern crate tokio;
-extern crate tokio_signal;
-extern crate tokio_threadpool;
-#[macro_use]
-extern crate mysql;
 extern crate chrono;
 extern crate erased_serde;
 extern crate glib;
@@ -55,6 +46,13 @@ extern crate libpulse_binding as pulse;
 extern crate libpulse_glib_binding as pglib;
 extern crate libpulse_sys as pulse_sys;
 extern crate metrohash;
+extern crate mysql;
+extern crate rusqlite;
+extern crate serde_urlencoded;
+extern crate sha2;
+extern crate tokio;
+extern crate tokio_signal;
+extern crate tokio_threadpool;
 
 use std::alloc::System;
 
@@ -83,8 +81,6 @@ use tokio::runtime;
 use std::fs::{metadata, DirBuilder, File};
 use std::io::Write;
 use std::path::PathBuf;
-use std::thread;
-use std::time::Duration;
 
 use playback::{PlayerEvent, PlayerEventType};
 
@@ -126,7 +122,8 @@ fn main() -> Fallible<()> {
                         .takes_value(true)
                         .help("audio file"),
                 ),
-        ).subcommand(
+        )
+        .subcommand(
             SubCommand::with_name("test-url")
                 .about("Test command to play audio from url, requires existing pulse device.")
                 .arg(
@@ -136,7 +133,8 @@ fn main() -> Fallible<()> {
                         .takes_value(true)
                         .help("media url"),
                 ),
-        ).subcommand(
+        )
+        .subcommand(
             SubCommand::with_name("test-ts")
                 .about("Test ts instance start, for test use")
                 .arg(
@@ -145,19 +143,22 @@ fn main() -> Fallible<()> {
                         .required(true)
                         .takes_value(true)
                         .help("host address"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("port")
                         .short("p")
                         .required(false)
                         .takes_value(true)
                         .help("port address"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("cid")
                         .required(false)
                         .takes_value(true)
                         .help("channel id"),
                 ),
-        ).get_matches();
+        )
+        .get_matches();
 
     info!(
         "RPC Binding: {}:{}",

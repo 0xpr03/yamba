@@ -21,7 +21,7 @@ use futures::Stream;
 use glib::FlagsClass;
 use gst;
 use gst::prelude::*;
-use gst_player::{self, Cast, Error, PlayerConfig};
+use gst_player::{self, Cast};
 use mysql::Pool;
 use tokio::runtime;
 
@@ -139,7 +139,8 @@ impl Player {
                 .try_send(PlayerEvent {
                     id,
                     event_type: PlayerEventType::EndOfStream,
-                }).unwrap();
+                })
+                .unwrap();
         });
 
         let events_clone = events.clone();
@@ -151,7 +152,8 @@ impl Player {
                 .try_send(PlayerEvent {
                     id,
                     event_type: PlayerEventType::MediaInfoUpdated,
-                }).unwrap();
+                })
+                .unwrap();
         });
 
         player.connect_position_updated(|player, _| {
@@ -174,7 +176,8 @@ impl Player {
                     .try_send(PlayerEvent {
                         id,
                         event_type: PlayerEventType::StateChanged(s),
-                    }).unwrap();
+                    })
+                    .unwrap();
             }
         });
 
@@ -187,7 +190,8 @@ impl Player {
                 .try_send(PlayerEvent {
                     id,
                     event_type: PlayerEventType::VolumeChanged(player.get_volume()),
-                }).unwrap();
+                })
+                .unwrap();
         });
 
         let events_clone = events.clone();
@@ -199,7 +203,8 @@ impl Player {
                 .try_send(PlayerEvent {
                     id,
                     event_type: PlayerEventType::Error(error.clone()),
-                }).unwrap();
+                })
+                .unwrap();
         });
 
         Ok(Player {
@@ -353,7 +358,8 @@ mod tests {
             .try_send(PlayerEvent {
                 id: TEST_ID.clone(),
                 event_type: PlayerEventType::Buffering,
-            }).unwrap();
+            })
+            .unwrap();
         loop {
             if vol > 100 {
                 vol = 0;
@@ -366,7 +372,8 @@ mod tests {
                 .try_send(PlayerEvent {
                     id: TEST_ID.clone(),
                     event_type: PlayerEventType::Buffering,
-                }).unwrap();
+                })
+                .unwrap();
         }
     }
 }
