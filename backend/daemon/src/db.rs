@@ -125,7 +125,7 @@ pub fn insert_tracks(tracks: &[Track], pool: &Pool) -> Fallible<Vec<String>> {
             (`id`,`name`,`source`,`downloaded`, `artist`, `length`) 
             VALUES (?,?,?,?,?,?)
             ON DUPLICATE KEY
-            UPDATE name=name, length=length",
+            UPDATE name=VALUES(name), length=VALUES(length)",
                 (
                     &id,
                     &track.title,
@@ -136,7 +136,8 @@ pub fn insert_tracks(tracks: &[Track], pool: &Pool) -> Fallible<Vec<String>> {
                 ),
             )?;
             Ok(id)
-        }).collect::<Result<Vec<String>, MySqlError>>()?;
+        })
+        .collect::<Result<Vec<String>, MySqlError>>()?;
 
     transaction.commit()?;
 
