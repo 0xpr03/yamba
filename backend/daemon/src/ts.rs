@@ -207,4 +207,9 @@ impl TSInstance {
     pub fn is_running(&mut self) -> Fallible<bool> {
         Ok(self.process.try_wait()?.is_none())
     }
+
+    /// Returns process id of ts instance
+    pub fn get_process_id(&self) -> u32 {
+        self.process.id()
+    }
 }
