@@ -156,6 +156,13 @@ fn main() -> Fallible<()> {
                         .required(false)
                         .takes_value(true)
                         .help("channel id"),
+                )
+                .arg(
+                    Arg::with_name("clear-instances")
+                        .long("clear-instances")
+                        .required(false)
+                        .takes_value(false)
+                        .help("Clear all previous instances"),
                 ),
         )
         .get_matches();
@@ -234,6 +241,7 @@ fn main() -> Fallible<()> {
             let addr = sub_m.value_of("host").unwrap();
             let port = sub_m.value_of("port").map(|v| v.parse::<u16>().unwrap());
             let cid = sub_m.value_of("cid").map(|v| v.parse::<i32>().unwrap());
+            let clear_instances = sub_m.is_present("clear-instances");
 
             let settings = models::TSSettings {
                 id: 0,
@@ -246,17 +254,14 @@ fn main() -> Fallible<()> {
                 autostart: true,
             };
 
-            let _instance = match ts::TSInstance::spawn(&settings, &SETTINGS.main.rpc_bind_port) {
-                Ok(v) => v,
-                Err(e) => {
-                    error!("Error at instance start: {}", e);
-                    return Err(e);
-                }
-            };
+            let pool = db::init_pool_timeout()?;
 
-            info!("Started, starting RPC server..");
+            if clear_instances {
+                info!("Clearing previous instances!");
+                db::clear_instances(&pool)?;
+            }
 
-            //thread::sleep(Duration::from_millis(10000));
+            db::upsert_instance(&settings, &pool)?;
 
             check_runtime()?;
             daemon::start_runtime()?;
