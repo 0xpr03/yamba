@@ -324,6 +324,7 @@ impl Drop for NullSink {
         if let Err(e) = delete_virtual_sink(&self.mainloop, &self.context, self.id) {
             warn!("Unable to delete sink {}", self.id);
         }
+        trace!("Deleted sink {}", self.name);
     }
 }
 

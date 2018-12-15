@@ -138,6 +138,8 @@ pub fn start_runtime() -> Fallible<()> {
     playback::create_playback_server(&mut rt, player_rx, pool.clone())?;
     ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());
 
+    info!("Loading instances..");
+
     match load_instances(&instances, pool.clone(), player_tx, &mainloop, &context) {
         Ok(_) => (),
         Err(e) => {
@@ -160,11 +162,13 @@ pub fn start_runtime() -> Fallible<()> {
         Err(e) => {
             let ((err, _), _, _) = e;
             info!("Shutting down daemon..");
+            println!("Shutting down daemon..");
             return Err(DaemonErr::ShutdownError(err).into());
         }
         Ok(_) => (),
     };
     info!("Daemon stopped");
+    println!("Daemon stopped");
     Ok(())
 }
 
