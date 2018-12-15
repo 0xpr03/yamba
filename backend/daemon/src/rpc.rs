@@ -72,7 +72,7 @@ pub fn create_rpc_server(runtime: &mut runtime::Runtime) -> Fallible<()> {
     let server = Server::try_bind(&addr)
         .map_err(|e| RPCErr::BindError(e))?
         .serve(|| service_fn(rpc))
-        .map_err(|e| eprintln!("server error: {}", e));
+        .map_err(|e| error!("server error: {}", e));
 
     info!("RPC Listening on http://{}", addr);
     runtime.spawn(server);

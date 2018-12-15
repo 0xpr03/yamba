@@ -220,7 +220,7 @@ pub fn create_api_server(runtime: &mut runtime::Runtime, channel: APIChannel) ->
             let channel = channel.clone();
             service_fn(move |req: Request<Body>| api(req, counter.clone(), channel.clone()))
         })
-        .map_err(|e| eprintln!("server error: {}", e));
+        .map_err(|e| error!("server error: {}", e));
 
     info!("API Listening on http://{}", addr);
     runtime.spawn(server);
