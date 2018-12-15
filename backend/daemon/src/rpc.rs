@@ -15,15 +15,14 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use jsonrpc_lite::{Error, Id, JsonRpc};
+use jsonrpc_lite::{Error, Id, JsonRpc, Params};
 
-use daemon::{self, BoxFut};
 use failure::Fallible;
 use hyper;
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Request, Response, Server};
-use serde_json::{self, to_value};
+use serde_json::{self, to_value, Value};
 use tokio::runtime;
 use SETTINGS;
 
@@ -39,14 +38,18 @@ fn rpc(req: Request<Body>) -> BoxFut {
     Box::new(req.into_body().concat2().map(|b| {
         let response_rpc = if let Ok(rpc) = serde_json::from_slice::<JsonRpc>(&b) {
             trace!("rpc request: {:?}", rpc);
-            let id = rpc.get_id().unwrap_or(Id::None(()));
-            if let Some(method) = rpc.get_method() {
-                match method {
-                    "heartbeat" => JsonRpc::success(id, &json!(true)),
+            let mut req_id = rpc.get_id().unwrap_or(Id::None(()));
+            match parse_rpc_call(req_id.clone(), &rpc) {
+                Ok((instance_id, method, params)) => match method {
+                    "heartbeat" => JsonRpc::success(req_id, &json!(true)),
                     _ => JsonRpc::error(id, Error::method_not_found()),
                 }
             } else {
-                JsonRpc::error(id, Error::invalid_request())
+                JsonRpc::error(id, Error::invalid_request())},
+                Err(e) => {
+                    warn!("Can't parse rpc: {:?}", e);
+                    e
+                }
             }
         } else {
             warn!("Invalid rpc request");
@@ -56,6 +59,38 @@ fn rpc(req: Request<Body>) -> BoxFut {
         let body = to_value(response_rpc).unwrap().to_string();
         Response::new(body.into())
     }))
+}
+
+/// Parse input and retrieve relevant data
+fn parse_rpc_call(
+    req_id: Id,
+    rpc: &JsonRpc,
+) -> Result<(i32, &str, serde_json::map::Map<String, Value>), JsonRpc> {
+    let params = match rpc.get_params() {
+        Some(Params::Map(params)) => params,
+        _ => {
+            warn!("Invalid rpc request");
+            return Err(JsonRpc::error(Id::None(()), Error::parse_error()));
+        }
+    };
+    let instance_id = match params.get("id") {
+        Some(Value::Number(id)) => {
+            if let Some(id) = id.as_i64() {
+                id as i32
+            } else {
+                return Err(JsonRpc::error(req_id, Error::invalid_params()));
+            }
+        }
+        v => {
+            warn!("Missing instance ID for rpc call! {:?}", v);
+            return Err(JsonRpc::error(req_id, Error::invalid_request()));
+        }
+    };
+    let method = match rpc.get_method() {
+        Some(method) => method,
+        _ => return Err(JsonRpc::error(req_id, Error::invalid_request())),
+    };
+    Ok((instance_id as i32, method, params))
 }
 
 /// Check config for RPC, throws an error if not ok for starting
