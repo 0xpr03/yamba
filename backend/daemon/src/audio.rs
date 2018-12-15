@@ -312,6 +312,11 @@ impl NullSink {
         }
         Ok(())
     }
+
+    /// Returns sink name
+    pub fn get_sink_name(&self) -> &str {
+        self.name.as_str()
+    }
 }
 
 impl Drop for NullSink {
