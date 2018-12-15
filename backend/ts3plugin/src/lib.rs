@@ -39,7 +39,7 @@ jsonrpc_client!(
     #[derive(Debug)]
     pub struct BackendRPCClient {
     // Call when connected
-    pub fn connected(&mut self, id: i32) -> RpcRequest<()>;
+    pub fn connected(&mut self, id: i32) -> RpcRequest<bool>;
     // Return: message
     pub fn heartbeat(&mut self, id : i32) -> RpcRequest<(String)>;
 

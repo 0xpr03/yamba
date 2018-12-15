@@ -44,11 +44,11 @@ use SETTINGS;
 
 /// Base for each instance
 pub struct Instance {
-    id: ID,
-    voip: InstanceType,
-    current_song: RwLock<Option<SongMin>>,
-    player: Player,
-    db: Pool,
+    pub id: ID,
+    pub voip: InstanceType,
+    pub current_song: RwLock<Option<SongMin>>,
+    pub player: Player,
+    pub db: Pool,
 }
 
 /// Instance type for different VoIP systems
@@ -61,6 +61,13 @@ pub struct Teamspeak {
     ts: TSInstance,
     sink: NullSink,
     updated: RwLock<Instant>,
+}
+
+impl Teamspeak {
+    /// Setup call on successfull connection
+    pub fn on_connected(&self) {
+        self.sink.set_monitor_for_process(self.ts.get_process_id());
+    }
 }
 
 /// Daemon init & startup of all servers

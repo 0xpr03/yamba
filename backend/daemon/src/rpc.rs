@@ -44,10 +44,25 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
             match parse_rpc_call(req_id.clone(), &rpc) {
                 Ok((instance_id, method, params)) => match method {
                     "heartbeat" => JsonRpc::success(req_id, &json!(true)),
-                    _ => JsonRpc::error(id, Error::method_not_found()),
-                }
-            } else {
-                JsonRpc::error(id, Error::invalid_request())},
+                    "connected" => {
+                        trace!("ts connected");
+                        let instance_r = instances.read().expect("Can't read instance!");
+                        if let Some(instance) = instance_r.get(&instance_id) {
+                            // if let, but irrefutable pattern as of now..
+                            let InstanceType::Teamspeak(ref ts) = instance.voip;
+                            ts.on_connected();
+
+                            JsonRpc::success(req_id, &json!(true))
+                        } else {
+                            error!(
+                                "Received connected event for invalid instance ID {:?}",
+                                req_id
+                            );
+                            JsonRpc::error(req_id, Error::invalid_params())
+                        }
+                    }
+                    _ => JsonRpc::error(req_id, Error::method_not_found()),
+                },
                 Err(e) => {
                     warn!("Can't parse rpc: {:?}", e);
                     e
