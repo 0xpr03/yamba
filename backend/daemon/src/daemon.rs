@@ -125,7 +125,8 @@ pub fn start_runtime() -> Fallible<()> {
 
     let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
 
-    rpc::create_rpc_server(&mut rt).map_err(|e| DaemonErr::RPCCreationError(e))?;
+    rpc::create_rpc_server(&mut rt, instances.clone())
+        .map_err(|e| DaemonErr::RPCCreationError(e))?;
     api::create_api_server(&mut rt, tx.clone()).map_err(|e| DaemonErr::APICreationError(e))?;
     playback::create_playback_server(&mut rt, player_rx, pool.clone())?;
     ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());

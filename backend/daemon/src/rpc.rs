@@ -24,6 +24,8 @@ use hyper::service::service_fn;
 use hyper::{Body, Request, Response, Server};
 use serde_json::{self, to_value, Value};
 use tokio::runtime;
+
+use daemon::{self, BoxFut, InstanceType, Instances};
 use SETTINGS;
 
 /// RPC server for client callbacks
@@ -34,8 +36,8 @@ pub enum RPCErr {
     BindError(#[cause] hyper::error::Error),
 }
 
-fn rpc(req: Request<Body>) -> BoxFut {
-    Box::new(req.into_body().concat2().map(|b| {
+fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
+    Box::new(req.into_body().concat2().map(move |b| {
         let response_rpc = if let Ok(rpc) = serde_json::from_slice::<JsonRpc>(&b) {
             trace!("rpc request: {:?}", rpc);
             let mut req_id = rpc.get_id().unwrap_or(Id::None(()));
@@ -100,13 +102,15 @@ pub fn check_config() -> Fallible<()> {
 }
 
 /// Create rpc server, bind it & attach to runtime
-pub fn create_rpc_server(runtime: &mut runtime::Runtime) -> Fallible<()> {
+pub fn create_rpc_server(runtime: &mut runtime::Runtime, instances: Instances) -> Fallible<()> {
     let addr =
         daemon::parse_socket_address(&SETTINGS.main.rpc_bind_ip, SETTINGS.main.rpc_bind_port)?;
-
     let server = Server::try_bind(&addr)
         .map_err(|e| RPCErr::BindError(e))?
-        .serve(|| service_fn(rpc))
+        .serve(move || {
+            let instances = instances.clone();
+            service_fn(move |req: Request<Body>| rpc(req, instances.clone()))
+        })
         .map_err(|e| error!("server error: {}", e));
 
     info!("RPC Listening on http://{}", addr);
