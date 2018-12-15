@@ -153,6 +153,7 @@ fn main() -> Fallible<()> {
                 )
                 .arg(
                     Arg::with_name("cid")
+                        .long("cid")
                         .required(false)
                         .takes_value(true)
                         .help("channel id"),
