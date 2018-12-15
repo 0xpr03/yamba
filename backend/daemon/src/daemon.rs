@@ -210,13 +210,20 @@ fn create_instance_from_id(
 
     let id = Arc::new(data.id);
 
+    let player = Player::new(player_send, id.clone())?;
+    let sink = NullSink::new(
+        mainloop.clone(),
+        context.clone(),
+        format!("yambasink{}", &id),
+    )?;
+    player.set_pulse_device(sink.get_sink_name())?;
     Ok(Instance {
         voip: InstanceType::Teamspeak(Teamspeak {
             ts: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
-            sink: NullSink::new(mainloop.clone(), context.clone(), format!("sink{}", &id))?,
+            sink,
             updated: RwLock::new(Instant::now()),
         }),
-        player: Player::new(player_send, id.clone())?,
+        player,
         id: id,
         current_song: RwLock::new(None),
         db: pool.clone(),
