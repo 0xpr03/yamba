@@ -43,6 +43,11 @@ pub struct NullSink {
     mainloop: CMainloop,
 }
 
+// we need this for the HashMap, context & mainloop require us to manually force this
+unsafe impl Send for NullSink {}
+
+unsafe impl Sync for NullSink {}
+
 /// Enum for async filtering a sink via PA calls
 #[derive(PartialEq, Eq)]
 enum DeviceFilterResult {
