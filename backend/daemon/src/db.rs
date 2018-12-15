@@ -90,14 +90,15 @@ pub fn get_autostart_instance_ids(pool: &Pool) -> Fallible<Vec<i32>> {
 /// Load data for specified instance ID
 pub fn load_instance_data(pool: &Pool, id: &i32) -> Fallible<TSSettings> {
     let mut result = pool.prep_exec(
-        "SELECT id, host,port,identity,cid,name,password,autostart from `instances`",
+        "SELECT id, host,port,identity,cid,name,password from `instances` WHERE id = ?",
         (&id,),
     )?;
     let row = result
         .next()
         .ok_or(DatabaseErr::InstanceNotFoundErr(id.clone()))?;
 
-    let (id, host, port, identity, cid, name, password, autostart) = from_row_opt(row?)?;
+    let (id, host, port, identity, cid, name, password) = //: //(_, _, _, _, _, _, _, u8) =
+        from_row_opt(row?)?;
     Ok(TSSettings {
         id,
         host,
@@ -106,7 +107,7 @@ pub fn load_instance_data(pool: &Pool, id: &i32) -> Fallible<TSSettings> {
         cid,
         name,
         password,
-        autostart,
+        autostart: true,
     })
 }
 
