@@ -39,8 +39,10 @@ const TS_TYPE: &'static str = "teamspeak_instances";
 
 #[derive(Fail, Debug)]
 pub enum DatabaseErr {
-    #[fail(display = "Couldn't find data for ID {}", _0)]
+    #[fail(display = "Couldn't find instance entry for ID {}", _0)]
     InstanceNotFoundErr(i32),
+    #[fail(display = "Couldn't find instance data on {} for ID {}", _1, _0)]
+    InstanceDataNotFoundErr(i32, &'static str),
     #[fail(display = "Instance type {} is unknown", _0)]
     InstanceTypeUnknown(String),
 }
@@ -110,7 +112,7 @@ pub fn load_instance_data(pool: &Pool, id: &i32) -> Fallible<DBInstanceType> {
             )?;
             let row = result
                 .next()
-                .ok_or(DatabaseErr::InstanceNotFoundErr(id.clone()))?;
+                .ok_or(DatabaseErr::InstanceDataNotFoundErr(id.clone(), TS_TYPE))?;
 
             // TODO: fix autostart parsing
             let (id, host, port, identity, cid, name, password) = //: //(_, _, _, _, _, _, _, u8) =

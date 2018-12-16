@@ -150,7 +150,7 @@ pub fn start_runtime() -> Fallible<()> {
     match load_instances(&instances, pool.clone(), player_tx, &mainloop, &context) {
         Ok(_) => (),
         Err(e) => {
-            error!("Unable to load instances: {}", e);
+            error!("Unable to load instances: {}\n{}", e, e.backtrace());
             return Err(DaemonErr::InitializationError(format!("{}", e)).into());
         }
     }
@@ -197,7 +197,12 @@ fn load_instances(
             match create_instance_from_id(&id, &pool, player_send.clone(), &mainloop, &context) {
                 Ok(v) => v,
                 Err(e) => {
-                    error!("Unable to load instance ID {}: {}", id, e);
+                    error!(
+                        "Unable to load instance ID {}: {}\n{}",
+                        id,
+                        e,
+                        e.backtrace()
+                    );
                     continue;
                 }
             };
