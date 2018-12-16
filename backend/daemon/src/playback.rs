@@ -264,7 +264,7 @@ impl Player {
         Ok(())
     }
 
-    /// Get position in song as seconds
+    /// Get position in song as ms
     pub fn get_position(&self) -> u64 {
         let clock = self.player.get_position();
         let mut position = 0;
