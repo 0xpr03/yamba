@@ -200,24 +200,35 @@ fn main() -> Fallible<()> {
             info!("Finished");
         }
         ("test-url", Some(sub_m)) => {
+            use std::sync::{Arc, Mutex};
             info!("Url play testing..");
             {
                 gst::init()?;
+                gstreamer::debug_set_active(true);
+                gstreamer::debug_set_default_threshold(gstreamer::DebugLevel::Warning);
+                gstreamer::debug_set_threshold_for_name("player", gstreamer::DebugLevel::Debug);
+                let (mainloop, context) = audio::init().unwrap();
+
+                let sink = audio::NullSink::new(mainloop, context, "test1").unwrap();
+
                 let (send, recv) = mpsc::channel::<PlayerEvent>(10);
                 let (mut send_s, recv_s) = mpsc::channel::<bool>(1);
-                let player = playback::Player::new(send, -1)?;
+                let player = Arc::new(Mutex::new(playback::Player::new(send, -1)?));
+                //player.set_pulse_device(sink.get_sink_name()).unwrap();
                 let url = sub_m.value_of("url").unwrap();
-                player.set_uri(&url);
-                player.play();
 
                 let mut runtime = runtime::Runtime::new()?;
                 {
                     debug!("url: {:?}", url);
+                    let player_c = player.clone();
                     runtime.spawn(recv.for_each(move |event| {
-                        println!("Event: {:?}", event);
+                        let player = player_c.clone();
+                        trace!("Event: {:?}", event);
                         match event.event_type {
                             PlayerEventType::PositionUpdated => {
-                                player.set_volume(f64::from(player.get_position()) / 1000.0);
+                                let player_l = player.lock().unwrap();
+                                debug!("Position: {}", player_l.get_position());
+                                //player.set_volume(f64::from(player.get_position()) / 1000.0);
                             }
                             PlayerEventType::EndOfStream => {
                                 send_s.try_send(true).unwrap();
@@ -226,7 +237,11 @@ fn main() -> Fallible<()> {
                         }
                         Ok(())
                     }));
+                    let player_l = player.lock().unwrap();
+                    player_l.set_uri(&url);
 
+                    debug!("Starting playback");
+                    player_l.play();
                     runtime.block_on(recv_s.for_each(|b| Ok(()))).unwrap();
                 }
                 println!("playthough finished");
