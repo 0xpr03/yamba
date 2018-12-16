@@ -333,6 +333,7 @@ pub fn create_playback_server(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use audio;
     use futures::sync::mpsc;
     use futures::Stream;
     use gst;
@@ -347,11 +348,20 @@ mod tests {
 
     #[test]
     fn test_playback() {
-        println!("test");
+        println!("testing playback");
         gst::init().unwrap();
         let (mut sender, recv) = mpsc::channel::<PlayerEvent>(20);
 
+        let (mainloop, context) = audio::init().unwrap();
+
+        let default_sink =
+            audio::NullSink::new(mainloop.clone(), context.clone(), "default_sink").unwrap();
+        default_sink.set_sink_as_default().unwrap();
+        default_sink.set_source_as_default().unwrap();
+        let sink = audio::NullSink::new(mainloop, context, "test1").unwrap();
+
         let player = Player::new(sender.clone(), TEST_ID.clone()).unwrap();
+        player.set_pulse_device(sink.get_sink_name()).unwrap();
         let mut runtime = Runtime::new().unwrap();
 
         let stream = recv.for_each(move |event| {
