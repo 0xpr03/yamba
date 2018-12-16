@@ -31,7 +31,9 @@ use std::vec::Vec;
 
 use SETTINGS;
 
-use models::TSSettings;
+use models::{DBInstanceType, TSSettings};
+
+const TS_TYPE: &'static str = "teamspeak_instances";
 
 /// DB stuff
 
@@ -39,6 +41,8 @@ use models::TSSettings;
 pub enum DatabaseErr {
     #[fail(display = "Couldn't find data for ID {}", _0)]
     InstanceNotFoundErr(i32),
+    #[fail(display = "Instance type {} is unknown", _0)]
+    InstanceTypeUnknown(String),
 }
 
 /// Init db connection pool
@@ -88,34 +92,55 @@ pub fn get_autostart_instance_ids(pool: &Pool) -> Fallible<Vec<i32>> {
 }
 
 /// Load data for specified instance ID
-pub fn load_instance_data(pool: &Pool, id: &i32) -> Fallible<TSSettings> {
-    let mut result = pool.prep_exec(
-        "SELECT id, host,port,identity,cid,name,password from `instances` WHERE id = ?",
-        (&id,),
-    )?;
-    let row = result
+pub fn load_instance_data(pool: &Pool, id: &i32) -> Fallible<DBInstanceType> {
+    let mut type_result = pool.prep_exec("select `type` from `instances` WHERE id = ?", (&id,))?;
+    let row = type_result
         .next()
         .ok_or(DatabaseErr::InstanceNotFoundErr(id.clone()))?;
+    let inst_type: String = from_row_opt(row?)?;
+    match inst_type.as_str() {
+        TS_TYPE => {
+            let mut result = pool.prep_exec(
+                format!(
+                    "SELECT id,host,port,identity,cid,name,password,name from `{}` dat 
+                JOIN `instances` instance_id on in.id = dat.id WHERE dat.instance_id = ?",
+                    TS_TYPE
+                ),
+                (&id,),
+            )?;
+            let row = result
+                .next()
+                .ok_or(DatabaseErr::InstanceNotFoundErr(id.clone()))?;
 
-    let (id, host, port, identity, cid, name, password) = //: //(_, _, _, _, _, _, _, u8) =
-        from_row_opt(row?)?;
-    Ok(TSSettings {
-        id,
-        host,
-        port,
-        identity,
-        cid,
-        name,
-        password,
-        autostart: true,
-    })
+            // TODO: fix autostart parsing
+            let (id, host, port, identity, cid, name, password) = //: //(_, _, _, _, _, _, _, u8) =
+                from_row_opt(row?)?;
+            Ok(DBInstanceType::TS(TSSettings {
+                id,
+                host,
+                port,
+                identity,
+                cid,
+                name,
+                password,
+                autostart: true,
+            }))
+        }
+        _ => Err(DatabaseErr::InstanceTypeUnknown(inst_type).into()),
+    }
 }
 
 /// Upsert instance for testing purpose
-pub fn upsert_instance(settings: &TSSettings, pool: &Pool) -> Fallible<()> {
-    pool.prep_exec("INSERT INTO `instances` (id,host,port, identity,name,password,autostart, cid) VALUES (?,?,?,?,?,?,?,?)
-        ON DUPLICATE KEY UPDATE host=VALUES(host), port=VALUES(port), identity=VALUES(identity), name=VALUES(name), password=VALUES(password), autostart=VALUES(autostart), cid=VALUES(cid)",
-        (&settings.id,&settings.host,&settings.port,&settings.identity,&settings.name,&settings.password,&settings.autostart,&settings.cid))?;
+pub fn upsert_ts_instance(settings: &TSSettings, pool: &Pool) -> Fallible<()> {
+    pool.prep_exec(
+        "INSERT INTO `instances` (id,name,type, autostart) VALUES (?,?,?,?)
+        ON DUPLICATE KEY UPDATE name=VALUES(name), type=VALUES(type), autostart=VALUES(autostart)",
+        (&settings.id, &settings.name, TS_TYPE, &settings.autostart),
+    )?;
+
+    pool.prep_exec(format!("INSERT INTO `{}` (instance_id,host,port, identity,password, cid) VALUES (?,?,?,?,?,?)
+        ON DUPLICATE KEY UPDATE host=VALUES(host), port=VALUES(port), identity=VALUES(identity), password=VALUES(password), cid=VALUES(cid)",TS_TYPE),
+        (&settings.id,&settings.host,&settings.port,&settings.identity,&settings.password,&settings.cid))?;
 
     Ok(())
 }

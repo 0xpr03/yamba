@@ -274,7 +274,7 @@ fn main() -> Fallible<()> {
             let clear_instances = sub_m.is_present("clear-instances");
 
             let settings = models::TSSettings {
-                id: 0,
+                id: 1,
                 host: addr.to_string(),
                 port,
                 identity: "".to_string(),
@@ -291,7 +291,7 @@ fn main() -> Fallible<()> {
                 db::clear_instances(&pool)?;
             }
 
-            db::upsert_instance(&settings, &pool)?;
+            db::upsert_ts_instance(&settings, &pool)?;
 
             check_runtime()?;
             daemon::start_runtime()?;

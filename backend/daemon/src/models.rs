@@ -57,6 +57,11 @@ pub struct Playlist {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub enum DBInstanceType {
+    TS(TSSettings),
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct TSSettings {
     pub id: i32,
     pub host: String,

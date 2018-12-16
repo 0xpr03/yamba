@@ -34,7 +34,7 @@ use std::time::Instant;
 use api;
 use audio::{self, CContext, CMainloop, NullSink};
 use db;
-use models::SongMin;
+use models::{DBInstanceType, SongMin, TSSettings};
 use playback::{self, PlaybackSender, Player, PlayerEvent};
 use rpc;
 use ts::TSInstance;
@@ -216,6 +216,19 @@ fn create_instance_from_id(
 ) -> Fallible<Instance> {
     let data = db::load_instance_data(&pool, id)?;
 
+    // can't match untill we have more than one type
+    let DBInstanceType::TS(ts_data) = data;
+    create_ts_instance(pool, player_send, mainloop, context, ts_data)
+}
+
+/// Crate instance of type TS
+fn create_ts_instance(
+    pool: &Pool,
+    player_send: PlaybackSender,
+    mainloop: &CMainloop,
+    context: &CContext,
+    data: TSSettings,
+) -> Fallible<Instance> {
     let id = Arc::new(data.id);
 
     let player = Player::new(player_send, id.clone())?;
