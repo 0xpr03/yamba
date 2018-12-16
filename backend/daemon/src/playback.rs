@@ -127,6 +127,7 @@ impl Player {
             .map_err(|_| PlaybackErr::GST("Couldn't set audio sink to playbin!"))?;
 
         player.connect_uri_loaded(|player, uri| {
+            trace!("Uri loaded, starting playback");
             player.play();
         });
 
@@ -173,6 +174,7 @@ impl Player {
         let id_clone = id.clone();
         player.connect_state_changed(move |player, state| {
             let mut events = events_clone.clone();
+            debug!("state changed: {:?}", state);
             let state = match state {
                 gst_player::PlayerState::Playing => Some(PlaybackState::Playing),
                 gst_player::PlayerState::Paused => Some(PlaybackState::Paused),
@@ -206,6 +208,7 @@ impl Player {
         let events_clone = events.clone();
         let id_clone = id.clone();
         player.connect_error(move |player, error| {
+            debug!("Error event: {:?}", error);
             let mut events = events_clone.clone();
             let id = id_clone.clone();
             events

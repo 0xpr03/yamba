@@ -95,7 +95,7 @@ impl NullSink {
                 match mainloop_l.iterate(false) {
                     IterateResult::Quit(_) => return Err(AudioErr::IterateQuitErr.into()),
                     IterateResult::Err(e) => return Err(AudioErr::IterateError(e).into()),
-                    IterateResult::Success(v) => {}
+                    IterateResult::Success(_) => {}
                 }
             }
         }
@@ -775,7 +775,7 @@ mod test {
         println!("Sinks created..");
         let mut a = String::from("");
         let reader = ::std::io::stdin();
-        reader.read_line(&mut a);
+        reader.read_line(&mut a).unwrap();
         // thread::sleep(Duration::from_millis(5000));
 
         drop(sink_1);

@@ -20,7 +20,7 @@ use std::ffi::OsStr;
 use std::fs::{read_dir, DirBuilder, OpenOptions};
 use std::io::{self, Write};
 
-use config_rs::{Config, ConfigError as ConfigRSError, Environment, File as CFile, FileFormat};
+use config_rs::{Config, ConfigError as ConfigRSError, Environment, File as CFile};
 use failure::Fallible;
 
 use {CONF_DIR, DEFAULT_CONFIG_NAME};
@@ -112,7 +112,8 @@ fn load_settings() -> Fallible<Config> {
                 warn!("can't handle {:?} during config loading: {}", x, e);
                 false
             }
-        }).map(|x| CFile::from(x.path()))
+        })
+        .map(|x| CFile::from(x.path()))
         .collect();
     debug!("config_files {:?}", config_files);
     settings.merge(config_files)?;
@@ -152,7 +153,7 @@ fn load_default() -> Fallible<Config> {
     }
     drop(config_file);
     settings
-        .merge(CFile::with_name(&path_config.to_string_lossy()))//(&format!("conf/{}", DEFAULT_CONFIG_NAME)))
+        .merge(CFile::with_name(&path_config.to_string_lossy())) //(&format!("conf/{}", DEFAULT_CONFIG_NAME)))
         .map_err(|e| ConfigErr::DefaultConfigParseError(e))?;
     Ok(settings)
 }
