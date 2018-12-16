@@ -46,7 +46,7 @@ CREATE TABLE `teamspeak_instances` (
   `cid` INT(32) NOT NULL,
   PRIMARY KEY (`instance_id`),
   FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `instance_store` (
   `id` INT NOT NULL,
