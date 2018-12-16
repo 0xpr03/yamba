@@ -104,6 +104,7 @@ impl Player {
         let name = Player::get_name_by_id(&*id);
 
         config.set_name(&name);
+        config.set_position_update_interval(250);
         player.set_config(config).unwrap();
 
         let playbin = player.get_pipeline();
