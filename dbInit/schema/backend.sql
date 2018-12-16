@@ -55,7 +55,9 @@ CREATE TABLE `instance_store` (
   `index` INT NOT NULL,
   `position` INT NOT NULL,
   `random` BIT NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`id`) REFERENCES `instances`(`id`)
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `queues` (
@@ -63,6 +65,8 @@ CREATE TABLE `queues` (
   `instance_id` INT NOT NULL,
   `title_id` CHAR(32) NOT NULL,
   PRIMARY KEY (`index`, `instance_id`),
-  FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`),
+  FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`)
+    ON DELETE CASCADE,
   FOREIGN KEY (`title_id`) REFERENCES `titles`(`id`)
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
