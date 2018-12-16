@@ -28,6 +28,7 @@ use tokio_signal::unix::{self, Signal};
 use std::io;
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
+use std::thread;
 use std::time::Instant;
 
 use api;
@@ -102,6 +103,12 @@ fn format_player_name(id: &i32) -> String {
 pub fn start_runtime() -> Fallible<()> {
     info!("Starting daemon..");
     gst::init()?;
+    let glib_loop = glib::MainLoop::new(None, false);
+    let glib_loop_clone = glib_loop.clone();
+    thread::spawn(move || {
+        let glib_loop = &glib_loop_clone;
+        glib_loop.run();
+    });
     let instances: Instances = Arc::new(RwLock::new(HashMap::new()));
     let ytdl = Arc::new(YtDL::new()?);
     let pool = db::init_pool_timeout()?;
@@ -167,6 +174,7 @@ pub fn start_runtime() -> Fallible<()> {
         }
         Ok(_) => (),
     };
+    glib_loop.quit();
     info!("Daemon stopped");
     println!("Daemon stopped");
     Ok(())
