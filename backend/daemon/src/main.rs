@@ -204,10 +204,17 @@ fn main() -> Fallible<()> {
             info!("Url play testing..");
             {
                 gst::init()?;
+                let glib_loop = glib::MainLoop::new(None, false);
                 gstreamer::debug_set_active(true);
                 gstreamer::debug_set_default_threshold(gstreamer::DebugLevel::Warning);
                 gstreamer::debug_set_threshold_for_name("player", gstreamer::DebugLevel::Debug);
                 let (mainloop, context) = audio::init().unwrap();
+
+                let glib_loop_clone = glib_loop.clone();
+                thread::spawn(move || {
+                    let glib_loop = &glib_loop_clone;
+                    glib_loop.run();
+                });
 
                 let sink = audio::NullSink::new(mainloop, context, "test1").unwrap();
 
@@ -242,7 +249,7 @@ fn main() -> Fallible<()> {
 
                     debug!("Starting playback");
                     player_l.play();
-                    runtime.block_on(recv_s.for_each(|b| Ok(()))).unwrap();
+                    glib_loop.quit();
                 }
                 println!("playthough finished");
             }
