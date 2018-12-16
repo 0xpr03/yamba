@@ -156,8 +156,17 @@ impl Player {
                 .unwrap();
         });
 
-        player.connect_position_updated(|player, _| {
-            let player_id = player.get_name();
+        let events_clone = events.clone();
+        let id_clone = id.clone();
+        player.connect_position_updated(move |player, _| {
+            let mut events = events_clone.clone();
+            let id = id_clone.clone();
+            events
+                .try_send(PlayerEvent {
+                    id,
+                    event_type: PlayerEventType::PositionUpdated,
+                })
+                .unwrap();
         });
 
         let events_clone = events.clone();
