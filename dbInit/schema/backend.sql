@@ -30,14 +30,22 @@ CREATE TABLE `titles_to_playlists` (
 
 CREATE TABLE `instances` (
   `id` INT AUTO_INCREMENT NOT NULL,
-  `host` VARCHAR(255) NOT NULL,
-  `port` INT(16) UNSIGNED,
-  `identity` VARCHAR(255) NOT NULL,
   `name` VARCHAR(255) NOT NULL,
-  `password` VARCHAR (255),
   `autostart` BIT NOT NULL,
-  `cid` INT(32),
-  PRIMARY KEY (`id`)
+  `type` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY (`id`, `autostart`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `teamspeak_instances` (
+  `instance_id` INT NOT NULL,
+  `host` VARCHAR(255) NOT NULL,
+  `port` INT(16) UNSIGNED NOT NULL,
+  `identity` VARCHAR(255) NOT NULL,
+  `password` VARCHAR (255) NOT NULL,
+  `cid` INT(32) NOT NULL,
+  PRIMARY KEY (`instance_id`),
+  FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `instance_store` (
