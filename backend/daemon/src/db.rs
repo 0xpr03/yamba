@@ -102,8 +102,8 @@ pub fn load_instance_data(pool: &Pool, id: &i32) -> Fallible<DBInstanceType> {
         TS_TYPE => {
             let mut result = pool.prep_exec(
                 format!(
-                    "SELECT id,host,port,identity,cid,name,password,name from `{}` dat 
-                JOIN `instances` instance_id on in.id = dat.id WHERE dat.instance_id = ?",
+                    "SELECT dat.`instance_id`,`host`,`port`,`identity`,`cid`,`name`,`password` FROM `{}` dat 
+                JOIN `instances` inst ON inst.`id` = dat.`instance_id` WHERE dat.`instance_id` = ?",
                     TS_TYPE
                 ),
                 (&id,),
@@ -133,13 +133,13 @@ pub fn load_instance_data(pool: &Pool, id: &i32) -> Fallible<DBInstanceType> {
 /// Upsert instance for testing purpose
 pub fn upsert_ts_instance(settings: &TSSettings, pool: &Pool) -> Fallible<()> {
     pool.prep_exec(
-        "INSERT INTO `instances` (id,name,type, autostart) VALUES (?,?,?,?)
-        ON DUPLICATE KEY UPDATE name=VALUES(name), type=VALUES(type), autostart=VALUES(autostart)",
+        "INSERT INTO `instances` (`id`,`name`,`type`,`autostart`) VALUES (?,?,?,?)
+        ON DUPLICATE KEY UPDATE `name`=VALUES(`name`), `type`=VALUES(`type`), `autostart`=VALUES(`autostart`)",
         (&settings.id, &settings.name, TS_TYPE, &settings.autostart),
     )?;
 
-    pool.prep_exec(format!("INSERT INTO `{}` (instance_id,host,port, identity,password, cid) VALUES (?,?,?,?,?,?)
-        ON DUPLICATE KEY UPDATE host=VALUES(host), port=VALUES(port), identity=VALUES(identity), password=VALUES(password), cid=VALUES(cid)",TS_TYPE),
+    pool.prep_exec(format!("INSERT INTO `{}` (`instance_id`,`host`,`port`,`identity`,`password`,`cid`) VALUES (?,?,?,?,?,?)
+        ON DUPLICATE KEY UPDATE `host`=VALUES(`host`), `port`=VALUES(`port`), `identity`=VALUES(`identity`), `password`=VALUES(`password`), `cid`=VALUES(`cid`)",TS_TYPE),
         (&settings.id,&settings.host,&settings.port,&settings.identity,&settings.password,&settings.cid))?;
 
     Ok(())
