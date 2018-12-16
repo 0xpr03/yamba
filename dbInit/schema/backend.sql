@@ -43,7 +43,7 @@ CREATE TABLE `teamspeak_instances` (
   `port` INT(16) UNSIGNED,
   `identity` VARCHAR(255) NOT NULL,
   `password` VARCHAR (255),
-  `cid` INT(32) NOT NULL,
+  `cid` INT(32),
   PRIMARY KEY (`instance_id`),
   FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`)
     ON DELETE CASCADE
