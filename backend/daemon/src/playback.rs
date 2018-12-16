@@ -265,17 +265,20 @@ impl Player {
     }
 
     /// Get position in song as seconds
-    pub fn get_position(&self) -> i32 {
+    pub fn get_position(&self) -> u64 {
         let clock = self.player.get_position();
-        let mut position: i32 = 0;
+        let mut position = 0;
+        if let Some(s) = clock.mseconds() {
+            position += s;
+        }
         if let Some(s) = clock.seconds() {
-            position += s as i32;
+            position += s * 1000;
         }
         if let Some(m) = clock.minutes() {
-            position += m as i32 * 60;
+            position += m * 1000 * 60;
         }
         if let Some(h) = clock.hours() {
-            position += h as i32 * 60 * 60;
+            position += h * 1000 * 60 * 60;
         }
         position
     }
