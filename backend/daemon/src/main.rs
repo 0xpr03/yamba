@@ -200,7 +200,9 @@ fn main() -> Fallible<()> {
             info!("Finished");
         }
         ("test-url", Some(sub_m)) => {
+            use playback::PlaybackState;
             use std::sync::{Arc, Mutex};
+            use std::thread;
             info!("Url play testing..");
             {
                 gst::init()?;
@@ -219,9 +221,9 @@ fn main() -> Fallible<()> {
                 let sink = audio::NullSink::new(mainloop, context, "test1").unwrap();
 
                 let (send, recv) = mpsc::channel::<PlayerEvent>(10);
-                let (mut send_s, recv_s) = mpsc::channel::<bool>(1);
+                let (mut send_s, recv_s) = mpsc::channel::<()>(1);
                 let player = Arc::new(Mutex::new(playback::Player::new(send, -1)?));
-                //player.set_pulse_device(sink.get_sink_name()).unwrap();
+
                 let url = sub_m.value_of("url").unwrap();
 
                 let mut runtime = runtime::Runtime::new()?;
@@ -237,18 +239,23 @@ fn main() -> Fallible<()> {
                                 debug!("Position: {}", player_l.get_position());
                                 //player.set_volume(f64::from(player.get_position()) / 1000.0);
                             }
-                            PlayerEventType::EndOfStream => {
-                                send_s.try_send(true).unwrap();
+                            PlayerEventType::EndOfStream
+                            | PlayerEventType::StateChanged(PlaybackState::Stopped) => {
+                                debug!("end of stream");
+                                let _ = send_s.try_send(());
                             }
                             _ => {}
                         }
                         Ok(())
                     }));
-                    let player_l = player.lock().unwrap();
-                    player_l.set_uri(&url);
-
+                    {
+                        // drop player lock, or we'll block the whole event queue
+                        let player_l = player.lock().unwrap();
+                        player_l.set_pulse_device(sink.get_sink_name()).unwrap();
+                        player_l.set_uri(&url);
+                    }
                     debug!("Starting playback");
-                    player_l.play();
+                    runtime.block_on(recv_s.into_future()).unwrap();
                     glib_loop.quit();
                 }
                 println!("playthough finished");
