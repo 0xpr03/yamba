@@ -26,6 +26,7 @@ RUN apt-get update -q && apt-get install -qqy \
     libpulse-dev \
     pulseaudio \
     # Install gstreamer requirements
+    libgstreamer1.0-0 gstreamer1.0-pulseaudio \
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
