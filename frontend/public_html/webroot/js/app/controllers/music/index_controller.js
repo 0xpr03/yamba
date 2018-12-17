@@ -1,6 +1,7 @@
 let flashTemplate;
 let titlesTemplate;
 let playlistsTemplate;
+let instancesTemplate;
 
 $.get('mustache/flash.mst', function(template) {
     flashTemplate = template;
@@ -15,6 +16,11 @@ $.get('mustache/titles.mst', function(template) {
 $.get('mustache/playlists.mst', function(template) {
     playlistsTemplate = template;
     Mustache.parse(playlistsTemplate);
+});
+
+$.get('mustache/instances.mst', function(template) {
+    instancesTemplate = template;
+    Mustache.parse(instancesTemplate);
 });
 
 App.Controllers.MusicIndexController = Frontend.AppController.extend({
