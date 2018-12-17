@@ -53,6 +53,9 @@ class MusicController extends AppController
 
     public function addTitles()
     {
+        if (!$this->request->is('post')) {
+            return $this->response->withStatus(405);
+        }
         if (env('SERVER_PORT') != 82) {
             return $this->response->withStatus(403);
         }
@@ -116,9 +119,12 @@ class MusicController extends AppController
 
     public function addPlaylist()
     {
-        $name = $this->request->getQuery('name');
+        if (!$this->request->is('post')) {
+            return $this->response->withStatus(405);
+        }
+        $name = $this->request->getData('name');
         if (!isset($name) || mb_strlen($name) < 1) {
-            return $this->response->withStatus(400)->withStringBody('Bad request');
+            return $this->response->withStatus(400);
         }
 
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
@@ -128,7 +134,7 @@ class MusicController extends AppController
         $status = 500;
         try {
             if ($playlist) {
-                $url = $this->request->getQuery('url');
+                $url = $this->request->getData('url');
                 if (isset($url) && mb_strlen($url) > 0) {
                     $response = $this->Api->createTitles($url);
                     if ($response->getStatusCode() === 202) {
@@ -138,7 +144,7 @@ class MusicController extends AppController
                         $addTitle->set('playlist_id', $playlist->get('id'));
                         $addTitle->set('user_id', $this->Auth->user('id'));
                         if ($addTitleTable->save($addTitle)) {
-                            $status = 200;
+                            $status = 202;
                             $message = 'Your playlist is now in processing. You will be notified once it is fully loaded';
                         } else {
                             $message = 'Database Error';
@@ -147,7 +153,7 @@ class MusicController extends AppController
                         $message = 'Could not resolve URL';
                     }
                 } else {
-                    $status = 200;
+                    $status = 201;
                     $message = 'Your playlist has been created';
                 }
             } else {

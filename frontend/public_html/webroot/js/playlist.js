@@ -61,10 +61,14 @@ function addPlaylist(form) {
         obj[item.name] = item.value;
         return obj;
     }, {});
+    console.log(formData);
     $.ajax({
-        method: 'get',
-        url: '/Music/addPlaylist',
-        data: {'name': formData.name, 'url': formData.url},
+        method: 'post',
+        url: form.attr('action'),
+        beforeSend: function(xhr){
+            xhr.setRequestHeader('X-CSRF-Token', $('[name="_csrfToken"]').val());
+        },
+        data: formData,
         success: function (response) {
             ajaxSuccessFlash(response);
             form.find('input[type=text]').val('');
