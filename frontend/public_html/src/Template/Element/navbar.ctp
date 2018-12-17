@@ -31,6 +31,10 @@
         <ul class="menu">
             <?php if($this->request->getSession()->read('Auth.User')) { ?>
             <li class="divider">
+                <select id="instance-select">
+                </select>
+            </li>
+            <li class="divider">
                 <a href="/accounts/settings" class="header-font" title="Account Settings"><i class="fi-widget"></i></a>
             </li>
             <li class="divider"><?= $this->Html->link(
