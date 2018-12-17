@@ -187,9 +187,30 @@ class MusicController extends AppController
         return json_encode($res);
     }
 
+    private function _titlesJson($playlist_id)
+    {
+        $titlesTable = TableRegistry::getTableLocator()->get('Titles');
+        return json_encode($titlesTable->find()->leftJoinWith('TitlesToPlaylists')->where(['TitlesToPlaylists.playlist_id' => $playlist_id]));
+    }
+
     public function getPlaylists()
     {
         return $this->response->withType('json')->withStringBody($this->_playlistsJson());
+    }
+
+    public function getTitles($playlist_id)
+    {
+        return $this->response->withType('json')->withStringBody($this->_titlesJson($playlist_id));
+    }
+
+    private function _updatePlaylists()
+    {
+        Websocket::publishEvent('playlistsUpdated', ['json' => $this->_playlistsJson()]);
+    }
+
+    private function _updateTitles($playlist_id)
+    {
+        Websocket::publishEvent('titlesUpdated', ['json' => $this->_titlesJson($playlist_id), 'playlist' => $playlist_id]);
     }
 
     public function deletePlaylist()
@@ -229,27 +250,6 @@ class MusicController extends AppController
         $this->_updatePlaylists();
         $this->_updateTitles($playlist_id);
         return $this->response->withStatus(200);
-    }
-
-    private function _updateTitles($playlist_id)
-    {
-        Websocket::publishEvent('titlesUpdated', ['json' => $this->_titlesJson($playlist_id), 'playlist' => $playlist_id]);
-    }
-
-    private function _titlesJson($playlist_id)
-    {
-        $titlesTable = TableRegistry::getTableLocator()->get('Titles');
-        return json_encode($titlesTable->find()->leftJoinWith('TitlesToPlaylists')->where(['TitlesToPlaylists.playlist_id' => $playlist_id]));
-    }
-
-    public function getTitles($playlist_id)
-    {
-        return $this->response->withType('json')->withStringBody($this->_titlesJson($playlist_id));
-    }
-
-    private function _updatePlaylists()
-    {
-        Websocket::publishEvent('playlistsUpdated', ['json' => $this->_playlistsJson()]);
     }
 
     private function _flash($type = null, $message = null, $userID = null)
