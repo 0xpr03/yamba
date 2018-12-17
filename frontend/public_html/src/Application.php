@@ -93,6 +93,9 @@ class Application extends BaseApplication
                 callable $next
             ) {
                 $params = $request->getAttribute('params');
+                // We remove csrf protection (and any other sort of auth protection) from music/addTitles
+                // This should not be a security issue as it can only be accessed from port 82
+                // (which is only exposed to the backend and not the outside)
                 if ($params['controller'] !== 'Music' || $params['action'] !== 'addTitles') {
                     $csrf = new CsrfProtectionMiddleware([
                         'httpOnly' => true
