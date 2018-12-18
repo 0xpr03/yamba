@@ -251,7 +251,7 @@ impl Player {
     /// Set uri as media
     pub fn set_uri(&self, url: &str) {
         self.player.set_uri(url);
-        self.player.set_video_track_enabled(false);
+        //self.player.set_video_track_enabled(false);
     }
 
     /// Set file as media
