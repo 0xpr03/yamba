@@ -61,13 +61,19 @@ pub enum InstanceType {
 pub struct Teamspeak {
     ts: TSInstance,
     sink: NullSink,
+    mute_sink: Arc<NullSink>,
     updated: RwLock<Instant>,
 }
 
 impl Teamspeak {
     /// Setup call on successfull connection
-    pub fn on_connected(&self) {
-        self.sink.set_monitor_for_process(self.ts.get_process_id());
+    /// process_id is the real ts id, as the xvfb wrapper doesn't count
+    pub fn on_connected(&self, process_id: u32) -> Fallible<()> {
+        trace!("Setting monitor for ts");
+        self.sink.set_monitor_for_process(process_id)?;
+        trace!("Setting sink for ts");
+        self.mute_sink.set_sink_for_process(process_id)?;
+        Ok(())
     }
 }
 
@@ -137,6 +143,8 @@ pub fn start_runtime() -> Fallible<()> {
     default_sink.set_source_as_default()?;
     default_sink.set_sink_as_default()?;
 
+    let default_sink = Arc::new(default_sink);
+
     let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
 
     rpc::create_rpc_server(&mut rt, instances.clone())
@@ -147,7 +155,14 @@ pub fn start_runtime() -> Fallible<()> {
 
     info!("Loading instances..");
 
-    match load_instances(&instances, pool.clone(), player_tx, &mainloop, &context) {
+    match load_instances(
+        &instances,
+        pool.clone(),
+        player_tx,
+        &mainloop,
+        &context,
+        &default_sink,
+    ) {
         Ok(_) => (),
         Err(e) => {
             error!("Unable to load instances: {}\n{}", e, e.backtrace());
@@ -188,24 +203,31 @@ fn load_instances(
     player_send: PlaybackSender,
     mainloop: &CMainloop,
     context: &CContext,
+    default_sink: &Arc<NullSink>,
 ) -> Fallible<()> {
     let mut instances = instances.write().expect("Main RwLock is poisoned!");
     instances.clear();
     let instance_ids = db::get_autostart_instance_ids(&pool)?;
     for id in instance_ids {
-        let instance =
-            match create_instance_from_id(&id, &pool, player_send.clone(), &mainloop, &context) {
-                Ok(v) => v,
-                Err(e) => {
-                    error!(
-                        "Unable to load instance ID {}: {}\n{}",
-                        id,
-                        e,
-                        e.backtrace()
-                    );
-                    continue;
-                }
-            };
+        let instance = match create_instance_from_id(
+            &id,
+            &pool,
+            player_send.clone(),
+            &mainloop,
+            &context,
+            default_sink,
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                error!(
+                    "Unable to load instance ID {}: {}\n{}",
+                    id,
+                    e,
+                    e.backtrace()
+                );
+                continue;
+            }
+        };
         instances.insert(id, instance);
     }
     Ok(())
@@ -218,12 +240,13 @@ fn create_instance_from_id(
     player_send: PlaybackSender,
     mainloop: &CMainloop,
     context: &CContext,
+    default_sink: &Arc<NullSink>,
 ) -> Fallible<Instance> {
     let data = db::load_instance_data(&pool, id)?;
 
     // can't match untill we have more than one type
     let DBInstanceType::TS(ts_data) = data;
-    create_ts_instance(pool, player_send, mainloop, context, ts_data)
+    create_ts_instance(pool, player_send, mainloop, context, ts_data, default_sink)
 }
 
 /// Crate instance of type TS
@@ -233,6 +256,7 @@ fn create_ts_instance(
     mainloop: &CMainloop,
     context: &CContext,
     data: TSSettings,
+    default_sink: &Arc<NullSink>,
 ) -> Fallible<Instance> {
     let id = Arc::new(data.id);
 
@@ -247,6 +271,7 @@ fn create_ts_instance(
         voip: InstanceType::Teamspeak(Teamspeak {
             ts: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
             sink,
+            mute_sink: default_sink.clone(),
             updated: RwLock::new(Instant::now()),
         }),
         player,
