@@ -38,44 +38,73 @@ pub enum RPCErr {
 
 fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
     Box::new(req.into_body().concat2().map(move |b| {
-        let response_rpc = if let Ok(rpc) = serde_json::from_slice::<JsonRpc>(&b) {
-            trace!("rpc request: {:?}", rpc);
-            let mut req_id = rpc.get_id().unwrap_or(Id::None(()));
-            match parse_rpc_call(req_id.clone(), &rpc) {
-                Ok((instance_id, method, params)) => match method {
-                    "heartbeat" => JsonRpc::success(req_id, &json!(true)),
-                    "connected" => {
-                        trace!("ts connected");
-                        let instance_r = instances.read().expect("Can't read instance!");
-                        if let Some(instance) = instance_r.get(&instance_id) {
-                            // if let, but irrefutable pattern as of now..
-                            let InstanceType::Teamspeak(ref ts) = instance.voip;
-                            ts.on_connected();
-
-                            JsonRpc::success(req_id, &json!(true))
-                        } else {
-                            error!(
-                                "Received connected event for invalid instance ID {:?}",
-                                req_id
-                            );
-                            JsonRpc::error(req_id, Error::invalid_params())
-                        }
+        let response_rpc = match serde_json::from_slice::<JsonRpc>(&b) {
+            Ok(rpc) => {
+                trace!("rpc request: {:?}", rpc);
+                let mut req_id = rpc.get_id().unwrap_or(Id::None(()));
+                match parse_rpc_call(req_id.clone(), &rpc) {
+                    Ok((instance_id, method, params)) => match method {
+                        "heartbeat" => JsonRpc::success(req_id, &json!("true")),
+                        "connected" => handle_connected(req_id, params, instances, instance_id),
+                        _ => JsonRpc::error(req_id, Error::method_not_found()),
+                    },
+                    Err(e) => {
+                        warn!("Can't parse rpc: {:?}", e);
+                        e
                     }
-                    _ => JsonRpc::error(req_id, Error::method_not_found()),
-                },
-                Err(e) => {
-                    warn!("Can't parse rpc: {:?}", e);
-                    e
                 }
             }
-        } else {
-            warn!("Invalid rpc request");
-            JsonRpc::error(Id::None(()), Error::parse_error())
+            Err(e) => {
+                warn!("Invalid rpc request {}", e);
+                JsonRpc::error(Id::None(()), Error::parse_error())
+            }
         };
         // https://github.com/hyperium/hyper/blob/master/examples/params.rs
         let body = to_value(response_rpc).unwrap().to_string();
+        trace!("Sending response for rpc");
         Response::new(body.into())
     }))
+}
+
+/// Handle connect rpc
+fn handle_connected(
+    req_id: Id,
+    params: Vec<Value>,
+    instances: Instances,
+    instance_id: i32,
+) -> JsonRpc {
+    trace!("ts connected");
+    let process_id = match params.get(1) {
+        Some(Value::Number(ref v)) => v.as_u64(),
+        v => {
+            warn!("Missing process ID, got {:?}", v);
+            return JsonRpc::error(req_id, Error::invalid_params());
+        }
+    };
+    let process_id: u32 = match process_id {
+        Some(v) => v as u32,
+        None => {
+            warn!("Invalid process ID type!");
+            return JsonRpc::error(req_id, Error::invalid_params());
+        }
+    };
+    let instance_r = instances.read().expect("Can't read instance!");
+    if let Some(instance) = instance_r.get(&instance_id) {
+        // if let, but irrefutable pattern as of now..
+        let InstanceType::Teamspeak(ref ts) = instance.voip;
+        if let Err(e) = ts.on_connected(process_id) {
+            warn!("Error on post-connection action: {}\n{}", e, e.backtrace());
+            JsonRpc::success(req_id, &json!(false))
+        } else {
+            JsonRpc::success(req_id, &json!(true))
+        }
+    } else {
+        error!(
+            "Received connected event for invalid instance ID {:?}",
+            req_id
+        );
+        JsonRpc::error(req_id, Error::invalid_params())
+    }
 }
 
 /// Parse input and retrieve relevant data

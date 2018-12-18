@@ -27,6 +27,7 @@ extern crate regex;
 use jsonrpc_client_http::HttpTransport;
 use regex::*;
 use std::env;
+use std::process;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -39,7 +40,7 @@ jsonrpc_client!(
     #[derive(Debug)]
     pub struct BackendRPCClient {
     // Call when connected
-    pub fn connected(&mut self, id: i32) -> RpcRequest<bool>;
+    pub fn connected(&mut self, id: i32, process: u32) -> RpcRequest<bool>;
     // Return: message
     pub fn heartbeat(&mut self, id : i32) -> RpcRequest<(String)>;
 
@@ -286,8 +287,14 @@ impl Plugin for MyTsPlugin {
 
         if status == ConnectStatus::ConnectionEstablished {
             let mut rpc_api = self.client_mut.lock().unwrap();
-            match rpc_api.connected(*ID.as_ref().unwrap()).call() {
-                Ok(_) => (),
+            let pid = process::id();
+            api.log_or_print(format!("PID: {}", pid), PLUGIN_NAME_I, LogLevel::Error);
+            match rpc_api.connected(*ID.as_ref().unwrap(), pid).call() {
+                Ok(v) => api.log_or_print(
+                    format!("Connected response: {}", v),
+                    PLUGIN_NAME_I,
+                    LogLevel::Debug,
+                ),
                 Err(e) => {
                     api.log_or_print(
                         format!("Error trying to signal connected state to backend: {}", e),
