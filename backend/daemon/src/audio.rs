@@ -470,7 +470,6 @@ fn get_process_device(
 
     match deviceType {
         DeviceType::Source => {
-            let process_str = process.to_string();
             context
                 .introspect()
                 .get_source_output_info_list(move |res| {
