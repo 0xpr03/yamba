@@ -243,13 +243,17 @@ impl NullSink {
     pub fn set_monitor_for_process(&self, process: u32) -> Fallible<()> {
         let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
         let success_ref = success.clone();
+
+        let device =
+            get_process_device(&self.mainloop, &self.context, process, DeviceType::Source)?;
+
         let context = self
             .context
             .lock()
             .map_err(|_| AudioErr::LockError("PA Context"))?;
         context.introspect().move_source_output_by_index(
-            process,
-            get_process_device(&self.mainloop, &self.context, process, DeviceType::Source)?,
+            device,
+            self.monitor,
             Some(Box::new(move |v| {
                 let b = v;
                 trace!("Process source input set: {}", v);
@@ -280,13 +284,16 @@ impl NullSink {
     pub fn set_sink_for_process(&self, process: u32) -> Fallible<()> {
         let success: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
         let success_ref = success.clone();
+
+        let device = get_process_device(&self.mainloop, &self.context, process, DeviceType::Sink)?;
+
         let context = self
             .context
             .lock()
             .map_err(|_| AudioErr::LockError("PA Context"))?;
         context.introspect().move_sink_input_by_index(
-            process,
-            get_process_device(&self.mainloop, &self.context, process, DeviceType::Sink)?,
+            device,
+            self.sink,
             Some(Box::new(move |v| {
                 let b = v;
                 trace!("Process source input set: {}", v);
@@ -355,6 +362,7 @@ pub enum AudioErr {
 }
 
 /// Child type for module child resolving
+#[derive(Debug)]
 enum DeviceType {
     Sink,
     Source,
