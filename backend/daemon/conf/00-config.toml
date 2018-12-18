@@ -61,3 +61,7 @@ dir = "ts"
 start_binary = "ts3client_linux_amd64"
 # additional arguments to pass at first to the binary
 additional_args_binary= []
+# path to plugin
+plugin_path = "plugin/libyamba_plugin.so"
+# clear instance config in startup, required for plugin reload
+clear_config = true

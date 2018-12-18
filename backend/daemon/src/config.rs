@@ -54,6 +54,8 @@ pub struct ConfigTS {
     pub dir: String,
     pub start_binary: String,
     pub additional_args_binary: Vec<String>,
+    pub plugin_path: String,
+    pub clear_config: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
