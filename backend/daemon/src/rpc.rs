@@ -79,18 +79,15 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
 }
 
 /// Parse input and retrieve relevant data
-fn parse_rpc_call(
-    req_id: Id,
-    rpc: &JsonRpc,
-) -> Result<(i32, &str, serde_json::map::Map<String, Value>), JsonRpc> {
+fn parse_rpc_call(req_id: Id, rpc: &JsonRpc) -> Result<(i32, &str, Vec<Value>), JsonRpc> {
     let params = match rpc.get_params() {
-        Some(Params::Map(params)) => params,
-        _ => {
-            warn!("Invalid rpc request");
+        Some(Params::Array(params)) => params,
+        v => {
+            warn!("Invalid rpc request params: {:?}", v);
             return Err(JsonRpc::error(Id::None(()), Error::parse_error()));
         }
     };
-    let instance_id = match params.get("id") {
+    let instance_id = match params.get(0) {
         Some(Value::Number(id)) => {
             if let Some(id) = id.as_i64() {
                 id as i32
