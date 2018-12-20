@@ -201,6 +201,7 @@ impl TSInstance {
     }
 
     fn configure_settings(path_db: &Path, path_config: &Path) -> Fallible<()> {
+        trace!("Configuring ts instance under {:?}", path_db);
         let connection = Connection::open(path_db)?;
         {
             let values = ["en", "true", "4"];
@@ -210,6 +211,26 @@ impl TSInstance {
                 "LastShownLicense",
             ];
             TSInstance::insert_or_replace(&connection, &keys, &values, "General")?;
+
+            let keys = [
+                "DefaultCaptureProfile",
+                "DefaultPlaybackProfile",
+                "Capture/musik",
+                "Capture/musik/PreProcessing",
+                "Playback/mute",
+            ];
+            let values = [
+                "musik",
+                "mute",
+                include_str!("../resources/capture.txt"),
+                include_str!("../resources/capture_preprocessing.txt"),
+                include_str!("../resources/playback.txt"),
+            ];
+            TSInstance::insert_or_replace(&connection, &keys, &values, "Profiles")?;
+
+            let values = ["CloseActiveServerTab"];
+            let keys = ["false"];
+            TSInstance::insert_or_replace(&connection, &keys, &values, "Ask")?;
 
             connection
                 .close()

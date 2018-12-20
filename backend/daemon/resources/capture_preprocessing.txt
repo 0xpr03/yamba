@@ -1,0 +1,14 @@
+echo_cancellation=false
+agc_max_gain=30
+voiceactivation_level=0
+continous_transmission=true
+delay_ptt_msecs=300
+echo_reduction_db=10
+agc=false
+echo_reduction=false
+vad_over_ptt=false
+vad_extrabuffer=1
+agc_level=16000
+denoise=false
+vad=false
+delay_ptt=false

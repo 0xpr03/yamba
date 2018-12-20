@@ -1,0 +1,9 @@
+VolumeFactorWaveDb=-40
+PlayMicClicksOnOwn=false
+Device=
+MonoSoundExpansion=2
+Mode=PulseAudio
+PlaybackMonoOverCenterSpeaker=false
+DeviceDisplayName=Default
+VolumeModifier=-40
+PlayMicClicksOnOthers=false
