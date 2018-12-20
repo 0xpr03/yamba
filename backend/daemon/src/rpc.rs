@@ -51,7 +51,13 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
                     Ok((instance_id, method, params)) => match method {
                         "heartbeat" => JsonRpc::success(req_id, &json!("true")),
                         "connected" => handle_connected(req_id, params, instances, instance_id),
-                        _ => JsonRpc::error(req_id, Error::method_not_found())
+                        "volume_get" => handle_volume_get(req_id, instances, instance_id),
+                        "volume_set" => handle_volume_set(req_id, params, instances, instance_id),
+                        "playlist_queue" => handle_enqueue(req_id, params, instances, instance_id),
+                        "track_stop" => handle_stop(req_id, params, instances, instance_id),
+                        _ => {
+                            trace!("Unknown rpc request: {:?}", rpc);
+                            JsonRpc::error(req_id, Error::method_not_found())
                         }
                     },
                     Err(e) => {
