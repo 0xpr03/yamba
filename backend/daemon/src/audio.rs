@@ -676,6 +676,8 @@ pub fn unload_problematic_modules(mainloop: &CMainloop, context: &CContext) -> F
     let modules: Vec<String> = vec![
         String::from("module-switch-on-connect"),
         String::from("module-stream-restore"),
+        String::from("module-suspend-on-idle"),
+        String::from("module-device-restore"),
     ];
     let ids = get_module_ids(mainloop, context, modules)?;
 
