@@ -47,7 +47,7 @@ jsonrpc_client!(
     // Return: allowed, message, Volume [0 - 100]
     pub fn volume_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, i32)>;
     // Return: allowed, message, success
-    pub fn volume_set(&mut self, id : i32, invokerName : String, invokerGroups : String, volume : i32) -> RpcRequest<(bool, String, bool)>;
+    pub fn volume_set(&mut self, id : i32, invokerName : String, invokerGroups : String, volume : f64) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
     pub fn volume_lock(&mut self, id : i32, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
 
@@ -472,7 +472,7 @@ impl Plugin for MyTsPlugin {
                     } else if let Some(caps) = R_VOL_SET.captures(&message) {
                         if let Ok(vol) = caps[4].parse::<i32>() {
                             match client_lock
-                                .volume_set(id, invoker_name, invoker_groups, vol)
+                                .volume_set(id, invoker_name, invoker_groups, vol as f64 / 100.0)
                                 .call()
                             {
                                 Ok(res) => {
