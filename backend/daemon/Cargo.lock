@@ -2138,6 +2138,7 @@ dependencies = [
  "log4rs 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "metrohash 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mysql 14.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "owning_ref 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusqlite 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",

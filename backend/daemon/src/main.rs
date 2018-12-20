@@ -47,6 +47,7 @@ extern crate libpulse_glib_binding as pglib;
 extern crate libpulse_sys as pulse_sys;
 extern crate metrohash;
 extern crate mysql;
+extern crate owning_ref;
 extern crate rusqlite;
 extern crate serde_urlencoded;
 extern crate sha2;
