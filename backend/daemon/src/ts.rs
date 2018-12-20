@@ -61,6 +61,10 @@ impl Drop for TSInstance {
         match self.is_running() {
             Ok(true) | Err(_) => {
                 // ignore error, otherwise run only if alive
+                if let Err(e) = TSInstance::kill_by_ppid(&self.process.id()) {
+                    warn!("Couldn't kill instance by ppid: {}", e);
+                }
+
                 match self.kill() {
                     Ok(()) => (),
                     Err(e) => warn!("Couldn't kill instance on cleanup {}", e),
@@ -143,7 +147,8 @@ impl TSInstance {
             info!("Missing instance settings, creating..");
             let mut child = cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?;
             thread::sleep(Duration::from_millis(5000));
-            child.kill()?;
+            TSInstance::kill_by_ppid(&child.id())?;
+            child.kill()?; // evaluate
             TSInstance::wait_for_child_timeout(1000, &mut child)?;
             if !path_config.exists() {
                 warn!("Unable to create configuration, no db existing!");
@@ -160,6 +165,20 @@ impl TSInstance {
             id: settings.id.clone(), // TODO decide for non copy solution
             process: cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?,
         })
+    }
+
+    /// Kill childs of xvfb
+    fn kill_by_ppid(ppid: &u32) -> Fallible<()> {
+        let output = Command::new("pkill")
+            .arg("-P")
+            .arg(ppid.to_string())
+            .output()?;
+        trace!(
+            "pkill status: {} stderr: {:?}",
+            output.status,
+            output.stderr
+        );
+        Ok(())
     }
 
     fn wait_for_child_timeout(sleep_ms: i32, child: &mut Child) -> Fallible<()> {
