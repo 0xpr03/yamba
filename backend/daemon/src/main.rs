@@ -186,7 +186,7 @@ fn main() -> Fallible<()> {
             info!("Audio playback testing..");
             gst::init()?;
             let (send, recv) = mpsc::channel::<PlayerEvent>(10);
-            let mut player = playback::Player::new(send, -1)?;
+            let mut player = playback::Player::new(send, -1, 0.1)?;
             let path = get_path_for_existing_file(sub_m.value_of("file").unwrap()).unwrap();
             player.set_uri(&path.to_string_lossy());
             player.play();
@@ -223,7 +223,7 @@ fn main() -> Fallible<()> {
 
                 let (send, recv) = mpsc::channel::<PlayerEvent>(10);
                 let (mut send_s, recv_s) = mpsc::channel::<()>(1);
-                let player = Arc::new(Mutex::new(playback::Player::new(send, -1)?));
+                let player = Arc::new(Mutex::new(playback::Player::new(send, -1, 0.1)?));
 
                 let url = sub_m.value_of("url").unwrap();
 

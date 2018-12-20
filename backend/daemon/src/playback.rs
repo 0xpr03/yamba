@@ -26,9 +26,9 @@ use mysql::Pool;
 use tokio::runtime;
 
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
-use daemon::ID;
+use daemon::{Instances, ID};
 
 /// Playback abstraction
 
@@ -42,6 +42,7 @@ pub enum PlaybackState {
 /// Player event types
 #[derive(Clone, Debug)]
 pub enum PlayerEventType {
+    UriLoaded,
     MediaInfoUpdated,
     PositionUpdated,
     EndOfStream,
@@ -74,6 +75,7 @@ pub enum PlaybackErr {
 pub struct Player {
     player: gst_player::Player,
     pulsesink: gst::Element,
+    volume: RwLock<f64>,
     name: String,
     id: Arc<i32>,
 }
@@ -86,7 +88,7 @@ pub type PlaybackSender = Sender<PlayerEvent>;
 
 impl Player {
     /// Create new Player with given instance
-    pub fn new<T: Into<ID>>(events: PlaybackSender, id: T) -> Fallible<Player> {
+    pub fn new<T: Into<ID>>(events: PlaybackSender, id: T, volume: f64) -> Fallible<Player> {
         debug!("player init");
 
         let id = id.into(); // share it across all events
@@ -127,9 +129,17 @@ impl Player {
             .set_property("audio-sink", &pulsesink)
             .map_err(|_| PlaybackErr::GST("Couldn't set audio sink to playbin!"))?;
 
-        player.connect_uri_loaded(|player, uri| {
-            trace!("Uri loaded, starting playback");
-            player.play();
+        let events_clone = events.clone();
+        let id_clone = id.clone();
+        player.connect_uri_loaded(move |_, _| {
+            let mut events = events_clone.clone();
+            let id = id_clone.clone();
+            events
+                .try_send(PlayerEvent {
+                    id,
+                    event_type: PlayerEventType::UriLoaded,
+                })
+                .unwrap();
         });
 
         let events_clone = events.clone();
@@ -223,6 +233,7 @@ impl Player {
         Ok(Player {
             player,
             pulsesink,
+            volume: RwLock::new(volume),
             name: Player::get_name_by_id(&id),
             id,
         })
@@ -245,6 +256,7 @@ impl Player {
 
     /// Set volume as value between 0 and 100
     pub fn set_volume(&self, volume: f64) {
+        *self.volume.write().unwrap() = volume;
         self.player.set_volume(volume);
     }
 
@@ -287,6 +299,7 @@ impl Player {
     /// Play current media
     pub fn play(&self) {
         self.player.play();
+        self.player.set_volume(*self.volume.read().unwrap());
     }
 
     /// Set pulse device for player
@@ -302,9 +315,16 @@ pub fn create_playback_server(
     runtime: &mut runtime::Runtime,
     tx: Receiver<PlayerEvent>,
     pool: Pool,
+    instances: Instances,
 ) -> Fallible<()> {
     let stream = tx.for_each(move |event| {
         match event.event_type {
+            PlayerEventType::UriLoaded => {
+                let instances_r = instances.read().expect("Can't read instance!");
+                if let Some(v) = instances_r.get(&event.id) {
+                    v.player.play();
+                }
+            }
             PlayerEventType::VolumeChanged(v) => {
                 debug!("Audio changed to {} for {}", v, event.id);
             }
@@ -367,7 +387,7 @@ mod tests {
         default_sink.set_source_as_default().unwrap();
         let sink = audio::NullSink::new(mainloop, context, "test1").unwrap();
 
-        let player = Player::new(sender.clone(), TEST_ID.clone()).unwrap();
+        let player = Player::new(sender.clone(), TEST_ID.clone(), 0.0).unwrap();
         player.set_pulse_device(sink.get_sink_name()).unwrap();
         let mut runtime = Runtime::new().unwrap();
 

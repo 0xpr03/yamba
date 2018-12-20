@@ -150,7 +150,7 @@ pub fn start_runtime() -> Fallible<()> {
     rpc::create_rpc_server(&mut rt, instances.clone())
         .map_err(|e| DaemonErr::RPCCreationError(e))?;
     api::create_api_server(&mut rt, tx.clone()).map_err(|e| DaemonErr::APICreationError(e))?;
-    playback::create_playback_server(&mut rt, player_rx, pool.clone())?;
+    playback::create_playback_server(&mut rt, player_rx, pool.clone(), instances.clone())?;
     ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());
 
     info!("Loading instances..");
@@ -260,7 +260,7 @@ fn create_ts_instance(
 ) -> Fallible<Instance> {
     let id = Arc::new(data.id);
 
-    let player = Player::new(player_send, id.clone())?;
+    let player = Player::new(player_send, id.clone(), 0.1)?;
     let sink = NullSink::new(
         mainloop.clone(),
         context.clone(),
