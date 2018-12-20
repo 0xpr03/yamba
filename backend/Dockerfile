@@ -61,6 +61,7 @@ WORKDIR /opt/yamba/ts3plugin
 RUN cargo build
 
 WORKDIR /opt/yamba/daemon/target/debug
+# fixup: python3 -> python softlink
 RUN ln -s $(which python3) /usr/local/bin/python
 
 ENTRYPOINT ["/entrypoint.sh"]
