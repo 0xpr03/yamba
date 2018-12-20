@@ -339,13 +339,8 @@ impl Plugin for MyTsPlugin {
                 while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
                     if let Ok(mut client_lock) = client_mut_heartbeat.lock() {
                         match client_lock.heartbeat(id).call() {
-                            Ok(res) => {
+                            Ok(_) => {
                                 failed_heartbeats = 0;
-                                TsApi::static_log_or_print(
-                                    format!("Server responded with {}", res),
-                                    PLUGIN_NAME_I,
-                                    LogLevel::Debug,
-                                );
                             }
                             Err(e) => {
                                 failed_heartbeats += 1;
