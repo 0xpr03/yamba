@@ -51,3 +51,10 @@ function flash(type, message) {
         }, 5000);
     }
 }
+
+getPlaylists();
+let form = $('#add-playlist-form');
+form.submit(function (event) {
+    event.preventDefault();
+    addPlaylist(form);
+});

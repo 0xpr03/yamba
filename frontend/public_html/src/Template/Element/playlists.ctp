@@ -59,11 +59,3 @@
     <tbody id="playlist-table-body">
     </tbody>
 </table>
-<script>
-    getPlaylists();
-    let form = $('#add-playlist-form');
-    form.submit(function (event) {
-        event.preventDefault();
-        addPlaylist(form);
-    });
-</script>
