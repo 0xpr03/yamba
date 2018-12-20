@@ -748,7 +748,9 @@ impl Plugin for MyTsPlugin {
                             }
                         }
                     } else if let Some(caps) = R_PLAYLIST_QUEUE.captures(&message) {
-                        let url = String::from(&caps[2]);
+                        let url = String::from(&caps[2])
+                            .replace("[URL]", "")
+                            .replace("[/URL]", "");
                         match client_lock
                             .playlist_queue(id, invoker_name, invoker_groups, url)
                             .call()
