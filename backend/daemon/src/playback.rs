@@ -260,6 +260,11 @@ impl Player {
         self.player.set_volume(volume);
     }
 
+    /// Get volume as value between 0 and 100
+    pub fn get_volume(&self) -> f64 {
+        self.player.get_volume()
+    }
+
     /// Set uri as media
     pub fn set_uri(&self, url: &str) {
         self.player.set_uri(url);

@@ -15,17 +15,23 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use jsonrpc_lite::{Error, Id, JsonRpc, Params};
-
 use failure::Fallible;
 use hyper;
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Request, Response, Server};
+use jsonrpc_lite::{Error, Id, JsonRpc, Params};
+use owning_ref::{OwningRef, RwLockReadGuardRef};
 use serde_json::{self, to_value, Value};
 use tokio::runtime;
 
-use daemon::{self, BoxFut, InstanceType, Instances};
+use hashbrown::HashMap;
+use std::sync::Arc;
+use std::sync::RwLock;
+
+use std::sync::RwLockReadGuard;
+
+use daemon::{self, BoxFut, Instance, InstanceType, Instances};
 use SETTINGS;
 
 /// RPC server for client callbacks
@@ -64,6 +70,40 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
         //trace!("Sending response for rpc");
         Response::new(body.into())
     }))
+}
+
+/// Handle volume_set
+fn handle_volume_set(
+    req_id: Id,
+    params: Vec<Value>,
+    instances: Instances,
+    instance_id: i32,
+) -> JsonRpc {
+    let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    match parse_f64(&req_id, 3, &params) {
+        Ok(v) => {
+            if v >= 0.0 && v <= 1.0 {
+                instance.player.set_volume(v);
+                JsonRpc::success(req_id, &json!((true, "test", true)))
+            } else {
+                warn!("Invalid volume: {}!", v);
+                JsonRpc::error(req_id, Error::invalid_params())
+            }
+        }
+        Err(e) => e,
+    }
+}
+
+/// Handle volume_get
+fn handle_volume_get(req_id: Id, instances: Instances, instance_id: i32) -> JsonRpc {
+    let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    JsonRpc::success(req_id, &json!((true, "test", instance.player.get_volume())))
 }
 
 /// Handle connect rpc
