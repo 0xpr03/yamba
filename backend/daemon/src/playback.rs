@@ -313,6 +313,11 @@ impl Player {
             .set_property("device", &device)
             .map_err(|_| PlaybackErr::GST("Can't set pulse device!").into())
     }
+
+    /// Stop current media
+    pub fn stop(&self) {
+        self.player.stop();
+    }
 }
 
 /// Register event handler for playback in daemon

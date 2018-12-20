@@ -72,6 +72,36 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
     }))
 }
 
+/// handle track_stop
+fn handle_stop(req_id: Id, params: Vec<Value>, instances: Instances, instance_id: i32) -> JsonRpc {
+    let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    instance.player.stop();
+    JsonRpc::success(req_id, &json!((true, "test", true)))
+}
+
+/// Handle enqueue
+fn handle_enqueue(
+    req_id: Id,
+    params: Vec<Value>,
+    instances: Instances,
+    instance_id: i32,
+) -> JsonRpc {
+    let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    match parse_string(&req_id, 3, &params) {
+        Ok(v) => {
+            instance.player.set_uri(v);
+            JsonRpc::success(req_id, &json!((true, "test", true)))
+        }
+        Err(e) => e,
+    }
+}
+
 /// Handle volume_set
 fn handle_volume_set(
     req_id: Id,
