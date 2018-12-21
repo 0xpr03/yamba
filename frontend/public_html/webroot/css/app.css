@@ -73,13 +73,13 @@ nav.top-bar {
 }
 
 .header-font, .header-font:visited {
-    color: #bdbdbd;
+    color: #bdbdbd !important;
     height: 2.4375em;
     padding-top: 0.45em !important;
 }
 
 .header-font:hover, .header-font:active {
-    color: #f5f5f5;
+    color: #f5f5f5 !important;
 }
 
 a.logo-font, a.logo-font:visited {

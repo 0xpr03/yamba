@@ -168,7 +168,7 @@ class MusicController extends AppController
     }
 
     const INSTANCE_TYPES = array(
-        "teamspeak_instance"
+        "teamspeak_instances"
     );
 
     public function addInstance()
@@ -182,6 +182,9 @@ class MusicController extends AppController
         if (!isset($name, $autostart, $instance_data) || !in_array($instance_data['type'], self::INSTANCE_TYPES)) {
             return $this->response->withStatus(400);
         }
+
+        $this->_updateInstances();
+        return $this->response->withStatus(200);
     }
 
     private function _playlistsJson()
@@ -245,6 +248,11 @@ class MusicController extends AppController
     private function _updateTitles($playlist_id)
     {
         Websocket::publishEvent('titlesUpdated', ['json' => $this->_titlesJson($playlist_id), 'playlist' => $playlist_id]);
+    }
+
+    private function _updateInstances()
+    {
+        Websocket::publishEvent('instancesUpdated', ['json' => $this->_instancesJson()]);
     }
 
     public function deletePlaylist()

@@ -50,6 +50,9 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
                 fillSongTable(payload.playlist, JSON.parse(payload.json));
             }
         }.bind(this));
+        App.Websocket.onEvent('instancesUpdated', function (payload) {
+            fillInstanceSelect(JSON.parse(payload.json));
+        }.bind(this));
         App.Websocket.onEvent('flash', function (payload) {
             if (this.getVar('userID') === payload.userID) {
                 flash(payload.type, payload.message);
@@ -70,6 +73,7 @@ function flash(type, message) {
 }
 
 getPlaylists();
+getInstances();
 let form = $('#add-playlist-form');
 form.submit(function (event) {
     event.preventDefault();

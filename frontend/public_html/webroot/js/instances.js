@@ -1,4 +1,3 @@
-<?php
 /**
  *  This file is part of yamba.
  *
@@ -16,29 +15,20 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-return [
-    'playlistsUpdated' => [
-        'audience' => [
-            'includeAllNotAuthenticated' => true,
-            'includeAllAuthenticated' => true
-        ]
-    ],
-    'titlesUpdated' => [
-        'audience' => [
-            'includeAllNotAuthenticated' => true,
-            'includeAllAuthenticated' => true
-        ]
-    ],
-    'instancesUpdated' => [
-        'audience' => [
-            'includeAllNotAuthenticated' => true,
-            'includeAllAuthenticated' => true
-        ]
-    ],
-    'flash' => [
-        'audience' => [
-            'includeAllNotAuthenticated' => true,
-            'includeAllAuthenticated' => true
-        ]
-    ]
-];
+function getInstances() {
+    $.ajax({
+        method: 'get',
+        url: '/Music/getInstances',
+        success: function (response) {
+            fillInstanceSelect(response);
+        },
+        error: function (response) {
+            flash('alert', 'Unable to fetch instances');
+        }
+    });
+}
+
+function fillInstanceSelect(instances) {
+    let instanceSelect = $('#instance-select');
+    instanceSelect.html(Mustache.render(instancesTemplate, {instances: instances}));
+}
