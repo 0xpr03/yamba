@@ -47,6 +47,7 @@ COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
     
 # copy daemon
+COPY ./daemon/resources /opt/yamba/daemon/resources
 COPY ./daemon/src /opt/yamba/daemon/src
 COPY ./daemon/conf /opt/yamba/daemon/conf
 COPY ./daemon/default_log.yml /opt/yamba/daemon/default_log.yml
