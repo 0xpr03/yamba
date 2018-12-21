@@ -58,6 +58,11 @@ Router::scope('/', function (RouteBuilder $routes) {
        $routes->connect('/', ['controller' => 'Permissions', 'action' => 'index']);
        $routes->fallbacks(DashedRoute::class);
     });
+
+    $routes->prefix('settings', function (RouteBuilder $routes) {
+       $routes->connect('/', ['controller' => 'Accounts', 'action' => 'index']);
+       $routes->fallbacks(DashedRoute::class);
+    });
     /**
      * Connect catchall routes for all controllers.
      *
