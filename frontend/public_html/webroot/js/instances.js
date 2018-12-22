@@ -18,7 +18,7 @@
 function getInstances() {
     $.ajax({
         method: 'get',
-        url: '/Music/getInstances',
+        url: '/settings/Instances/getInstances',
         success: function (response) {
             fillInstanceSelect(response);
         },

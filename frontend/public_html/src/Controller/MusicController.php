@@ -18,7 +18,6 @@
 
 namespace App\Controller;
 
-
 use Cake\Core\Exception\Exception;
 use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\Event\Event;
@@ -167,26 +166,6 @@ class MusicController extends AppController
         return $this->response->withStatus($status)->withStringBody($message);
     }
 
-    const INSTANCE_TYPES = array(
-        "teamspeak_instances"
-    );
-
-    public function addInstance()
-    {
-        if (!$this->request->is('post')) {
-            return $this->response->withStatus(405);
-        }
-        $name = $this->request->getData('name');
-        $autostart = $this->request->getData('autostart');
-        $instance_data = $this->request->getData('instance_data');
-        if (!isset($name, $autostart, $instance_data) || !in_array($instance_data['type'], self::INSTANCE_TYPES)) {
-            return $this->response->withStatus(400);
-        }
-
-        $this->_updateInstances();
-        return $this->response->withStatus(200);
-    }
-
     private function _playlistsJson()
     {
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
@@ -219,12 +198,6 @@ class MusicController extends AppController
         return json_encode($titlesTable->find()->leftJoinWith('TitlesToPlaylists')->where(['TitlesToPlaylists.playlist_id' => $playlist_id]));
     }
 
-    private function _instancesJson()
-    {
-        $instanceTable = TableRegistry::getTableLocator()->get('Instances');
-        return json_encode($instanceTable->find()->contain('TeamspeakInstances'));
-    }
-
     public function getPlaylists()
     {
         return $this->response->withType('json')->withStringBody($this->_playlistsJson());
@@ -235,11 +208,6 @@ class MusicController extends AppController
         return $this->response->withType('json')->withStringBody($this->_titlesJson($playlist_id));
     }
 
-    public function getInstances()
-    {
-        return $this->response->withType('json')->withStringBody($this->_instancesJson());
-    }
-
     private function _updatePlaylists()
     {
         Websocket::publishEvent('playlistsUpdated', ['json' => $this->_playlistsJson()]);
@@ -248,11 +216,6 @@ class MusicController extends AppController
     private function _updateTitles($playlist_id)
     {
         Websocket::publishEvent('titlesUpdated', ['json' => $this->_titlesJson($playlist_id), 'playlist' => $playlist_id]);
-    }
-
-    private function _updateInstances()
-    {
-        Websocket::publishEvent('instancesUpdated', ['json' => $this->_instancesJson()]);
     }
 
     public function deletePlaylist()
