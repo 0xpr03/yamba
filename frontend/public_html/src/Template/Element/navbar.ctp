@@ -28,14 +28,20 @@
         </ul>
     </div>
     <div class="top-bar-right">
-        <ul class="menu">
+        <ul class="dropdown menu" data-dropdown-menu>
             <?php if($this->request->getSession()->read('Auth.User')) { ?>
+            <?php if($this->request->getParam('controller') === 'Music') { ?>
             <li class="divider">
                 <select id="instance-select">
                 </select>
             </li>
+            <?php } ?>
             <li class="divider">
-                <a href="/accounts/settings" class="header-font" title="Account Settings"><i class="fi-widget"></i></a>
+                <a href="#" class="header-font">Settings</a>
+                <ul class="menu">
+                    <li><a href="/settings/accounts" class="header-font">Account Settings</a></li>
+                    <li><a href="/settings/instances" class="header-font">Instance Settings</a></li>
+                </ul>
             </li>
             <li class="divider"><?= $this->Html->link(
                 'Logout',

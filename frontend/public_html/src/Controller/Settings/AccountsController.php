@@ -16,8 +16,9 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace App\Controller;
+namespace App\Controller\Settings;
 
+use App\Controller\AppController;
 use Cake\Core\Configure;
 use Cake\Event\Event;
 use Cake\ORM\TableRegistry;
@@ -40,10 +41,6 @@ class AccountsController extends AppController
     }
 
     public function index() {
-        return $this->redirect(['action' => 'settings']);
-    }
-
-    public function settings() {
         $usersTable = TableRegistry::getTableLocator()->get('Users');
         $user = $usersTable->newEntity();
         $this->set('minlength', Configure::read('password_minlength'));
