@@ -185,6 +185,26 @@ pub fn insert_tracks(tracks: &[Track], pool: &Pool) -> Fallible<Vec<String>> {
     Ok(ids)
 }
 
+/// Get track by URL
+pub fn get_track_by_url(url: &str, pool: &Pool) -> Fallible<Option<SongMin>> {
+    let mut result = pool.prep_exec(
+        "SELECT `id`,`name`,`source`,`artist`,`length` FROM `titles` t WHERE t.`source` = ?",
+        (url.trim(),),
+    )?;
+
+    if let Some(row) = result.next() {
+        let (id, name, source, artist, length) = from_row_opt(row?)?;
+        Ok(Some(SongMin {
+            id,
+            name,
+            source,
+            artist,
+            length,
+        }))
+    } else {
+        Ok(None)
+    }
+}
 
 /// Load instance storage
 /// Returns default if none found
