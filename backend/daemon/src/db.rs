@@ -149,6 +149,7 @@ pub fn upsert_ts_instance(settings: &TSSettings, pool: &Pool) -> Fallible<()> {
 
 /// Delete all instances from DB
 pub fn clear_instances(pool: &Pool) -> Fallible<()> {
+    info!("Deleting all instances!");
     pool.prep_exec("DELETE FROM `instances`", ())?;
     Ok(())
 }
