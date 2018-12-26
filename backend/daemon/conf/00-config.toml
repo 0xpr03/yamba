@@ -53,6 +53,8 @@ version_key = "latest"
 download_source="https://yt-dl.org/downloads/latest/youtube-dl"
 # timeout in seconds
 timeout_version=10
+# minimum okay'ish audio Bitrate
+min_audio_bitrate = 128
 
 [ts]
 # base folder of teamspeak executable

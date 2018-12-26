@@ -88,6 +88,7 @@ pub struct ConfigYtDL {
     pub version_key: String,
     pub download_source: String,
     pub timeout_version: u8,
+    pub min_audio_bitrate: i64,
 }
 
 /// Init settings
