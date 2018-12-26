@@ -83,11 +83,39 @@ impl Hash for Track {
 }
 
 impl Track {
-    pub fn best_audio_only_format(&self) -> Option<&Format> {
+    /// Returns best audio format
+    fn best_audio_format(&self) -> Option<&Format> {
+        let track_audio = self.best_audio_only_format();
+        let track_mixed = self.best_audio_format();
+
+        if let Some(audio_track) = track_audio {
+            if let Some(mixed_track) = track_mixed {
+                let abr_audio = audio_track
+                    .abr
+                    .expect("No audio bitrate in audio-only track!");
+                if abr_audio >= mixed_track.abr.unwrap()
+                    || abr_audio >= SETTINGS.ytdl.min_audio_bitrate
+                {
+                    return Some(audio_track);
+                } else {
+                    return Some(mixed_track);
+                }
+            }
+        }
+        track_mixed
+    }
+
+    /// Returns bests audio format with video
+    pub fn best_mixed_audio_format(&self) -> Option<&Format> {
+        Track::filter_best_audio_format(self.mixed_only_formats())
+    }
+
+    /// Returns format with best audio bitrate from input
+    pub fn filter_best_audio_format(formats: Vec<&Format>) -> Option<&Format> {
         let mut max_bitrate: i64 = -1;
         let mut max_format: Option<&Format> = None;
 
-        self.audio_only_formats().iter().for_each(|format| {
+        formats.into_iter().for_each(|format| {
             if let Some(bitrate) = format.abr {
                 if max_bitrate < bitrate {
                     max_bitrate = bitrate;
@@ -95,30 +123,43 @@ impl Track {
                 }
             }
         });
-
-        return max_format;
+        max_format
     }
 
+    /// Returns best only-audio format
+    pub fn best_audio_only_format(&self) -> Option<&Format> {
+        Track::filter_best_audio_format(self.audio_only_formats())
+    }
+
+    /// Return audio+video formats
+    pub fn mixed_only_formats(&self) -> Vec<&Format> {
+        self.formats
+            .iter()
+            .filter(|f| f.has_audio() && f.has_video())
+            .collect()
+    }
+
+    /// Return audio only formats
     pub fn audio_only_formats(&self) -> Vec<&Format> {
-        return self.formats.iter().filter(|f| f.is_audio_only()).collect();
+        self.formats.iter().filter(|f| f.is_audio_only()).collect()
     }
 }
 
 impl Format {
     pub fn has_audio(&self) -> bool {
-        if let Some(ref ac) = self.acodec {
-            return ac != "none";
+        match self.acodec {
+            Some(ref ac) => ac != "none",
+            None => false,
         }
-        return false;
     }
     pub fn has_video(&self) -> bool {
-        if let Some(ref vc) = self.vcodec {
-            return vc != "none";
+        match self.vcodec {
+            Some(ref vc) => vc != "none",
+            None => false,
         }
-        return false;
     }
     pub fn is_audio_only(&self) -> bool {
-        return !self.has_video() && self.has_audio();
+        !self.has_video() && self.has_audio()
     }
 }
 
@@ -272,7 +313,7 @@ impl YtDL {
         let mut parsed: JsonValue = serde_json::from_str(&result)?;
         let version: String = match parsed[UPDATE_VERSION_KEY].take() {
             JsonValue::Null => return Err(YtDLErr::JsonError("Version key not found!").into()),
-            JsonValue::String(v) => v, //.ok_or(YtDLErr::JsonError("Version value is not a str!"))?,
+            JsonValue::String(v) => v,
             _ => return Err(YtDLErr::JsonError("Version key is not of correct type!").into()),
         };
 
