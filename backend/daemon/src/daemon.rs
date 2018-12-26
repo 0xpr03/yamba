@@ -182,10 +182,10 @@ pub fn start_runtime() -> Fallible<()> {
         .into_future();
     match rt.block_on(future::select_all(vec![ft_sigint, ft_sigterm, ftb_sigquit])) {
         Err(e) => {
-            let ((err, _), _, _) = e;
-            info!("Shutting down daemon..");
+            // first tuple element conains error, but is neither display nor debug..
+            let ((_, _), _, _) = e;
+            error!("Error in signal handler");
             println!("Shutting down daemon..");
-            return Err(DaemonErr::ShutdownError(err).into());
         }
         Ok(_) => (),
     };
