@@ -209,10 +209,19 @@ fn create_instance_from_id(
     default_sink: &Arc<NullSink>,
 ) -> Fallible<Instance> {
     let data = db::load_instance_data(&pool, id)?;
+    let storage = db::read_instance_storage(id, pool)?;
 
     // can't match untill we have more than one type
     let DBInstanceType::TS(ts_data) = data;
-    create_ts_instance(pool, player_send, mainloop, context, ts_data, default_sink)
+    create_ts_instance(
+        pool,
+        player_send,
+        mainloop,
+        context,
+        ts_data,
+        default_sink,
+        storage,
+    )
 }
 
 /// Crate instance of type TS
@@ -223,15 +232,17 @@ fn create_ts_instance(
     context: &CContext,
     data: TSSettings,
     default_sink: &Arc<NullSink>,
+    storage: InstanceStorage,
 ) -> Fallible<Instance> {
     let id = Arc::new(data.id);
 
-    let player = Player::new(player_send, id.clone(), 0.1)?;
+    let player = Player::new(player_send, id.clone(), storage.volume)?;
     let sink = NullSink::new(
         mainloop.clone(),
         context.clone(),
         format!("yambasink{}", &id),
     )?;
+
     player.set_pulse_device(sink.get_sink_name())?;
     Ok(Instance {
         voip: InstanceType::Teamspeak(Teamspeak {
@@ -242,7 +253,7 @@ fn create_ts_instance(
         }),
         player,
         id: id,
-        current_song: RwLock::new(None),
+        store: RwLock::new(storage),
         db: pool.clone(),
     })
 }
