@@ -17,6 +17,7 @@
 
 use chrono::naive::NaiveDateTime;
 
+use instance::ID;
 /// Database models
 
 #[derive(Debug, Clone, Deserialize)]
@@ -45,6 +46,17 @@ impl Song {
 pub struct SongMin {
     pub id: String,
     pub source: String,
+/// Instance settings storage
+#[derive(Debug, Clone, Deserialize)]
+pub struct InstanceStorage {
+    pub id: i32,
+    pub volume: f64,
+    pub index: Option<QueueID>,
+    pub position: Option<f64>,
+    pub random: bool,
+    pub repeat: bool,
+    pub queue_lock: bool,
+    pub volume_lock: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

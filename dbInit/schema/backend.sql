@@ -51,10 +51,12 @@ CREATE TABLE `teamspeak_instances` (
 
 CREATE TABLE `instance_store` (
   `id` INT NOT NULL,
-  `volume` INT NOT NULL,
-  `index` INT NOT NULL,
-  `position` INT NOT NULL,
+  `volume` DOUBLE NOT NULL,
+  `index` INT,
+  `position` BIGINT UNSIGNED,
   `random` BIT NOT NULL,
+  `queue_lock` BIT NOT NULL,
+  `volume_lock` BIT NOT NULL,
   PRIMARY KEY (`id`),
   FOREIGN KEY (`id`) REFERENCES `instances`(`id`)
     ON DELETE CASCADE

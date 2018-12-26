@@ -31,7 +31,7 @@ use std::vec::Vec;
 
 use SETTINGS;
 
-use models::{DBInstanceType, TSSettings};
+use models::*;
 
 const TS_TYPE: &'static str = "teamspeak_instances";
 
@@ -183,6 +183,56 @@ pub fn insert_tracks(tracks: &[Track], pool: &Pool) -> Fallible<Vec<String>> {
     transaction.commit()?;
 
     Ok(ids)
+}
+
+
+/// Load instance storage
+/// Returns default if none found
+pub fn read_instance_storage(id: &i32, pool: &Pool) -> Fallible<InstanceStorage> {
+    let mut result = pool.prep_exec(
+        "SELECT `id`,`volume`,`index`,`position`,`random`,`repeat`,`queue_lock`,`volume_lock` FROM `instance_store` is 
+        WHERE is.`id` = ?",
+        (&id,),
+    )?;
+
+    let storage = match result.next() {
+        Some(row) => {
+            let (id, volume, index, position, random, repeat, queue_lock, volume_lock) =
+                from_row_opt(row?)?;
+            InstanceStorage {
+                id,
+                volume,
+                index,
+                position,
+                random,
+                repeat,
+                queue_lock,
+                volume_lock,
+            }
+        }
+        None => InstanceStorage {
+            id: id.clone(),
+            volume: 0.2,
+            index: None,
+            position: None,
+            random: false,
+            repeat: false,
+            queue_lock: false,
+            volume_lock: false,
+        },
+    };
+    Ok(storage)
+}
+
+/// Insert or update instance storage
+pub fn upsert_instance_storage(storage: &InstanceStorage, pool: &Pool) -> Fallible<()> {
+    pool.prep_exec(
+        "INSERT INTO `instance_store` (`id`,`volume`,`index`,`position`,`random`,`repeat`,`queue_lock`,`volume_lock`) VALUES (?,?,?,?,?,?,?)
+        ON DUPLICATE KEY UPDATE `volume`=VALUES(`volume`), `index`=VALUES(`index`), `position`=VALUES(`position`), `random`=VALUES(`random`), `repeat`=VALUES(`repeat`), `queue_lock`=VALUES(`queue_lock`), `volume_lock`=VALUES(`volume_lock`)",
+        (&storage.id, &storage.volume, &storage.index, &storage.position, &storage.random, &storage.repeat,
+        &storage.queue_lock, &storage.volume_lock),
+    )?;
+    Ok(())
 }
 
 /// Create ID for track
