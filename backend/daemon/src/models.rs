@@ -18,6 +18,11 @@
 use chrono::naive::NaiveDateTime;
 
 use instance::ID;
+
+/// Song identifier, char(32)
+pub type SongID = String;
+pub type QueueID = i32;
+
 /// Database models
 
 #[derive(Debug, Clone, Deserialize)]
@@ -25,9 +30,9 @@ pub struct Song {
     pub id: String,
     pub name: String,
     pub source: String,
+    pub artist: Option<String>,
     pub length: Option<i32>,
     pub downloaded: bool,
-    pub artist: Option<String>,
     pub last_used: NaiveDateTime,
 }
 
