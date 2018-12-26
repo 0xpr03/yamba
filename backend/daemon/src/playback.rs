@@ -76,7 +76,9 @@ pub struct Player {
     player: gst_player::Player,
     pulsesink: gst::Element,
     volume: RwLock<f64>,
+    // player name
     name: String,
+    // ID of player
     id: Arc<i32>,
 }
 
@@ -305,6 +307,11 @@ impl Player {
     pub fn play(&self) {
         self.player.play();
         self.player.set_volume(*self.volume.read().unwrap());
+    }
+
+    /// Pause playback
+    pub fn pause(&self) {
+        self.player.pause();
     }
 
     /// Set pulse device for player
