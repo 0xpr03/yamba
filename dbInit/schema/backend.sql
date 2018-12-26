@@ -63,7 +63,7 @@ CREATE TABLE `instance_store` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `queues` (
-  `index` INT AUTO_INCREMENT NOT NULL,
+  `index` INT UNSIGNED AUTO_INCREMENT NOT NULL,
   `instance_id` INT NOT NULL,
   `title_id` CHAR(32) NOT NULL,
   PRIMARY KEY (`index`, `instance_id`),
