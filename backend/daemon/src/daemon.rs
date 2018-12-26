@@ -34,7 +34,7 @@ use std::time::Instant;
 use api;
 use audio::{self, CContext, CMainloop, NullSink};
 use db;
-use models::{DBInstanceType, SongMin, TSSettings};
+use models::{DBInstanceType, InstanceStorage, SongMin, TSSettings};
 use playback::{self, PlaybackSender, Player, PlayerEvent};
 use rpc;
 use ts::TSInstance;
@@ -42,40 +42,7 @@ use ytdl::YtDL;
 use ytdl_worker;
 
 use SETTINGS;
-
-/// Base for each instance
-pub struct Instance {
-    pub id: ID,
-    pub voip: InstanceType,
-    pub current_song: RwLock<Option<SongMin>>,
-    pub player: Player,
-    pub db: Pool,
-}
-
-/// Instance type for different VoIP systems
-pub enum InstanceType {
-    Teamspeak(Teamspeak),
-}
-
-/// Teamspeak specific VoIP instance
-pub struct Teamspeak {
-    ts: TSInstance,
-    sink: NullSink,
-    mute_sink: Arc<NullSink>,
-    updated: RwLock<Instant>,
-}
-
-impl Teamspeak {
-    /// Setup call on successfull connection
-    /// process_id is the real ts id, as the xvfb wrapper doesn't count
-    pub fn on_connected(&self, process_id: u32) -> Fallible<()> {
-        trace!("Setting monitor for ts");
-        self.sink.set_monitor_for_process(process_id)?;
-        trace!("Setting sink for ts");
-        self.mute_sink.set_sink_for_process(process_id)?;
-        Ok(())
-    }
-}
+use instance::*;
 
 /// Daemon init & startup of all servers
 
@@ -83,7 +50,6 @@ impl Teamspeak {
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 pub type APIChannel = mpsc::Sender<api::APIRequest>;
 pub type Instances<'a> = Arc<RwLock<HashMap<i32, Instance>>>;
-pub type ID = Arc<i32>;
 
 #[derive(Fail, Debug)]
 pub enum DaemonErr {

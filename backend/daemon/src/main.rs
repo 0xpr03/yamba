@@ -72,6 +72,7 @@ mod rpc;
 mod ts;
 mod ytdl;
 mod ytdl_worker;
+mod instance;
 
 use clap::{App, Arg, SubCommand};
 use failure::Fallible;

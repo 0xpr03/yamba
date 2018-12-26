@@ -28,7 +28,8 @@ use tokio::runtime;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 
-use daemon::{Instances, ID};
+use daemon::Instances;
+use instance::ID;
 
 /// Playback abstraction
 

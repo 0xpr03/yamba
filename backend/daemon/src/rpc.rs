@@ -21,17 +21,17 @@ use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Request, Response, Server};
 use jsonrpc_lite::{Error, Id, JsonRpc, Params};
-use owning_ref::{OwningRef, RwLockReadGuardRef};
+use owning_ref::OwningRef;
 use serde_json::{self, to_value, Value};
 use tokio::runtime;
 
 use hashbrown::HashMap;
-use std::sync::Arc;
 use std::sync::RwLock;
 
 use std::sync::RwLockReadGuard;
 
-use daemon::{self, BoxFut, Instance, InstanceType, Instances};
+use daemon::{self, BoxFut, Instances};
+use instance::{Instance, InstanceType};
 use SETTINGS;
 
 /// RPC server for client callbacks
