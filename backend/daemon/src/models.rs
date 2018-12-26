@@ -42,6 +42,9 @@ impl Song {
         SongMin {
             id: self.id,
             source: self.source,
+            artist: self.artist,
+            name: self.name,
+            length: self.length,
         }
     }
 }
@@ -50,7 +53,12 @@ impl Song {
 #[derive(Debug, Clone, Deserialize)]
 pub struct SongMin {
     pub id: String,
+    pub name: String,
     pub source: String,
+    pub artist: Option<String>,
+    pub length: Option<i32>,
+}
+
 /// Instance settings storage
 #[derive(Debug, Clone, Deserialize)]
 pub struct InstanceStorage {
