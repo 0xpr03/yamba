@@ -355,7 +355,8 @@ pub fn create_playback_server(
             PlayerEventType::Buffering => {
                 debug!("Player {} is buffering", event.id);
             }
-            PlayerEventType::PositionUpdated => (),
+            PlayerEventType::PositionUpdated => (), // silence
+            PlayerEventType::MediaInfoUpdated => (), // silence
             v => debug!("Event: {:?}", v),
         }
         Ok(())
