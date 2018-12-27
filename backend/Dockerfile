@@ -67,4 +67,4 @@ RUN ln -s $(which python3) /usr/local/bin/python
 
 ENTRYPOINT ["/entrypoint.sh"]
 #CMD "/opt/yamba/daemon/target/debug/yamba-backend"
-CMD "/opt/yamba/daemon/target/debug/yamba-backend" test-ts -h ek.proctet.net --cid 5368 --clear-instances
+CMD ["/opt/yamba/daemon/target/debug/yamba-backend", "test-ts","-h","ek.proctet.net","--cid","5368","--clear-instances"]
