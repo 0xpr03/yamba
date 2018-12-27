@@ -55,6 +55,7 @@ CREATE TABLE `instance_store` (
   `index` INT,
   `position` BIGINT UNSIGNED,
   `random` BIT NOT NULL,
+  `repeat` BIT NOT NULL,
   `queue_lock` BIT NOT NULL,
   `volume_lock` BIT NOT NULL,
   PRIMARY KEY (`id`),
