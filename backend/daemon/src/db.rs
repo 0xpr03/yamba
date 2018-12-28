@@ -211,8 +211,8 @@ pub fn get_track_by_url(url: &str, pool: &Pool) -> Fallible<Option<SongMin>> {
 /// Returns default if none found
 pub fn read_instance_storage(id: &i32, pool: &Pool) -> Fallible<InstanceStorage> {
     let mut result = pool.prep_exec(
-        "SELECT `id`,`volume`,`index`,`position`,`random`,`repeat`,`queue_lock`,`volume_lock` FROM `instance_store` is 
-        WHERE is.`id` = ?",
+        "SELECT `id`,`volume`,`index`,`position`,`random`,`repeat`,`queue_lock`,`volume_lock` FROM `instance_store` ins 
+        WHERE ins.`id` = ?",
         (&id,),
     )?;
 
