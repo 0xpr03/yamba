@@ -4,6 +4,7 @@ version: '3'
 
 services:
   database:
+    container_name: database
     image: mariadb:10.3.10-bionic
     restart: always
     ports:
@@ -21,6 +22,7 @@ services:
       MYSQL_ROOT_PASSWORD: "${YAMBA_DATABASE_ROOT_PASSWORD}"
 
   frontend:
+    container_name: frontend
     build: ./frontend
     ports:
       - 9000:80
@@ -32,6 +34,7 @@ services:
       - ./config/database_root.env
 
   backend:
+    container_name: backend
     build: ./backend
     volumes:
 # dev mounts
