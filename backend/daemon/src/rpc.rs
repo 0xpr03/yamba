@@ -167,7 +167,7 @@ fn handle_connected(
     let instance_r = instances.read().expect("Can't read instance!");
     if let Some(instance) = instance_r.get(&instance_id) {
         // if let, but irrefutable pattern as of now..
-        let InstanceType::Teamspeak(ref ts) = instance.voip;
+        let InstanceType::Teamspeak(ref ts) = *instance.voip;
         if let Err(e) = ts.on_connected(process_id) {
             warn!("Error on post-connection action: {}\n{}", e, e.backtrace());
             JsonRpc::success(req_id, &json!(false))

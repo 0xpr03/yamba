@@ -31,11 +31,12 @@ use ts::TSInstance;
 /// module containing a single instance
 
 /// Base for each instance
+#[derive(Clone)]
 pub struct Instance {
     pub id: ID,
-    pub voip: InstanceType,
-    pub store: RwLock<InstanceStorage>,
-    pub player: Player,
+    pub voip: Arc<InstanceType>,
+    pub store: Arc<RwLock<InstanceStorage>>,
+    pub player: Arc<Player>,
     pub db: Pool,
 }
 

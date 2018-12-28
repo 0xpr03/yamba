@@ -41,8 +41,8 @@ use ts::TSInstance;
 use ytdl::YtDL;
 use ytdl_worker;
 
-use SETTINGS;
 use instance::*;
+use SETTINGS;
 
 /// Daemon init & startup of all servers
 
@@ -245,15 +245,15 @@ fn create_ts_instance(
 
     player.set_pulse_device(sink.get_sink_name())?;
     Ok(Instance {
-        voip: InstanceType::Teamspeak(Teamspeak {
+        voip: Arc::new(InstanceType::Teamspeak(Teamspeak {
             ts: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
             sink,
             mute_sink: default_sink.clone(),
             updated: RwLock::new(Instant::now()),
-        }),
-        player,
+        })),
+        player: Arc::new(player),
         id: id,
-        store: RwLock::new(storage),
+        store: Arc::new(RwLock::new(storage)),
         db: pool.clone(),
     })
 }
