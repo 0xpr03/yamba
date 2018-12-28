@@ -128,6 +128,7 @@ pub fn start_runtime() -> Fallible<()> {
         &mainloop,
         &context,
         &default_sink,
+        &ytdl,
     ) {
         Ok(_) => (),
         Err(e) => {
@@ -170,6 +171,7 @@ fn load_instances(
     mainloop: &CMainloop,
     context: &CContext,
     default_sink: &Arc<NullSink>,
+    ytdl: &Arc<YtDL>,
 ) -> Fallible<()> {
     let mut instances = instances.write().expect("Main RwLock is poisoned!");
     instances.clear();
@@ -182,6 +184,7 @@ fn load_instances(
             &mainloop,
             &context,
             default_sink,
+            ytdl,
         ) {
             Ok(v) => v,
             Err(e) => {
@@ -207,6 +210,7 @@ fn create_instance_from_id(
     mainloop: &CMainloop,
     context: &CContext,
     default_sink: &Arc<NullSink>,
+    ytdl: &Arc<YtDL>,
 ) -> Fallible<Instance> {
     let data = db::load_instance_data(&pool, id)?;
     let storage = db::read_instance_storage(id, pool)?;
@@ -221,6 +225,7 @@ fn create_instance_from_id(
         ts_data,
         default_sink,
         storage,
+        ytdl,
     )
 }
 
@@ -233,6 +238,7 @@ fn create_ts_instance(
     data: TSSettings,
     default_sink: &Arc<NullSink>,
     storage: InstanceStorage,
+    ytdl: &Arc<YtDL>,
 ) -> Fallible<Instance> {
     let id = Arc::new(data.id);
 
@@ -255,6 +261,8 @@ fn create_ts_instance(
         id: id,
         store: Arc::new(RwLock::new(storage)),
         pool: pool.clone(),
+        ytdl: ytdl.clone(),
+        current_song: Arc::new(RwLock::new(None)),
     })
 }
 

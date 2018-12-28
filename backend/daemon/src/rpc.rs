@@ -84,6 +84,11 @@ fn handle_stop(req_id: Id, params: Vec<Value>, instances: Instances, instance_id
         Ok(v) => v,
         Err(e) => return e,
     };
+    let mut lock = instance
+        .current_song
+        .write()
+        .expect("Can't lock current song!");
+    *lock = None;
     instance.player.stop();
     JsonRpc::success(req_id, &json!((true, "test", true)))
 }

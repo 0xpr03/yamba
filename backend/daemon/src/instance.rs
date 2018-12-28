@@ -24,11 +24,29 @@ use std::time::Instant;
 
 use audio::NullSink;
 use db;
-use models::{InstanceStorage, SongMin};
+use models::{InstanceStorage, QueueID, SongMin};
 use playback::Player;
 use ts::TSInstance;
+use ytdl::YtDL;
 
 /// module containing a single instance
+
+#[derive(Fail, Debug)]
+enum InstanceErr {
+    #[fail(display = "No Audio track for URL {}", _0)]
+    NoAudioTrack(String),
+    #[fail(display = "Unused {}", _0)]
+    SomeErr(String),
+}
+
+pub type ID = Arc<i32>;
+type CURRENT_SONG = Arc<RwLock<Option<CurrentSong>>>;
+
+/// Struct holding the current song
+pub struct CurrentSong {
+    pub song: SongMin,
+    pub queue_id: QueueID,
+}
 
 /// Base for each instance
 #[derive(Clone)]
@@ -38,6 +56,8 @@ pub struct Instance {
     pub store: Arc<RwLock<InstanceStorage>>,
     pub player: Arc<Player>,
     pub pool: Pool,
+    pub ytdl: Arc<YtDL>,
+    pub current_song: CURRENT_SONG,
 }
 
 impl Drop for Instance {
