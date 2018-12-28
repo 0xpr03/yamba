@@ -104,8 +104,8 @@ function addPlaylist() {
             xhr.setRequestHeader('X-CSRF-Token', $('[name="_csrfToken"]').val());
         },
         data: formData,
-        success: function (response) {
-            ajaxSuccessFlash(response);
+        success: function (message, status, jqXHR) {
+            ajaxSuccessFlash(message, jqXHR.status);
             form.find('input[type=text]').val('');
         },
         error: ajaxErrorFlash
@@ -130,10 +130,18 @@ function deletePlaylist(playlist) {
     });
 }
 
-function ajaxSuccessFlash(response) {
-    flash('success', response);
+function ajaxSuccessFlash(message, statusCode) {
+    let status = '';
+    if (statusCode === 201) {
+        status = 'success';
+    } else if (statusCode === 202) {
+        status = 'warning';
+    } else {
+        status = 'primary';
+    }
+    flash(status, message);
 }
 
-function ajaxErrorFlash(response) {
-    flash('alert', response);
+function ajaxErrorFlash(message) {
+    flash('alert', message);
 }
