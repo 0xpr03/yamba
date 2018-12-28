@@ -29,9 +29,9 @@ use std::time::Duration;
 use std::time::Instant;
 use std::vec::Vec;
 
-use SETTINGS;
-
+use instance::ID;
 use models::*;
+use SETTINGS;
 
 const TS_TYPE: &'static str = "teamspeak_instances";
 
@@ -154,6 +154,17 @@ pub fn clear_instances(pool: &Pool) -> Fallible<()> {
     Ok(())
 }
 
+/// Add song to queue for given instance
+/// Returns the queue ID
+pub fn add_song_to_queue(pool: &Pool, instance: &ID, id: &SongID) -> Fallible<QueueID> {
+    let result = pool.prep_exec(
+        "INSERT INTO `queues` (`instance_id`,`title_id`)
+    VALUES (?,?)",
+        (**instance, id),
+    )?;
+
+    Ok(result.last_insert_id() as QueueID)
+}
 /// Save a set of tracks into the DB and return their IDs
 pub fn insert_tracks(tracks: &[Track], pool: &Pool) -> Fallible<Vec<String>> {
     let mut transaction = pool.start_transaction(false, None, None)?;
