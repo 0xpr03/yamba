@@ -248,7 +248,7 @@ pub fn read_instance_storage(id: &i32, pool: &Pool) -> Fallible<InstanceStorage>
 /// Insert or update instance storage
 pub fn upsert_instance_storage(storage: &InstanceStorage, pool: &Pool) -> Fallible<()> {
     pool.prep_exec(
-        "INSERT INTO `instance_store` (`id`,`volume`,`index`,`position`,`random`,`repeat`,`queue_lock`,`volume_lock`) VALUES (?,?,?,?,?,?,?)
+        "INSERT INTO `instance_store` (`id`,`volume`,`index`,`position`,`random`,`repeat`,`queue_lock`,`volume_lock`) VALUES (?,?,?,?,?,?,?,?)
         ON DUPLICATE KEY UPDATE `volume`=VALUES(`volume`), `index`=VALUES(`index`), `position`=VALUES(`position`), `random`=VALUES(`random`), `repeat`=VALUES(`repeat`), `queue_lock`=VALUES(`queue_lock`), `volume_lock`=VALUES(`volume_lock`)",
         (&storage.id, &storage.volume, &storage.index, &storage.position, &storage.random, &storage.repeat,
         &storage.queue_lock, &storage.volume_lock),
