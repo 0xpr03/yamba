@@ -62,13 +62,17 @@ pub struct Instance {
 
 impl Drop for Instance {
     fn drop(&mut self) {
-        self.player.pause();
-        if let Ok(mut lock) = self.store.write() {
-            lock.volume = self.player.get_volume();
+        // don't store on clone drop
+        if Arc::strong_count(&self.voip) <= 1 {
+            println!("Storing instance {}", self.id);
+            self.player.pause();
+            if let Ok(mut lock) = self.store.write() {
+                lock.volume = self.player.get_volume();
 
-            match db::upsert_instance_storage(&*lock, &self.pool) {
-                Ok(_) => (),
-                Err(e) => error!("Unable to store instance {}", e),
+                match db::upsert_instance_storage(&*lock, &self.pool) {
+                    Ok(_) => (),
+                    Err(e) => error!("Unable to store instance {}", e),
+                }
             }
         }
     }
@@ -106,7 +110,10 @@ impl Instance {
         let mut w_guard = inst.current_song.write().expect("Can't lock current-song");
 
         if w_guard.is_none() {
-            debug!("No current song, starting playback for {} qid {}",entry.id, queue_id);
+            debug!(
+                "No current song, starting playback for {} qid {}",
+                entry.id, queue_id
+            );
             *w_guard = Some(CurrentSong {
                 song: entry,
                 queue_id,
