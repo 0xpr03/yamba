@@ -30,20 +30,20 @@
     <div class="top-bar-right">
         <ul class="dropdown menu" data-dropdown-menu>
             <?php if($this->request->getSession()->read('Auth.User')) { ?>
-            <?php if($this->request->getParam('controller') === 'Music') { ?>
-            <li class="divider">
-                <select id="instance-select">
-                </select>
-            </li>
-            <?php } ?>
-            <li class="divider">
+            <li>
                 <a href="#" class="header-font">Settings</a>
-                <ul class="menu">
+                <ul class="menu" style="border-top: 0px">
                     <li><a href="/settings/accounts" class="header-font">Account Settings</a></li>
                     <li><a href="/settings/instances" class="header-font">Instance Settings</a></li>
                 </ul>
             </li>
-            <li class="divider"><?= $this->Html->link(
+            <?php if($this->request->getParam('controller') === 'Music') { ?>
+            <li>
+                <select id="instance-select">
+                </select>
+            </li>
+            <?php } ?>
+            <li><?= $this->Html->link(
                 'Logout',
                 ['controller' => 'Users', 'action' => 'logout'],
                 ['class' => 'header-font', 'title' => 'Logout']);
