@@ -51,7 +51,9 @@ function fillSongTable(playlist, titles) {
     titles.forEach((title) => {
         title.length = fancyTimeFormat(title.length);
     });
-    tableBody.html(Mustache.render(titlesTemplate, {playlist: playlist, titles: titles}));
+    $.get('mustache/titles.mst', function (template) {
+        tableBody.html(Mustache.render(template, {playlist: playlist, titles: titles}));
+    });
 }
 
 function fancyTimeFormat(time) {
@@ -87,8 +89,10 @@ function getPlaylists() {
 
 function fillPlaylistTable(playlists) {
     let tableBody = $('#playlist-table-body');
-    tableBody.html(Mustache.render(playlistsTemplate, {playlists: playlists}));
-    hiliteTableRow($('#titles-table-body').attr('data-playlist-id'));
+    $.get('mustache/playlists.mst', function (template) {
+        tableBody.html(Mustache.render(template, {playlists: playlists}));
+        hiliteTableRow($('#titles-table-body').attr('data-playlist-id'));
+    });
 }
 
 function addPlaylist() {
