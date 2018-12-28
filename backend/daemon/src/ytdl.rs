@@ -83,6 +83,15 @@ impl Hash for Track {
 }
 
 impl Track {
+    /// Duration as u32
+    pub fn duration_as_u32(&self) -> Option<u32> {
+        if let Some(v) = self.duration {
+            Some(v as u32)
+        } else {
+            None
+        }
+    }
+
     /// Returns best audio format
     pub fn best_audio_format(&self) -> Option<&Format> {
         let track_audio = self.best_audio_only_format();
