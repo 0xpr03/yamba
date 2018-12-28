@@ -47,7 +47,7 @@
                             </button>
                         </div>
                         <div class="columns">
-                            <?= $this->Form->submit('Create Playlist', ['class' => 'button expanded radius']); ?>
+                            <?= $this->Form->submit('Create Playlist', ['class' => 'button expanded radius', 'onclick' => 'event.preventDefault(); addPlaylist();']); ?>
                         </div>
                     </div>
                 </fieldset>
