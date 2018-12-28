@@ -228,9 +228,9 @@ impl TSInstance {
             ];
             TSInstance::insert_or_replace(&connection, &keys, &values, "Profiles")?;
 
-            let values = ["CloseActiveServerTab"];
-            let keys = ["false"];
-            TSInstance::insert_or_replace(&connection, &keys, &values, "Ask")?;
+            // let values = ["CloseActiveServerTab"];
+            // let keys = ["false"];
+            // TSInstance::insert_or_replace(&connection, &keys, &values, "Ask")?;
 
             connection
                 .close()
