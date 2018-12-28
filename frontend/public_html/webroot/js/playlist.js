@@ -15,6 +15,22 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+function hiliteTableRow(playlist) {
+    let tableRows = $('#playlist-table > tbody > tr');
+    tableRows.each(function (index, item) {
+            let classList = item.classList;
+            let style = item.style;
+            if (item.getAttribute('data-playlist-id') === playlist) {
+                classList.add('black');
+                style.color = '#fefefe';
+            } else {
+                classList.remove('black');
+                style.color = '#0a0a0a';
+            }
+        }
+    );
+}
+
 function getTitles(playlist) {
     $.ajax({
         method: 'get',
@@ -26,13 +42,14 @@ function getTitles(playlist) {
             flash('alert', 'Unable to fetch titles');
         }
     });
+    hiliteTableRow(playlist);
 }
 
 function fillSongTable(playlist, titles) {
     let tableBody = $('#titles-table-body');
     tableBody.attr('data-playlist-id', playlist);
     titles.forEach((title) => {
-       title.length = fancyTimeFormat(title.length);
+        title.length = fancyTimeFormat(title.length);
     });
     tableBody.html(Mustache.render(titlesTemplate, {playlist: playlist, titles: titles}));
 }
@@ -71,18 +88,19 @@ function getPlaylists() {
 function fillPlaylistTable(playlists) {
     let tableBody = $('#playlist-table-body');
     tableBody.html(Mustache.render(playlistsTemplate, {playlists: playlists}));
+    hiliteTableRow($('#titles-table-body').attr('data-playlist-id'));
 }
 
-function addPlaylist(form) {
+function addPlaylist() {
+    let form = $('#add-playlist-form');
     let formData = form.serializeArray().reduce(function (obj, item) {
         obj[item.name] = item.value;
         return obj;
     }, {});
-    console.log(formData);
     $.ajax({
         method: 'post',
         url: form.attr('action'),
-        beforeSend: function(xhr){
+        beforeSend: function (xhr) {
             xhr.setRequestHeader('X-CSRF-Token', $('[name="_csrfToken"]').val());
         },
         data: formData,

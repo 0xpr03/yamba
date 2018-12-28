@@ -74,8 +74,3 @@ function flash(type, message) {
 
 getPlaylists();
 getInstances();
-let form = $('#add-playlist-form');
-form.submit(function (event) {
-    event.preventDefault();
-    addPlaylist(form);
-});
