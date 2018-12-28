@@ -111,6 +111,7 @@ class MusicController extends AppController
                 $this->_flash($type, $message, $userID);
                 return $this->response->withStatus(200);
             default:
+                $this->_updatePlaylists();
                 $this->_flash('alert', $message, $userID);
                 return $this->response->withStatus(500);
         }
