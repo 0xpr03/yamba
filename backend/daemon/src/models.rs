@@ -21,17 +21,17 @@ use instance::ID;
 
 /// Song identifier, char(32)
 pub type SongID = String;
-pub type QueueID = i32;
+pub type QueueID = u32;
 
 /// Database models
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Song {
-    pub id: String,
+    pub id: SongID,
     pub name: String,
     pub source: String,
     pub artist: Option<String>,
-    pub length: Option<i32>,
+    pub length: Option<u32>,
     pub downloaded: bool,
     pub last_used: NaiveDateTime,
 }
@@ -52,11 +52,11 @@ impl Song {
 /// Minimal song representation as required for playback
 #[derive(Debug, Clone, Deserialize)]
 pub struct SongMin {
-    pub id: String,
+    pub id: SongID,
     pub name: String,
     pub source: String,
     pub artist: Option<String>,
-    pub length: Option<i32>,
+    pub length: Option<u32>,
 }
 
 /// Instance settings storage
