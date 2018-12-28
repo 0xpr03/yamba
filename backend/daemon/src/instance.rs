@@ -37,7 +37,7 @@ pub struct Instance {
     pub voip: Arc<InstanceType>,
     pub store: Arc<RwLock<InstanceStorage>>,
     pub player: Arc<Player>,
-    pub db: Pool,
+    pub pool: Pool,
 }
 
 impl Drop for Instance {
@@ -46,7 +46,7 @@ impl Drop for Instance {
         if let Ok(mut lock) = self.store.write() {
             lock.volume = self.player.get_volume();
 
-            match db::upsert_instance_storage(&*lock, &self.db) {
+            match db::upsert_instance_storage(&*lock, &self.pool) {
                 Ok(_) => (),
                 Err(e) => error!("Unable to store instance {}", e),
             }

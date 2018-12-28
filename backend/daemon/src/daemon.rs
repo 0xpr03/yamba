@@ -254,7 +254,7 @@ fn create_ts_instance(
         player: Arc::new(player),
         id: id,
         store: Arc::new(RwLock::new(storage)),
-        db: pool.clone(),
+        pool: pool.clone(),
     })
 }
 
