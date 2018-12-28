@@ -84,9 +84,9 @@ impl Hash for Track {
 
 impl Track {
     /// Returns best audio format
-    fn best_audio_format(&self) -> Option<&Format> {
+    pub fn best_audio_format(&self) -> Option<&Format> {
         let track_audio = self.best_audio_only_format();
-        let track_mixed = self.best_audio_format();
+        let track_mixed = self.best_mixed_audio_format();
 
         if let Some(audio_track) = track_audio {
             if let Some(mixed_track) = track_mixed {
