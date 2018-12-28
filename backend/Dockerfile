@@ -40,7 +40,7 @@ RUN apt-get update -q && apt-get install -qqy \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/* \
     # install rust
-    && curl -sf -L https://static.rust-lang.org/rustup.sh | sh
+    && curl -sf -L https://static.rust-lang.org/rustup.sh | sh -s -- -y
 
 # copy entrypoint
 COPY ./entrypoint.sh /entrypoint.sh
@@ -53,13 +53,13 @@ COPY ./daemon/conf /opt/yamba/daemon/conf
 COPY ./daemon/default_log.yml /opt/yamba/daemon/default_log.yml
 COPY ./daemon/Cargo.toml /opt/yamba/daemon/Cargo.toml
 WORKDIR /opt/yamba/daemon
-RUN cargo build
+RUN ~/.cargo/bin/cargo build
 
 # copy ts3plugin
 COPY ./ts3plugin/src /opt/yamba/ts3plugin/src
 COPY ./ts3plugin/Cargo.toml /opt/yamba/ts3plugin/Cargo.toml
 WORKDIR /opt/yamba/ts3plugin
-RUN cargo build
+RUN ~/.cargo/bin/cargo build
 
 WORKDIR /opt/yamba/daemon/target/debug
 # fixup: python3 -> python softlink
