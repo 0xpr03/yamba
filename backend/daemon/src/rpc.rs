@@ -105,8 +105,8 @@ fn handle_enqueue(
         Err(e) => return e,
     };
     match parse_string(&req_id, 3, &params) {
-        Ok(v) => {
-            instance.player.set_uri(v);
+        Ok(url) => {
+            instance.enqueue_by_url(url.clone());
             JsonRpc::success(req_id, &json!((true, "test", true)))
         }
         Err(e) => e,

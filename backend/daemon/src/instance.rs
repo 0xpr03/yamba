@@ -74,6 +74,53 @@ impl Drop for Instance {
     }
 }
 
+impl Instance {
+    /// Enqueue track
+    pub fn enqueue_by_url(&self, url: String) {
+        let instance = self.clone();
+        thread::spawn(
+            move || match Instance::enqueue_by_url_inner(url, instance) {
+                Err(e) => warn!("Couldn't enqueue song: {}\n{}", e, e.backtrace()),
+                Ok(_) => (),
+            },
+        );
+    }
+
+    /// Inner function, blocking
+    fn enqueue_by_url_inner(url: String, inst: Instance) -> Fallible<()> {
+        let entry = db::get_track_by_url(&url, &inst.pool)?;
+
+        let track = inst.ytdl.get_url_info(&url)?;
+        let audio_url = match track.best_audio_format() {
+            Some(v) => v.url.clone(),
+            None => return Err(InstanceErr::NoAudioTrack(url).into()),
+        };
+
+        let entry = match entry {
+            Some(e) => e,
+            None => db::insert_track(track, &inst.pool)?,
+        };
+
+        let queue_id = db::add_song_to_queue(&inst.pool, &inst.id, &entry.id)?;
+
+        let mut w_guard = inst.current_song.write().expect("Can't lock current-song");
+
+        if w_guard.is_none() {
+            debug!("No current song, starting playback for {} qid {}",entry.id, queue_id);
+            *w_guard = Some(CurrentSong {
+                song: entry,
+                queue_id,
+            });
+
+            drop(w_guard);
+
+            inst.player.set_uri(&audio_url);
+        }
+
+        Ok(())
+    }
+}
+
 /// Instance type for different VoIP systems
 pub enum InstanceType {
     Teamspeak(Teamspeak),
@@ -98,31 +145,3 @@ impl Teamspeak {
         Ok(())
     }
 }
-
-pub type ID = Arc<i32>;
-
-/*
-thread::spawn(move || {
-                let entry = match db::get_track_by_url(&url, pool) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        warn!("Couldn't search track in db: {}", e);
-                        None
-                    }
-                };
-
-                let tracks = match ytdl.get_url_info(&url) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        warn!("Can't resolve URL {}: {}", url, e);
-                        return;
-                    }
-                };
-
-                if entry.is_none() {
-                    //db::insert_tracks()
-                }
-            });
-            instance.player.set_uri(v);
-
-*/
