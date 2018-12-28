@@ -165,6 +165,35 @@ pub fn add_song_to_queue(pool: &Pool, instance: &ID, id: &SongID) -> Fallible<Qu
 
     Ok(result.last_insert_id() as QueueID)
 }
+
+/// Insert single track for playback
+pub fn insert_track(track: Track, pool: &Pool) -> Fallible<SongMin> {
+    let id = calculate_id(&track);
+    pool.prep_exec(
+        "INSERT INTO `titles` 
+            (`id`,`name`,`source`,`downloaded`, `artist`, `length`) 
+            VALUES (?,?,?,?,?,?)
+            ON DUPLICATE KEY
+            UPDATE name=VALUES(name), length=VALUES(length)",
+        (
+            &id,
+            &track.title,
+            &track.webpage_url,
+            0,
+            &track.artist,
+            track.duration,
+        ),
+    )?;
+    let duration = track.duration_as_u32();
+    Ok(SongMin {
+        id,
+        name: track.title,
+        source: track.webpage_url,
+        artist: track.artist,
+        length: duration,
+    })
+}
+
 /// Save a set of tracks into the DB and return their IDs
 pub fn insert_tracks(tracks: &[Track], pool: &Pool) -> Fallible<Vec<String>> {
     let mut transaction = pool.start_transaction(false, None, None)?;
