@@ -37,6 +37,7 @@ extern crate jsonrpc_lite;
 extern crate serde_json;
 extern crate atomic;
 extern crate chrono;
+extern crate concurrent_hashmap;
 extern crate erased_serde;
 extern crate glib;
 extern crate gstreamer as gst;
@@ -62,17 +63,18 @@ static GLOBAL: System = System;
 
 mod api;
 mod audio;
+mod cache;
 mod config;
 mod daemon;
 mod db;
 mod http;
+mod instance;
 mod models;
 mod playback;
 mod rpc;
 mod ts;
 mod ytdl;
 mod ytdl_worker;
-mod instance;
 
 use clap::{App, Arg, SubCommand};
 use failure::Fallible;

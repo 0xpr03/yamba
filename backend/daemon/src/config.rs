@@ -67,6 +67,7 @@ pub struct ConfigMain {
     pub api_bind_ip: String,
     pub api_callback_port: u16,
     pub api_callback_ip: String,
+    pub cache_lifetime_secs: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

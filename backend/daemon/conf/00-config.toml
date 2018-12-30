@@ -29,6 +29,8 @@ api_bind_ip = "127.0.0.1"
 # api callback data, daemon to frontend
 api_callback_ip = "127.0.0.1" # safe default, use 0.0.0.0 only if you know noone can access from external
 api_callback_port = "82"
+# entry max age for stream cache
+cache_lifetime_secs = 3600
 
 
 [db]

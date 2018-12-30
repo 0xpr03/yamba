@@ -33,8 +33,9 @@ use std::time::Instant;
 
 use api;
 use audio::{self, CContext, CMainloop, NullSink};
+use cache::Cache;
 use db;
-use models::{DBInstanceType, InstanceStorage, SongMin, TSSettings};
+use models::{DBInstanceType, InstanceStorage, SongID, SongMin, TSSettings};
 use playback::{self, PlaybackSender, Player, PlayerEvent};
 use rpc;
 use ts::TSInstance;
@@ -113,6 +114,7 @@ pub fn start_runtime() -> Fallible<()> {
 
     let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
 
+    let cache = Cache::<SongID, String>::new(&mut rt);
     rpc::create_rpc_server(&mut rt, instances.clone())
         .map_err(|e| DaemonErr::RPCCreationError(e))?;
     api::create_api_server(&mut rt, tx.clone()).map_err(|e| DaemonErr::APICreationError(e))?;
@@ -129,6 +131,7 @@ pub fn start_runtime() -> Fallible<()> {
         &context,
         &default_sink,
         &ytdl,
+        &cache,
     ) {
         Ok(_) => (),
         Err(e) => {
@@ -172,6 +175,7 @@ fn load_instances(
     context: &CContext,
     default_sink: &Arc<NullSink>,
     ytdl: &Arc<YtDL>,
+    cache: &SongCache,
 ) -> Fallible<()> {
     let mut instances = instances.write().expect("Main RwLock is poisoned!");
     instances.clear();
@@ -185,6 +189,7 @@ fn load_instances(
             &context,
             default_sink,
             ytdl,
+            cache,
         ) {
             Ok(v) => v,
             Err(e) => {
@@ -211,6 +216,7 @@ fn create_instance_from_id(
     context: &CContext,
     default_sink: &Arc<NullSink>,
     ytdl: &Arc<YtDL>,
+    cache: &SongCache,
 ) -> Fallible<Instance> {
     let data = db::load_instance_data(&pool, id)?;
     let storage = db::read_instance_storage(id, pool)?;
@@ -226,6 +232,7 @@ fn create_instance_from_id(
         default_sink,
         storage,
         ytdl,
+        cache,
     )
 }
 
@@ -239,6 +246,7 @@ fn create_ts_instance(
     default_sink: &Arc<NullSink>,
     storage: InstanceStorage,
     ytdl: &Arc<YtDL>,
+    cache: &SongCache,
 ) -> Fallible<Instance> {
     let id = Arc::new(data.id);
 
@@ -262,6 +270,7 @@ fn create_ts_instance(
         store: Arc::new(RwLock::new(storage)),
         pool: pool.clone(),
         ytdl: ytdl.clone(),
+        cache: cache.clone(),
         current_song: Arc::new(RwLock::new(None)),
     })
 }

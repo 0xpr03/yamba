@@ -23,7 +23,9 @@ use std::thread;
 use std::time::Instant;
 
 use audio::NullSink;
+use cache::Cache;
 use db;
+use models::SongID;
 use models::{InstanceStorage, QueueID, SongMin};
 use playback::Player;
 use ts::TSInstance;
@@ -40,6 +42,9 @@ enum InstanceErr {
 }
 
 pub type ID = Arc<i32>;
+/// Cache for resolved media URIs
+pub type SongCache = Cache<SongID, String>;
+#[allow(non_camel_case_types)]
 type CURRENT_SONG = Arc<RwLock<Option<CurrentSong>>>;
 
 /// Struct holding the current song
@@ -58,6 +63,7 @@ pub struct Instance {
     pub pool: Pool,
     pub ytdl: Arc<YtDL>,
     pub current_song: CURRENT_SONG,
+    pub cache: SongCache,
 }
 
 impl Drop for Instance {
@@ -92,30 +98,41 @@ impl Instance {
 
     /// Inner function, blocking
     fn enqueue_by_url_inner(url: String, inst: Instance) -> Fallible<()> {
-        let entry = db::get_track_by_url(&url, &inst.pool)?;
+        let song_entry = db::get_track_by_url(&url, &inst.pool)?;
 
-        let track = inst.ytdl.get_url_info(&url)?;
-        let audio_url = match track.best_audio_format() {
-            Some(v) => v.url.clone(),
-            None => return Err(InstanceErr::NoAudioTrack(url).into()),
+        let (audio_url, song) = match song_entry {
+            Some(song) => match inst.cache.get(&url) {
+                Some(url) => (url, song),
+                None => {
+                    let audio_url = match inst.ytdl.get_url_info(&url)?.best_audio_format() {
+                        Some(v) => v.url.clone(),
+                        None => return Err(InstanceErr::NoAudioTrack(url).into()),
+                    };
+                    inst.cache.upsert(song.id.clone(), audio_url.clone());
+                    (audio_url, song)
+                }
+            },
+            None => {
+                let track = inst.ytdl.get_url_info(&url)?;
+                let audio_url = match track.best_audio_format() {
+                    Some(v) => v.url.clone(),
+                    None => return Err(InstanceErr::NoAudioTrack(url).into()),
+                };
+                (audio_url, db::insert_track(track, &inst.pool)?)
+            }
         };
 
-        let entry = match entry {
-            Some(e) => e,
-            None => db::insert_track(track, &inst.pool)?,
-        };
-
-        let queue_id = db::add_song_to_queue(&inst.pool, &inst.id, &entry.id)?;
+        let queue_id = db::add_song_to_queue(&inst.pool, &inst.id, &song.id)?;
 
         let mut w_guard = inst.current_song.write().expect("Can't lock current-song");
 
         if w_guard.is_none() {
             debug!(
                 "No current song, starting playback for {} qid {}",
-                entry.id, queue_id
+                song.id, queue_id
             );
             *w_guard = Some(CurrentSong {
-                song: entry,
+                song: song,
                 queue_id,
             });
 
