@@ -69,11 +69,11 @@ jsonrpc_client!(
     // n <= 0: return all tracks
     // n > 0: return the next n tracks
     // Return: allowed, message, tracklist
-    pub fn playlist_tracks(&mut self, id : i32, invokerName : String, invokerGroups : String, n : i32) -> RpcRequest<(bool, String, Vec<String>)>;
+    pub fn queue_tracks(&mut self, id : i32, invokerName : String, invokerGroups : String, n : i32) -> RpcRequest<(bool, String, Vec<String>)>;
     // Return: allowed, message, success
     pub fn queue_clear(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
-    pub fn playlist_lock(&mut self, id : i32, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
+    pub fn queue_lock(&mut self, id : i32, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
     pub fn playlist_queue(&mut self, id : i32, invokerName : String, invokerGroups : String, url : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
@@ -107,7 +107,7 @@ lazy_static! {
     pub static ref R_PLAYLIST_GET: Regex = Regex::new(r"^!((playlist)|(plst))").unwrap();
     pub static ref R_PLAYLIST_TRACKS_5: Regex = Regex::new(r"^!t((rx)|(racks))?").unwrap();
     pub static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^!t((rx)|(racks))? (\d*)").unwrap();
-    pub static ref R_PLAYLIST_TRACKS_ALL: Regex = Regex::new(r"^!t((rx)|(racks))? a(ll)?").unwrap();
+    pub static ref R_QUEUE_TRACKS_ALL: Regex = Regex::new(r"^!t((rx)|(racks))? a(ll)?").unwrap();
     pub static ref R_QUEUE_CLEAR: Regex = Regex::new("^!c(lear)?").unwrap();
     pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck)?( )?p((laylist)|(lst))?").unwrap();
     pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!un?l(o?ck)?( )?p((laylist)|(lst))?").unwrap();
@@ -124,11 +124,11 @@ struct MyTsPlugin {
 
 const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
 const HELP: &str = r#"
-YAMBA HELP
+[b]YAMBA HELP[/b]
 
 SHOW HELP: !help
 
-GET VOLUME: !volume
+GET [b]VOLUME[/b]: [i]!volume[/i]
 SET VOLUME TO <vol>: !volume <vol>
 LOCK VOLUME: !lock volume
 UNLOCK VOLUME: !unlock volume
@@ -150,6 +150,8 @@ GET PLAYLIST NAME: !playlist
 GET PLAYLIST TRACKLIST: !tracks all
 ENQUEUE <url> IN PLAYLIST: !queue <url>
 LOAD PLAYLIST <playlist>: !load <playlist>
+
+Copyright Yamba Authors
 "#;
 
 const _HELP_DETAILED: &str = r#"
@@ -636,9 +638,9 @@ impl Plugin for MyTsPlugin {
                                 rpc_error = e;
                             }
                         }
-                    } else if R_PLAYLIST_TRACKS_ALL.is_match(&message) {
+                    } else if R_QUEUE_TRACKS_ALL.is_match(&message) {
                         match client_lock
-                            .playlist_tracks(id, invoker_name, invoker_groups, -1)
+                            .queue_tracks(id, invoker_name, invoker_groups, -1)
                             .call()
                         {
                             Ok(res) => {
@@ -657,7 +659,7 @@ impl Plugin for MyTsPlugin {
                     } else if let Some(caps) = R_PLAYLIST_TRACKS_N.captures(&message) {
                         if let Ok(n) = caps[4].parse::<i32>() {
                             match client_lock
-                                .playlist_tracks(id, invoker_name, invoker_groups, n)
+                                .queue_tracks(id, invoker_name, invoker_groups, n)
                                 .call()
                             {
                                 Ok(res) => {
@@ -678,7 +680,7 @@ impl Plugin for MyTsPlugin {
                         }
                     } else if R_PLAYLIST_TRACKS_5.is_match(&message) {
                         match client_lock
-                            .playlist_tracks(id, invoker_name, invoker_groups, 5)
+                            .queue_tracks(id, invoker_name, invoker_groups, 5)
                             .call()
                         {
                             Ok(res) => {
@@ -714,7 +716,7 @@ impl Plugin for MyTsPlugin {
                         }
                     } else if R_PLAYLIST_LOCK.is_match(&message) {
                         match client_lock
-                            .playlist_lock(id, invoker_name, invoker_groups, true)
+                            .queue_lock(id, invoker_name, invoker_groups, true)
                             .call()
                         {
                             Ok(res) => {
@@ -732,7 +734,7 @@ impl Plugin for MyTsPlugin {
                         }
                     } else if R_PLAYLIST_UNLOCK.is_match(&message) {
                         match client_lock
-                            .playlist_lock(id, invoker_name, invoker_groups, false)
+                            .queue_lock(id, invoker_name, invoker_groups, false)
                             .call()
                         {
                             Ok(res) => {
