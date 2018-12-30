@@ -18,7 +18,7 @@
 use failure::Fallible;
 use mysql::Pool;
 
-use std::sync::{atomic::AtomicBool, Arc, RwLock};
+use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, RwLock};
 use std::thread;
 use std::time::Instant;
 
@@ -86,6 +86,79 @@ impl Drop for Instance {
 }
 
 impl Instance {
+    /// Stop playback
+    pub fn stop_playback(&self) {
+        self.stop_flag.store(true, Ordering::Relaxed);
+        let mut lock = self.current_song.write().expect("Can't lock current song!");
+        *lock = None;
+        self.player.stop();
+    }
+
+    /// Handle end of stream event
+    pub fn end_of_stream(&self) {
+        // !stop-flag && no current song (avoid feedback loop)
+        if !self.stop_flag.load(Ordering::Relaxed)
+            && self
+                .current_song
+                .read()
+                .expect("Can't lock current song!")
+                .is_some()
+        {
+            if let Err(e) = self.play_next_track() {
+                warn!("Couldn't play next track in queue. {}", e);
+            }
+        }
+    }
+
+    /// Resume playback
+    pub fn resume_playback(&self) -> Fallible<()> {
+        self.stop_flag.store(false, Ordering::Relaxed);
+        if self
+            .current_song
+            .read()
+            .expect("can't lock current song")
+            .is_some()
+        {
+            self.player.play();
+        } else {
+            self.play_next_track()?;
+        }
+        Ok(())
+    }
+
+    /// Get current playback info
+    /// Contains track name, current playback position, total length
+    pub fn playback_info(&self) -> String {
+        let song_guard = self.current_song.read().expect("Can't lock current track!");
+        match song_guard.as_ref() {
+            Some(cur_song) => {
+                let position = self.player.get_position();
+                let length = match cur_song.song.length {
+                    Some(v) => format!("{}:{}", v / 60, v),
+                    None => String::from("--:--"),
+                };
+                format!(
+                    "{} {}:{}/{} {}",
+                    cur_song.song.name.as_str(),
+                    position / 60,
+                    position,
+                    length,
+                    match self.player.is_paused() {
+                        true => "-paused-",
+                        false => "",
+                    }
+                )
+            }
+            None => {
+                if self.stop_flag.load(Ordering::Relaxed) {
+                    String::from("Playback stopped")
+                } else {
+                    String::from("Playback ended")
+                }
+            }
+        }
+    }
+
     /// Play next track in queue
     pub fn play_next_track(&self) -> Fallible<()> {
         let mut c_song_w = self.current_song.write().expect("Can't lock current song!");

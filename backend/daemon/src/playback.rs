@@ -33,7 +33,7 @@ use instance::ID;
 
 /// Playback abstraction
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum PlaybackState {
     Stopped,
     Paused,
@@ -81,6 +81,7 @@ pub struct Player {
     name: String,
     // ID of player
     id: Arc<i32>,
+    state: RwLock<PlaybackState>,
 }
 
 unsafe impl Send for Player {}
@@ -239,6 +240,7 @@ impl Player {
             volume: RwLock::new(volume),
             name: Player::get_name_by_id(&id),
             id,
+            state: RwLock::new(PlaybackState::Stopped),
         })
     }
 
@@ -315,6 +317,11 @@ impl Player {
         self.player.pause();
     }
 
+    /// Whether player is currently paused
+    pub fn is_paused(&self) -> bool {
+        *self.state.read().expect("Can't read player state") == PlaybackState::Paused
+    }
+
     /// Set pulse device for player
     pub fn set_pulse_device(&self, device: &str) -> Fallible<()> {
         self.pulsesink
@@ -347,25 +354,24 @@ pub fn create_playback_server(
                 debug!("Audio changed to {} for {}", v, event.id);
             }
             PlayerEventType::EndOfStream => {
-                debug!("End of stream for {}", event.id);
-                let instances_r = instances.read().expect("Can't read instance!");
-
-                if let Some(v) = instances_r.get(&event.id) {
-                    // !stop-flag && no current song (avoid feedback loop)
-                    if !v.stop_flag.load(Ordering::Relaxed)
-                        && v.current_song
-                            .read()
-                            .expect("Can't lock current song!")
-                            .is_some()
-                    {
-                        if let Err(e) = v.play_next_track() {
-                            warn!("Couldn't play next track in queue. {}", e);
-                        }
-                    }
+                trace!("End of stream for {}", event.id);
+                if let Some(v) = instances
+                    .read()
+                    .expect("Can't read instance!")
+                    .get(&event.id)
+                {
+                    v.end_of_stream();
                 }
             }
             PlayerEventType::StateChanged(state) => {
-                debug!("State changed for {}: {:?}", event.id, state);
+                trace!("State changed for {}: {:?}", event.id, state);
+                if let Some(v) = instances
+                    .read()
+                    .expect("Can't read instance!")
+                    .get(&event.id)
+                {
+                    *v.player.state.write().unwrap() = state;
+                }
             }
             PlayerEventType::Buffering => {
                 debug!("Player {} is buffering", event.id);

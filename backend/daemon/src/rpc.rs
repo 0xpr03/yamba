@@ -90,21 +90,7 @@ fn handle_playback_info(
         Ok(v) => v,
         Err(e) => return e,
     };
-    let song_guard = instance
-        .current_song
-        .read()
-        .expect("Can't lock current track!");
-    let info = match song_guard.as_ref() {
-        Some(cur_song) => cur_song.song.name.as_str(),
-        None => {
-            if instance.stop_flag.load(Ordering::Relaxed) {
-                "Playback stopped"
-            } else {
-                "Playback ended"
-            }
-        }
-    };
-    JsonRpc::success(req_id, &json!((true, "", info)))
+    JsonRpc::success(req_id, &json!((true, "", instance.playback_info())))
 }
 
 /// handle track_next
@@ -132,19 +118,9 @@ fn handle_resume(
         Ok(v) => v,
         Err(e) => return e,
     };
-    instance.stop_flag.store(false, Ordering::Relaxed);
-    if instance
-        .current_song
-        .read()
-        .expect("can't lock current song")
-        .is_some()
-    {
-        instance.player.play();
-    } else {
-        if let Err(e) = instance.play_next_track() {
-            warn!("Can't resume. {}\n{}", e, e.backtrace());
-            return JsonRpc::error(req_id, Error::internal_error());
-        }
+    if let Err(e) = instance.resume_playback() {
+        warn!("Can't resume. {}\n{}", e, e.backtrace());
+        return JsonRpc::error(req_id, Error::internal_error());
     }
     JsonRpc::success(req_id, &json!((true, "test", true)))
 }
@@ -155,13 +131,7 @@ fn handle_stop(req_id: Id, params: Vec<Value>, instances: Instances, instance_id
         Ok(v) => v,
         Err(e) => return e,
     };
-    instance.stop_flag.store(true, Ordering::Relaxed);
-    let mut lock = instance
-        .current_song
-        .write()
-        .expect("Can't lock current song!");
-    *lock = None;
-    instance.player.stop();
+    instance.stop_playback();
     JsonRpc::success(req_id, &json!((true, "test", true)))
 }
 
