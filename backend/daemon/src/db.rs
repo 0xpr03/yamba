@@ -19,7 +19,7 @@ use failure::Fallible;
 
 use metrohash::MetroHash128;
 use mysql::error::Error as MySqlError;
-use mysql::{from_row_opt, Opts, OptsBuilder, Pool};
+use mysql::{from_row_opt, Opts, OptsBuilder, Pool, Row};
 
 use ytdl::Track;
 
@@ -45,6 +45,8 @@ pub enum DatabaseErr {
     InstanceDataNotFoundErr(i32, &'static str),
     #[fail(display = "Instance type {} is unknown", _0)]
     InstanceTypeUnknown(String),
+    #[fail(display = "Invalid queue ID {}", _0)]
+    QueueIDInvalid(QueueID),
 }
 
 /// Init db connection pool
@@ -166,6 +168,37 @@ pub fn add_song_to_queue(pool: &Pool, instance: &ID, id: &SongID) -> Fallible<Qu
     Ok(result.last_insert_id() as QueueID)
 }
 
+/// Remove song from queue by queue index
+pub fn remove_from_queue(pool: &Pool, id: &QueueID) -> Fallible<()> {
+    let result = pool.prep_exec("DELETE FROM `queues` WHERE `index` = ?", (id,))?;
+    if result.affected_rows() != 1 {
+        warn!(
+            "Removing a song from queue affected {} entries!",
+            result.affected_rows()
+        );
+        return Err(DatabaseErr::QueueIDInvalid(id.clone()).into());
+    }
+    Ok(())
+}
+
+/// Get sond in queue
+pub fn get_next_in_queue(pool: &Pool, instance: &ID) -> Fallible<Option<(QueueID, SongMin)>> {
+    let mut result = pool.prep_exec(
+        "SELECT MIN(`index`) FROM `queues` WHERE `instance_id` = ?",
+        (**instance,),
+    )?;
+
+    if let Some(row) = result.next() {
+        let queue_id: QueueID = from_row_opt(row?)?;
+
+        let song = get_track_by_queue_id(pool, &queue_id)?;
+
+        Ok(Some((queue_id, song)))
+    } else {
+        Ok(None)
+    }
+}
+
 /// Insert single track for playback
 pub fn insert_track(track: Track, pool: &Pool) -> Fallible<SongMin> {
     let id = calculate_id(&track);
@@ -226,6 +259,18 @@ pub fn insert_tracks(tracks: &[Track], pool: &Pool) -> Fallible<Vec<String>> {
     Ok(ids)
 }
 
+/// Parse row to SongMin
+fn parse_track_from_row(row: Row) -> Fallible<SongMin> {
+    let (id, name, source, artist, length) = from_row_opt(row)?;
+    Ok(SongMin {
+        id,
+        name,
+        source,
+        artist,
+        length,
+    })
+}
+
 /// Get track by URL
 pub fn get_track_by_url(url: &str, pool: &Pool) -> Fallible<Option<SongMin>> {
     let mut result = pool.prep_exec(
@@ -234,16 +279,24 @@ pub fn get_track_by_url(url: &str, pool: &Pool) -> Fallible<Option<SongMin>> {
     )?;
 
     if let Some(row) = result.next() {
-        let (id, name, source, artist, length) = from_row_opt(row?)?;
-        Ok(Some(SongMin {
-            id,
-            name,
-            source,
-            artist,
-            length,
-        }))
+        Ok(Some(parse_track_from_row(row?)?))
     } else {
         Ok(None)
+    }
+}
+
+/// Get track by queue_id
+pub fn get_track_by_queue_id(pool: &Pool, queue_id: &QueueID) -> Fallible<SongMin> {
+    let mut result = pool.prep_exec(
+        "SELECT `id`,`name`,`source`,`artist`,`length` FROM `titles` t
+    JOIN `queues` q ON q.title_id = t.id WHERE q.`index` = ?",
+        (queue_id,),
+    )?;
+
+    if let Some(row) = result.next() {
+        Ok(parse_track_from_row(row?)?)
+    } else {
+        Err(DatabaseErr::QueueIDInvalid(queue_id.clone()).into())
     }
 }
 

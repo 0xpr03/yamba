@@ -18,7 +18,7 @@
 use failure::Fallible;
 use mysql::Pool;
 
-use std::sync::{Arc, RwLock};
+use std::sync::{atomic::AtomicBool, Arc, RwLock};
 use std::thread;
 use std::time::Instant;
 
@@ -60,6 +60,7 @@ pub struct Instance {
     pub voip: Arc<InstanceType>,
     pub store: Arc<RwLock<InstanceStorage>>,
     pub player: Arc<Player>,
+    pub stop_flag: Arc<AtomicBool>,
     pub pool: Pool,
     pub ytdl: Arc<YtDL>,
     pub current_song: CURRENT_SONG,
@@ -85,6 +86,49 @@ impl Drop for Instance {
 }
 
 impl Instance {
+    /// Play next track in queue
+    pub fn play_next_track(&self) -> Fallible<()> {
+        let inst = self.clone();
+        let mut c_song_w = self.current_song.write().expect("Can't lock current song!");
+        if let Some(ref song) = *c_song_w {
+            db::remove_from_queue(&inst.pool, &song.queue_id)?;
+        }
+
+        if let Some((queue_id, song)) = db::get_next_in_queue(&inst.pool, &inst.id)? {
+            let source = song.source.clone();
+            let id = song.id.clone();
+            *c_song_w = Some(CurrentSong { queue_id, song });
+            thread::spawn(move || {
+                if let Err(e) = Instance::play_next_track_inner(inst, source, id) {
+                    warn!("Error while resolving next track!");
+                }
+            });
+        }
+
+        Ok(())
+    }
+
+    /// Inner function, blocking
+    fn play_next_track_inner(inst: Instance, source: String, song_id: SongID) -> Fallible<()> {
+        let audio_url: String;
+        if let Some(v) = inst.cache.get(&song_id) {
+            audio_url = v;
+        } else {
+            debug!("No cache entry for {}", song_id);
+            let track = inst.ytdl.get_url_info(source.as_str())?;
+
+            audio_url = match track.best_audio_format() {
+                Some(v) => v.url.clone(),
+                None => return Err(InstanceErr::NoAudioTrack(source).into()),
+            };
+            inst.cache.upsert(song_id, audio_url.clone());
+        }
+
+        inst.player.set_uri(audio_url.as_str());
+
+        Ok(())
+    }
+
     /// Enqueue track
     pub fn enqueue_by_url(&self, url: String) {
         let instance = self.clone();

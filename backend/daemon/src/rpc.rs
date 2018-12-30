@@ -26,9 +26,7 @@ use serde_json::{self, to_value, Value};
 use tokio::runtime;
 
 use hashbrown::HashMap;
-use std::sync::RwLock;
-
-use std::sync::RwLockReadGuard;
+use std::sync::{atomic::Ordering, RwLock, RwLockReadGuard};
 
 use daemon::{self, BoxFut, Instances};
 use instance::{Instance, InstanceType};
@@ -55,6 +53,7 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
                         "volume_set" => handle_volume_set(req_id, params, instances, instance_id),
                         "playlist_queue" => handle_enqueue(req_id, params, instances, instance_id),
                         "track_stop" => handle_stop(req_id, params, instances, instance_id),
+                        "track_resume" => handle_resume(req_id, params, instances, instance_id),
                         _ => {
                             trace!("Unknown rpc request: {:?}", rpc);
                             JsonRpc::error(req_id, Error::method_not_found())
@@ -78,12 +77,41 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
     }))
 }
 
+/// handle track_resume
+fn handle_resume(
+    req_id: Id,
+    params: Vec<Value>,
+    instances: Instances,
+    instance_id: i32,
+) -> JsonRpc {
+    let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    instance.stop_flag.store(false, Ordering::Relaxed);
+    if instance
+        .current_song
+        .read()
+        .expect("can't lock current song")
+        .is_some()
+    {
+        instance.player.play();
+    } else {
+        if let Err(e) = instance.play_next_track() {
+            warn!("Can't resume. {}\n{}", e, e.backtrace());
+            return JsonRpc::error(req_id, Error::internal_error());
+        }
+    }
+    JsonRpc::success(req_id, &json!((true, "test", true)))
+}
+
 /// handle track_stop
 fn handle_stop(req_id: Id, params: Vec<Value>, instances: Instances, instance_id: i32) -> JsonRpc {
     let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
         Ok(v) => v,
         Err(e) => return e,
     };
+    instance.stop_flag.store(true, Ordering::Relaxed);
     let mut lock = instance
         .current_song
         .write()

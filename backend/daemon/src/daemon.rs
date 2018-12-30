@@ -27,7 +27,7 @@ use tokio_signal::unix::{self, Signal};
 
 use std::io;
 use std::net::SocketAddr;
-use std::sync::{Arc, RwLock};
+use std::sync::{atomic::AtomicBool, Arc, RwLock};
 use std::thread;
 use std::time::Instant;
 

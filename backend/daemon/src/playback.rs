@@ -26,7 +26,7 @@ use mysql::Pool;
 use tokio::runtime;
 
 use std::path::Path;
-use std::sync::{Arc, RwLock};
+use std::sync::{atomic::Ordering, Arc, RwLock};
 
 use daemon::Instances;
 use instance::ID;
@@ -348,6 +348,15 @@ pub fn create_playback_server(
             }
             PlayerEventType::EndOfStream => {
                 debug!("End of stream for {}", event.id);
+                let instances_r = instances.read().expect("Can't read instance!");
+
+                if let Some(v) = instances_r.get(&event.id) {
+                    if !v.stop_flag.load(Ordering::Relaxed) {
+                        if let Err(e) = v.play_next_track() {
+                            warn!("Couldn't play next track in queue. {}", e);
+                        }
+                    }
+                }
             }
             PlayerEventType::StateChanged(state) => {
                 debug!("State changed for {}: {:?}", event.id, state);
