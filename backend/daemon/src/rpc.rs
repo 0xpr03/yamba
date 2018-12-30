@@ -55,6 +55,7 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
                         "track_stop" => handle_stop(req_id, params, instances, instance_id),
                         "track_resume" => handle_resume(req_id, params, instances, instance_id),
                         "track_next" => handle_next(req_id, params, instances, instance_id),
+                        "track_get" => handle_playback_info(req_id, params, instances, instance_id),
                         _ => {
                             trace!("Unknown rpc request: {:?}", rpc);
                             JsonRpc::error(req_id, Error::method_not_found())
@@ -78,12 +79,41 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
     }))
 }
 
+/// handle track_get
+fn handle_playback_info(
+    req_id: Id,
+    params: Vec<Value>,
+    instances: Instances,
+    instance_id: i32,
+) -> JsonRpc {
+    let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    let song_guard = instance
+        .current_song
+        .read()
+        .expect("Can't lock current track!");
+    let info = match song_guard.as_ref() {
+        Some(cur_song) => cur_song.song.name.as_str(),
+        None => {
+            if instance.stop_flag.load(Ordering::Relaxed) {
+                "Playback stopped"
+            } else {
+                "Playback ended"
+            }
+        }
+    };
+    JsonRpc::success(req_id, &json!((true, "", info)))
+}
+
 /// handle track_next
 fn handle_next(req_id: Id, params: Vec<Value>, instances: Instances, instance_id: i32) -> JsonRpc {
     let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
         Ok(v) => v,
         Err(e) => return e,
     };
+
     if let Err(e) = instance.play_next_track() {
         warn!("Can't play next track. {}\n{}", e, e.backtrace());
         return JsonRpc::error(req_id, Error::internal_error());
