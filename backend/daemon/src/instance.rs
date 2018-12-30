@@ -145,7 +145,7 @@ impl Instance {
         let song_entry = db::get_track_by_url(&url, &inst.pool)?;
 
         let (audio_url, song) = match song_entry {
-            Some(song) => match inst.cache.get(&url) {
+            Some(song) => match inst.cache.get(&song.id) {
                 Some(url) => (url, song),
                 None => {
                     let audio_url = match inst.ytdl.get_url_info(&url)?.best_audio_format() {
@@ -162,7 +162,9 @@ impl Instance {
                     Some(v) => v.url.clone(),
                     None => return Err(InstanceErr::NoAudioTrack(url).into()),
                 };
-                (audio_url, db::insert_track(track, &inst.pool)?)
+                let song = db::insert_track(track, &inst.pool)?;
+                inst.cache.upsert(song.id.clone(), audio_url.clone());
+                (audio_url, song)
             }
         };
 
