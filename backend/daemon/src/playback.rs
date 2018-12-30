@@ -261,19 +261,18 @@ impl Player {
 
     /// Set volume as value between 0 and 100
     pub fn set_volume(&self, volume: f64) {
-        *self.volume.write().unwrap() = volume;
+        *self.volume.write().expect("Can't write volume") = volume;
         self.player.set_volume(volume);
     }
 
     /// Get volume as value between 0 and 100
     pub fn get_volume(&self) -> f64 {
-        self.player.get_volume()
+        *self.volume.read().expect("Can't read volume")
     }
 
     /// Set uri as media
     pub fn set_uri(&self, url: &str) {
         self.player.set_uri(url);
-        //self.player.set_video_track_enabled(false);
     }
 
     /// Set file as media
@@ -309,7 +308,8 @@ impl Player {
     /// Play current media
     pub fn play(&self) {
         self.player.play();
-        self.player.set_volume(*self.volume.read().unwrap());
+        self.player
+            .set_volume(*self.volume.read().expect("Can't read volume!"));
     }
 
     /// Pause playback
