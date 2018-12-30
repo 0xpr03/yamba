@@ -339,19 +339,19 @@ impl Player {
 pub fn create_playback_server(
     runtime: &mut runtime::Runtime,
     tx: Receiver<PlayerEvent>,
-    pool: Pool,
     instances: Instances,
 ) -> Fallible<()> {
     let stream = tx.for_each(move |event| {
         match event.event_type {
             PlayerEventType::UriLoaded => {
+                trace!("URI loaded for {}", event.id);
                 let instances_r = instances.read().expect("Can't read instance!");
                 if let Some(v) = instances_r.get(&event.id) {
                     v.player.play();
                 }
             }
             PlayerEventType::VolumeChanged(v) => {
-                debug!("Audio changed to {} for {}", v, event.id);
+                trace!("Volume changed to {} for {}", v, event.id);
             }
             PlayerEventType::EndOfStream => {
                 trace!("End of stream for {}", event.id);
@@ -374,24 +374,16 @@ pub fn create_playback_server(
                 }
             }
             PlayerEventType::Buffering => {
-                debug!("Player {} is buffering", event.id);
+                trace!("Player {} is buffering", event.id);
             }
             PlayerEventType::PositionUpdated => (), // silence
             PlayerEventType::MediaInfoUpdated => (), // silence
-            v => debug!("Event: {:?}", v),
+            PlayerEventType::Error(e) => {
+                warn!("Internal playback error for instance {}:\n{}", event.id, e);
+            }
         }
         Ok(())
     });
-
-    /*
-    MediaInfoUpdated,
-    PositionUpdated,
-    EndOfStream,
-    StateChanged(PlaybackState),
-    VolumeChanged(f64),
-    Error(gst_player::Error),
-    Buffering,
-    */
 
     runtime.spawn(stream);
     debug!("Running ");
