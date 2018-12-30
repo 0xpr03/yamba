@@ -189,11 +189,11 @@ pub fn get_next_in_queue(pool: &Pool, instance: &ID) -> Fallible<Option<(QueueID
     )?;
 
     if let Some(row) = result.next() {
-        let queue_id: QueueID = from_row_opt(row?)?;
-
-        let song = get_track_by_queue_id(pool, &queue_id)?;
-
-        Ok(Some((queue_id, song)))
+        let queue_id: Option<QueueID> = from_row_opt(row?)?;
+        Ok(match queue_id {
+            Some(q) => Some((q, get_track_by_queue_id(pool, &q)?)),
+            None => None,
+        })
     } else {
         Ok(None)
     }

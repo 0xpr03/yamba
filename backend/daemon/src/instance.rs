@@ -103,6 +103,9 @@ impl Instance {
                     warn!("Error while resolving next track!");
                 }
             });
+        } else {
+            *c_song_w = None;
+            self.player.stop();
         }
 
         Ok(())

@@ -351,7 +351,13 @@ pub fn create_playback_server(
                 let instances_r = instances.read().expect("Can't read instance!");
 
                 if let Some(v) = instances_r.get(&event.id) {
-                    if !v.stop_flag.load(Ordering::Relaxed) {
+                    // !stop-flag && no current song (avoid feedback loop)
+                    if !v.stop_flag.load(Ordering::Relaxed)
+                        && v.current_song
+                            .read()
+                            .expect("Can't lock current song!")
+                            .is_some()
+                    {
                         if let Err(e) = v.play_next_track() {
                             warn!("Couldn't play next track in queue. {}", e);
                         }
