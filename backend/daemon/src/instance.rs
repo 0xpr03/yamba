@@ -88,16 +88,16 @@ impl Drop for Instance {
 impl Instance {
     /// Play next track in queue
     pub fn play_next_track(&self) -> Fallible<()> {
-        let inst = self.clone();
         let mut c_song_w = self.current_song.write().expect("Can't lock current song!");
         if let Some(ref song) = *c_song_w {
-            db::remove_from_queue(&inst.pool, &song.queue_id)?;
+            db::remove_from_queue(&self.pool, &song.queue_id)?;
         }
 
-        if let Some((queue_id, song)) = db::get_next_in_queue(&inst.pool, &inst.id)? {
+        if let Some((queue_id, song)) = db::get_next_in_queue(&self.pool, &self.id)? {
             let source = song.source.clone();
             let id = song.id.clone();
             *c_song_w = Some(CurrentSong { queue_id, song });
+            let inst = self.clone();
             thread::spawn(move || {
                 if let Err(e) = Instance::play_next_track_inner(inst, source, id) {
                     warn!("Error while resolving next track!");
