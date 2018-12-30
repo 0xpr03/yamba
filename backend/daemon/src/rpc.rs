@@ -54,6 +54,7 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
                         "playlist_queue" => handle_enqueue(req_id, params, instances, instance_id),
                         "track_stop" => handle_stop(req_id, params, instances, instance_id),
                         "track_resume" => handle_resume(req_id, params, instances, instance_id),
+                        "track_next" => handle_next(req_id, params, instances, instance_id),
                         _ => {
                             trace!("Unknown rpc request: {:?}", rpc);
                             JsonRpc::error(req_id, Error::method_not_found())
@@ -75,6 +76,19 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
         //trace!("Sending response for rpc");
         Response::new(body.into())
     }))
+}
+
+/// handle track_next
+fn handle_next(req_id: Id, params: Vec<Value>, instances: Instances, instance_id: i32) -> JsonRpc {
+    let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    if let Err(e) = instance.play_next_track() {
+        warn!("Can't play next track. {}\n{}", e, e.backtrace());
+        return JsonRpc::error(req_id, Error::internal_error());
+    }
+    JsonRpc::success(req_id, &json!((true, "test", true)))
 }
 
 /// handle track_resume
