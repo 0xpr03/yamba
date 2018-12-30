@@ -355,9 +355,10 @@ impl YtDL {
             Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())
         } else {
             Err(YtDLErr::ResponseError(format!(
-                "Process errored, response: {}; {}",
-                String::from_utf8_lossy(&result.stdout).trim().to_string(),
-                String::from_utf8_lossy(&result.stderr).trim().to_string()
+                "Process errored {}, response:\n{};\n{}",
+                result.status,
+                String::from_utf8_lossy(&result.stdout).to_string(),
+                String::from_utf8_lossy(&result.stderr).to_string()
             ))
             .into())
         }
@@ -464,6 +465,7 @@ impl YtDL {
         if self.check_sha256(hash)? {
             Ok(())
         } else {
+            remove_file(&target)?;
             Err(YtDLErr::InvalidHash(target.to_string_lossy().into()).into())
         }
     }
