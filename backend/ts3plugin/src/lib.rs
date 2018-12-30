@@ -71,7 +71,7 @@ jsonrpc_client!(
     // Return: allowed, message, tracklist
     pub fn playlist_tracks(&mut self, id : i32, invokerName : String, invokerGroups : String, n : i32) -> RpcRequest<(bool, String, Vec<String>)>;
     // Return: allowed, message, success
-    pub fn playlist_clear(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn queue_clear(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
     pub fn playlist_lock(&mut self, id : i32, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
@@ -108,7 +108,7 @@ lazy_static! {
     pub static ref R_PLAYLIST_TRACKS_5: Regex = Regex::new(r"^!t((rx)|(racks))?").unwrap();
     pub static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^!t((rx)|(racks))? (\d*)").unwrap();
     pub static ref R_PLAYLIST_TRACKS_ALL: Regex = Regex::new(r"^!t((rx)|(racks))? a(ll)?").unwrap();
-    pub static ref R_PLAYLIST_CLEAR: Regex = Regex::new("^!c(lear)?").unwrap();
+    pub static ref R_QUEUE_CLEAR: Regex = Regex::new("^!c(lear)?").unwrap();
     pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck)?( )?p((laylist)|(lst))?").unwrap();
     pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!un?l(o?ck)?( )?p((laylist)|(lst))?").unwrap();
     pub static ref R_PLAYLIST_QUEUE: Regex = Regex::new(r"^!q(ueue)? ([^ ]+)").unwrap();
@@ -140,13 +140,14 @@ RESUME TRACK: !resume
 PAUSE TRACK: !pause
 STOP TRACK: !stop
 
+GET NEXT 5 TRACKS: !tracks
+GET NEXT <n> TRACKS: !tracks <n>
+CLEAR QUEUE: !clear
+LOCK QUEUE: !lock playlist
+UNLOCK QUEUE: !lock playlist
+
 GET PLAYLIST NAME: !playlist
 GET PLAYLIST TRACKLIST: !tracks all
-GET NEXT <n> TRACKS: !tracks <n>
-GET NEXT 5 TRACKS: !tracks
-CLEAR PLAYLIST: !clear
-LOCK PLAYLIST: !lock playlist
-UNLOCK PLAYLIST: !lock playlist
 ENQUEUE <url> IN PLAYLIST: !queue <url>
 LOAD PLAYLIST <playlist>: !load <playlist>
 "#;
@@ -693,9 +694,9 @@ impl Plugin for MyTsPlugin {
                                 rpc_error = e;
                             }
                         }
-                    } else if R_PLAYLIST_CLEAR.is_match(&message) {
+                    } else if R_QUEUE_CLEAR.is_match(&message) {
                         match client_lock
-                            .playlist_clear(id, invoker_name, invoker_groups)
+                            .queue_clear(id, invoker_name, invoker_groups)
                             .call()
                         {
                             Ok(res) => {

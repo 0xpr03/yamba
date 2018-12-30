@@ -156,6 +156,15 @@ pub fn clear_instances(pool: &Pool) -> Fallible<()> {
     Ok(())
 }
 
+/// Clear queue for instance
+pub fn clear_queue(pool: &Pool, instance: &ID) -> Fallible<()> {
+    pool.prep_exec(
+        "DELETE FROM `queues` WHERE `instance_id` = ?",
+        (**instance,),
+    )?;
+    Ok(())
+}
+
 /// Add song to queue for given instance
 /// Returns the queue ID
 pub fn add_song_to_queue(pool: &Pool, instance: &ID, id: &SongID) -> Fallible<QueueID> {

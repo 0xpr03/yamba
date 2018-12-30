@@ -56,6 +56,7 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
                         "track_resume" => handle_resume(req_id, params, instances, instance_id),
                         "track_next" => handle_next(req_id, params, instances, instance_id),
                         "track_get" => handle_playback_info(req_id, params, instances, instance_id),
+                        "queue_clear" => handle_queue_clear(req_id, params, instances, instance_id),
                         _ => {
                             trace!("Unknown rpc request: {:?}", rpc);
                             JsonRpc::error(req_id, Error::method_not_found())
@@ -77,6 +78,24 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
         //trace!("Sending response for rpc");
         Response::new(body.into())
     }))
+}
+
+/// handle track_get
+fn handle_queue_clear(
+    req_id: Id,
+    params: Vec<Value>,
+    instances: Instances,
+    instance_id: i32,
+) -> JsonRpc {
+    let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    if let Err(e) = instance.clear_queue() {
+        warn!("Can't clear queue: {}\n{}", e, e.backtrace());
+        return JsonRpc::error(req_id, Error::internal_error());
+    }
+    JsonRpc::success(req_id, &json!((true, "")))
 }
 
 /// handle track_get

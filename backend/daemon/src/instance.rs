@@ -159,6 +159,17 @@ impl Instance {
         }
     }
 
+    /// Clear queue
+    pub fn clear_queue(&self) -> Fallible<()> {
+        {
+            let mut c_song_w = self.current_song.write().expect("Can't lock current song!");
+            db::clear_queue(&self.pool, &self.id)?;
+            *c_song_w = None;
+        }
+        self.player.stop();
+        Ok(())
+    }
+
     /// Play next track in queue
     pub fn play_next_track(&self) -> Fallible<()> {
         let mut c_song_w = self.current_song.write().expect("Can't lock current song!");
