@@ -25,9 +25,12 @@ use mysql::Pool;
 use tokio::{self, runtime::Runtime};
 use tokio_signal::unix::{self, Signal};
 
+use std::env::{args, current_exe};
 use std::io;
 use std::net::SocketAddr;
-use std::sync::{atomic::AtomicBool, Arc, RwLock};
+use std::os::unix::process::CommandExt;
+use std::process::Command;
+use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, RwLock};
 use std::thread;
 use std::time::Instant;
 
@@ -75,94 +78,128 @@ fn format_player_name(id: &i32) -> String {
 /// Start runtime
 pub fn start_runtime() -> Fallible<()> {
     info!("Starting daemon..");
-    gst::init()?;
-    let glib_loop = glib::MainLoop::new(None, false);
-    let glib_loop_clone = glib_loop.clone();
-    thread::spawn(move || {
-        let glib_loop = &glib_loop_clone;
-        glib_loop.run();
-    });
-    let instances: Instances = Arc::new(RwLock::new(HashMap::new()));
-    let ytdl = Arc::new(YtDL::new()?);
-    let pool = db::init_pool_timeout()?;
+    let sighub = Arc::new(AtomicBool::new(false));
+    {
+        gst::init()?;
+        let glib_loop = glib::MainLoop::new(None, false);
+        let glib_loop_clone = glib_loop.clone();
+        thread::spawn(move || {
+            let glib_loop = &glib_loop_clone;
+            glib_loop.run();
+        });
+        let instances: Instances = Arc::new(RwLock::new(HashMap::new()));
+        let ytdl = Arc::new(YtDL::new()?);
+        let pool = db::init_pool_timeout()?;
 
-    info!("Performing ytdl startup check..");
-    match ytdl.startup_test() {
-        true => debug!("Startup check success"),
-        false => {
-            return Err(DaemonErr::InitializationError(
-                "Startup check failed for ytdl engine!".into(),
-            )
-            .into())
+        info!("Performing ytdl startup check..");
+        match ytdl.startup_test() {
+            true => debug!("Startup check success"),
+            false => {
+                return Err(DaemonErr::InitializationError(
+                    "Startup check failed for ytdl engine!".into(),
+                )
+                .into())
+            }
+        };
+
+        let (tx, rx) = mpsc::channel::<api::APIRequest>(100);
+        let (player_tx, player_rx) = mpsc::channel::<PlayerEvent>(128);
+
+        let (mainloop, context) = audio::init()?;
+
+        audio::unload_problematic_modules(&mainloop, &context)?;
+
+        // sink to avoid errors due to no sink existing & avoid glitches
+        let default_sink = NullSink::new(mainloop.clone(), context.clone(), "default_sink")?;
+        default_sink.mute_sink(true)?;
+        default_sink.set_source_as_default()?;
+        default_sink.set_sink_as_default()?;
+
+        let default_sink = Arc::new(default_sink);
+
+        let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
+
+        let cache = Cache::<SongID, String>::new(&mut rt);
+        rpc::create_rpc_server(&mut rt, instances.clone())
+            .map_err(|e| DaemonErr::RPCCreationError(e))?;
+        api::create_api_server(&mut rt, tx.clone()).map_err(|e| DaemonErr::APICreationError(e))?;
+        playback::create_playback_server(&mut rt, player_rx, instances.clone())?;
+        ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());
+
+        info!("Loading instances..");
+
+        match load_instances(
+            &instances,
+            pool.clone(),
+            player_tx,
+            &mainloop,
+            &context,
+            &default_sink,
+            &ytdl,
+            &cache,
+        ) {
+            Ok(_) => (),
+            Err(e) => {
+                error!("Unable to load instances: {}\n{}", e, e.backtrace());
+                return Err(DaemonErr::InitializationError(format!("{}", e)).into());
+            }
         }
-    };
 
-    let (tx, rx) = mpsc::channel::<api::APIRequest>(100);
-    let (player_tx, player_rx) = mpsc::channel::<PlayerEvent>(10);
+        info!("Daemon initialized");
 
-    let (mainloop, context) = audio::init()?;
+        let sighub_c = sighub.clone();
+        rt.spawn(
+            Signal::new(unix::SIGHUP)
+                .flatten_stream()
+                .for_each(move |_| {
+                    debug!("Sighub received");
+                    sighub_c.store(true, Ordering::Relaxed);
+                    Ok(())
+                })
+                .map_err(|e| error!("sighub error: {}", e)),
+        );
 
-    audio::unload_problematic_modules(&mainloop, &context)?;
-
-    // sink to avoid errors due to no sink existing & avoid glitches
-    let default_sink = NullSink::new(mainloop.clone(), context.clone(), "default_sink")?;
-    default_sink.mute_sink(true)?;
-    default_sink.set_source_as_default()?;
-    default_sink.set_sink_as_default()?;
-
-    let default_sink = Arc::new(default_sink);
-
-    let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
-
-    let cache = Cache::<SongID, String>::new(&mut rt);
-    rpc::create_rpc_server(&mut rt, instances.clone())
-        .map_err(|e| DaemonErr::RPCCreationError(e))?;
-    api::create_api_server(&mut rt, tx.clone()).map_err(|e| DaemonErr::APICreationError(e))?;
-    playback::create_playback_server(&mut rt, player_rx, pool.clone(), instances.clone())?;
-    ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());
-
-    info!("Loading instances..");
-
-    match load_instances(
-        &instances,
-        pool.clone(),
-        player_tx,
-        &mainloop,
-        &context,
-        &default_sink,
-        &ytdl,
-        &cache,
-    ) {
-        Ok(_) => (),
-        Err(e) => {
-            error!("Unable to load instances: {}\n{}", e, e.backtrace());
-            return Err(DaemonErr::InitializationError(format!("{}", e)).into());
-        }
+        let ft_sigint = Signal::new(unix::SIGINT).flatten_stream().into_future();
+        let ft_sigterm = Signal::new(unix::SIGTERM).flatten_stream().into_future();
+        let ftb_sigquit = Signal::new(unix::SIGQUIT).flatten_stream().into_future();
+        let ftb_sighub = Signal::new(unix::SIGHUP).flatten_stream().into_future();
+        match rt.block_on(future::select_all(vec![
+            ft_sigint,
+            ft_sigterm,
+            ftb_sigquit,
+            ftb_sighub,
+        ])) {
+            Err(e) => {
+                // first tuple element conains error, but is neither display nor debug..
+                let ((_, _), _, _) = e;
+                error!("Error in signal handler");
+                println!("Shutting down daemon..");
+            }
+            Ok(_) => (),
+        };
+        drop(rt);
+        drop(instances);
+        glib_loop.quit();
+        drop(pool);
+        info!("Daemon stopped");
+        println!("Daemon stopped");
+    }
+    if sighub.load(Ordering::Relaxed) {
+        info!("Detected sighub, restarting..");
+        restart()
     }
 
-    info!("Daemon initialized");
-    let ft_sigint = Signal::new(unix::libc::SIGINT)
-        .flatten_stream()
-        .into_future();
-    let ft_sigterm = Signal::new(unix::libc::SIGTERM)
-        .flatten_stream()
-        .into_future();
-    let ftb_sigquit = Signal::new(unix::libc::SIGQUIT)
-        .flatten_stream()
-        .into_future();
-    match rt.block_on(future::select_all(vec![ft_sigint, ft_sigterm, ftb_sigquit])) {
-        Err(e) => {
-            // first tuple element conains error, but is neither display nor debug..
-            let ((_, _), _, _) = e;
-            error!("Error in signal handler");
-            println!("Shutting down daemon..");
-        }
-        Ok(_) => (),
-    };
-    glib_loop.quit();
-    info!("Daemon stopped");
-    println!("Daemon stopped");
     Ok(())
+}
+
+fn restart() {
+    // first element is exec itself, remove it
+    let args_origin = args().enumerate().filter(|&(i, _)| i > 0).map(|(_, e)| e);
+    let args: Vec<_> = args_origin.collect();
+    println!(
+        "Failed restarting: {}",
+        Command::new(current_exe().unwrap()).args(args).exec()
+    );
 }
 
 /// Load instances
@@ -267,6 +304,7 @@ fn create_ts_instance(
         })),
         player: Arc::new(player),
         id: id,
+        stop_flag: Arc::new(AtomicBool::new(false)),
         store: Arc::new(RwLock::new(storage)),
         pool: pool.clone(),
         ytdl: ytdl.clone(),
