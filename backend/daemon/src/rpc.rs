@@ -238,6 +238,14 @@ fn handle_connected(
             warn!("Error on post-connection action: {}\n{}", e, e.backtrace());
             JsonRpc::success(req_id, &json!(false))
         } else {
+            if let Err(e) = instance.resume_playback() {
+                warn!(
+                    "Unable to resume playback after startup for {}: {}\n{}",
+                    instance_id,
+                    e,
+                    e.backtrace()
+                );
+            }
             JsonRpc::success(req_id, &json!(true))
         }
     } else {
