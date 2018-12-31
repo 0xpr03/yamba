@@ -45,7 +45,7 @@ jsonrpc_client!(
     pub fn heartbeat(&mut self, id : i32) -> RpcRequest<(String)>;
 
     // Return: allowed, message, Volume [0 - 100]
-    pub fn volume_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, i32)>;
+    pub fn volume_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, f64)>;
     // Return: allowed, message, success
     pub fn volume_set(&mut self, id : i32, invokerName : String, invokerGroups : String, volume : f64) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
@@ -504,7 +504,8 @@ impl Plugin for MyTsPlugin {
                                 rpc_message = res.1;
                                 let vol = res.2;
                                 if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", vol));
+                                    let _ = connection
+                                        .send_message(format!("{}", (vol * 100.0) as i32));
                                 }
                             }
                             Err(e) => {
