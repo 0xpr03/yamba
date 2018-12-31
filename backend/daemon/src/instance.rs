@@ -134,14 +134,14 @@ impl Instance {
             Some(cur_song) => {
                 let position = self.player.get_position();
                 let length = match cur_song.song.length {
-                    Some(v) => format!("{}:{}", v / 60, v),
+                    Some(v) => format!("{:02}:{:02}", v / 60, v % 60),
                     None => String::from("--:--"),
                 };
                 format!(
-                    "{} {}:{}/{} {}",
+                    "{} {:02}:{:02} / {} {}",
                     cur_song.song.name.as_str(),
-                    position / 60,
-                    position,
+                    position.minutes + (position.hours * 60),
+                    position.seconds,
                     length,
                     match self.player.is_paused() {
                         true => "-paused-",

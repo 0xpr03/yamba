@@ -33,6 +33,13 @@ use instance::ID;
 
 /// Playback abstraction
 
+#[derive(PartialEq, Debug)]
+pub struct Position {
+    pub hours: u64,
+    pub minutes: u64,
+    pub seconds: u64,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum PlaybackState {
     Stopped,
@@ -287,22 +294,29 @@ impl Player {
     }
 
     /// Get position in song as ms
-    pub fn get_position(&self) -> u64 {
+    pub fn get_position_ms(&self) -> u64 {
+        // gst player reports in total MS
+        match self.player.get_position().mseconds() {
+            Some(ms) => ms,
+            None => 0,
+        }
+    }
+
+    /// Returns the current position as raw value
+    pub fn get_position(&self) -> Position {
         let clock = self.player.get_position();
-        let mut position = 0;
-        if let Some(s) = clock.mseconds() {
-            position += s;
+        let mut total_secs = match clock.seconds() {
+            Some(v) => v,
+            None => 0,
+        };
+        let hours = total_secs / 3600;
+        total_secs %= 3600;
+
+        Position {
+            hours,
+            minutes: total_secs / 60,
+            seconds: total_secs % 60,
         }
-        if let Some(s) = clock.seconds() {
-            position += s * 1000;
-        }
-        if let Some(m) = clock.minutes() {
-            position += m * 1000 * 60;
-        }
-        if let Some(h) = clock.hours() {
-            position += h * 1000 * 60 * 60;
-        }
-        position
     }
 
     /// Play current media
