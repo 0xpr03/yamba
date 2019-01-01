@@ -30,7 +30,7 @@ function getInstances() {
 
 function fillInstanceSelect(instances) {
     let instanceSelect = $('#instance-select');
-    $.get('mustache/instances.mst', function (template) {
+    $.get('../mustache/instances.mst', function (template) {
         instanceSelect.html(Mustache.render(template, {instances: instances}));
     });
 }

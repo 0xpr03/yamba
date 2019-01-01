@@ -115,7 +115,7 @@ a.footer-icon:hover, a.footer-icon:active {
 /*
     Flex box sizing
  */
-div.settings-container, div.credentials-container {
+div.settings-container, div.credentials-container, div.instances-container{
     text-align: center;
     margin-left: auto;
     margin-right: auto;
