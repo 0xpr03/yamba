@@ -283,7 +283,7 @@ fn main() -> Fallible<()> {
                 port,
                 identity: "".to_string(),
                 cid,
-                name: "Test Bot Instance".to_string(),
+                name: "YAMBA_Test_Instance".to_string(),
                 password: None,
                 autostart: true,
             };
