@@ -37,7 +37,7 @@
                     <li><a href="/settings/instances" class="header-font">Instance Settings</a></li>
                 </ul>
             </li>
-            <?php if($this->request->getParam('controller') === 'Music') { ?>
+            <?php if($this->request->getParam('controller') === 'Music' || $this->request->getParam('controller') === 'Instances') { ?>
             <li>
                 <select id="instance-select">
                 </select>
