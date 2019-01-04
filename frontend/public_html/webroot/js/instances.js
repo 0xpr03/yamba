@@ -50,14 +50,10 @@ function renderInstanceData() {
             let instance = instances.filter(function (instance) {
                 return instance.id === parseInt($('#instance-select option:selected').val());
             })[0];
-            $.get('../mustache/instance.mst', function (template) {
-                let instanceSettings = Mustache.render(template, instance);
-                //$('#instance-settings').html(instanceSettings);
-            });
             console.log(instance);
         },
         function(response) {
-            flash('alert', 'Unable to fetch titles');
+            flash('alert', 'Unable to fetch instance data');
         }
     );
 
