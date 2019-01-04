@@ -32,7 +32,7 @@
             <?php if($this->request->getSession()->read('Auth.User')) { ?>
             <li>
                 <a href="#" class="header-font">Settings</a>
-                <ul class="menu" style="border-top: 0px">
+                <ul class="menu" style="border-top: 0">
                     <li><a href="/settings/accounts" class="header-font">Account Settings</a></li>
                     <li><a href="/settings/instances" class="header-font">Instance Settings</a></li>
                 </ul>
@@ -45,7 +45,7 @@
             <?php } ?>
             <li><?= $this->Html->link(
                 'Logout',
-                ['controller' => 'Users', 'action' => 'logout'],
+                ['prefix' => false, 'controller' => 'Users', 'action' => 'logout'],
                 ['class' => 'header-font', 'title' => 'Logout']);
                 ?>
             </li>
