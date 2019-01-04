@@ -122,11 +122,15 @@ div.settings-container, div.credentials-container, div.instances-container{
 }
 
 div.settings-container {
-    max-width: 90rem;
+    max-width: 75%;
 }
 
 div.credentials-container {
-    max-width: 75rem;
+    max-width: 60%;
+}
+
+div.instances-container {
+    max-width: 75%;
 }
 
 /*
