@@ -18,8 +18,8 @@
 ?>
 
 <div class="instances-container">
-    <h1>Managing your account</h1>
+    <h1>Managing your instance</h1>
     <hr>
     <br>
-    <h3>Changing your password</h3>
+    <div id="instance-settings"></div>
 </div>
