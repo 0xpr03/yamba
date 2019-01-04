@@ -46,6 +46,9 @@
                                 <span aria-hidden="true">Close</span>
                             </button>
                         </div>
+                        <div class="columns shrink">
+                            <?= $this->Form->submit('Reset', ['type' => 'reset', 'class' => 'button warning hollow radius']); ?>
+                        </div>
                         <div class="columns">
                             <?= $this->Form->submit('Create Playlist', ['class' => 'button expanded radius', 'onclick' => 'event.preventDefault(); addPlaylist();']); ?>
                         </div>

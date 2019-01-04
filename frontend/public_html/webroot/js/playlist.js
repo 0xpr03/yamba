@@ -110,7 +110,7 @@ function addPlaylist() {
         data: formData,
         success: function (message, status, jqXHR) {
             ajaxSuccessFlash(message, jqXHR.status);
-            form.find('input[type=text]').val('');
+            form.find('input[type=reset]').click();
         },
         error: ajaxErrorFlash
     });
