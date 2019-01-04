@@ -23,25 +23,25 @@
     <fieldset class="fieldset">
         <legend><?= __('Register') ?></legend>
         <div class="row">
-            <div class="columns">
+            <div class="small-12 medium-12 large-6 columns">
                 <?= $this->Form->control('email', ['label' => ['class' => 'required', 'text' => 'Email'],
                 'placeholder' => 'example@yamba.mail', 'class' => 'input radius']) ?>
             </div>
-            <div class="columns">
+            <div class="small-12 medium-12 large-6 columns">
                 <?= $this->Form->control('password', ['label' => ['class' => 'required', 'text' => 'Password'],
                 'minlength' => $minlength, 'placeholder' => 'Must have atleast ' . $minlength . ' characters',
                 'class' => 'input radius']) ?>
             </div>
         </div>
         <div class="row">
-            <div class="columns">
+            <div class="small-12 medium-12 large-6 columns">
                 <?= $this->Html->link(
                 'Already have an account? Sign in!',
                 ['controller' => 'Users', 'action' => 'login'],
                 ['class' => 'button expanded hollow success radius', 'type' => 'button']);
                 ?>
             </div>
-            <div class="columns">
+            <div class="small-12 medium-12 large-6 columns">
                 <?= $this->Form->button(__('Register'), ['class' => 'button expanded radius']); ?>
             </div>
         </div>
