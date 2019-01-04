@@ -50,4 +50,4 @@ function flash(type, message) {
 }
 
 getPlaylists();
-getInstances();
+renderInstances();

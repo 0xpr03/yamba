@@ -1,0 +1,3 @@
+{{#instances}}
+<option value="{{id}}">{{name}}</option>
+{{/instances}}

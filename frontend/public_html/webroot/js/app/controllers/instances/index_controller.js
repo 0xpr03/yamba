@@ -41,4 +41,4 @@ function flash(type, message) {
     }
 }
 
-getInstances();
+renderInstances();

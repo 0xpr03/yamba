@@ -1,3 +1,0 @@
-{{#instances}}
-<option>{{name}}</option>
-{{/instances}}
