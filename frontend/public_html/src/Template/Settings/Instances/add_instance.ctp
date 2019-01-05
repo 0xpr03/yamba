@@ -1,3 +1,4 @@
+<?php
 /**
  *  This file is part of yamba.
  *
@@ -13,19 +14,13 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
- */
+*/
+?>
 
-App.Controllers.InstancesIndexController = Frontend.AppController.extend({
-    startup: function () {
-        App.Websocket.onEvent('instancesUpdated', function (payload) {
-            fillInstanceSelect(JSON.parse(payload.json));
-        }.bind(this));
-        App.Websocket.onEvent('flash', function (payload) {
-            if (this.getVar('userID') === payload.userID) {
-                flash(payload.type, payload.message);
-            }
-        }.bind(this));
-    }
-});
-
-renderInstances();
+<div class="instances-container">
+    <h1>Add a new Instance</h1>
+    <hr>
+    <br>
+    <?= $this->element('instanceForm'); ?>
+</div>
+<script>$('#instance-id').val(-1);</script>

@@ -15,7 +15,7 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-function renderInstances() {
+function renderInstancesWithData() {
     getInstances(function (response) {
         fillInstanceSelect(response);
         renderInstanceData();
@@ -24,9 +24,17 @@ function renderInstances() {
     });
 }
 
+function renderInstances() {
+    getInstances(function (response) {
+        fillInstanceSelect(response);
+    }, function (response) {
+        flash('alert', 'Unable to fetch instances');
+    });
+}
+
 function fillInstanceSelect(instances) {
     let instanceSelect = $('#instance-select');
-    $.get('../mustache/instances_navbar.mst', function (template) {
+    $.get('/mustache/instances_navbar.mst', function (template) {
         instanceSelect.html(Mustache.render(template, {instances: instances}));
     });
 }
@@ -50,14 +58,15 @@ function renderInstanceData() {
             let instance = instances.filter(function (instance) {
                 return instance.id === parseInt($('#instance-select option:selected').val());
             })[0];
-            $('#name').val(instance.name);
+            $('#instance-id').val(instance.id);
+            $('#instance-name').val(instance.name);
             $('#instance-type').val(instance.type).change();
             switch (instance.type) {
                 case 'teamspeak_instances':
                     let teamspeak = instance['teamspeak_instance'];
                     $('#teamspeak-host').val(teamspeak.host);
                     $('#teamspeak-identity').val(teamspeak.identity);
-                    $('#teamspeak-cid').val(teamspeak.cid).change();
+                    //$('#teamspeak-cid').val(teamspeak.cid).change();
                     $('#teamspeak-password').val(teamspeak.password);
                 default:
                     break;

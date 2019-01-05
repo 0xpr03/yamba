@@ -29,6 +29,7 @@ class InstancesController extends AppController
 
     public function index()
     {
+        return $this->redirect(['action' => 'updateInstance']);
     }
 
     const INSTANCE_TYPES = array(
@@ -37,18 +38,21 @@ class InstancesController extends AppController
 
     public function addInstance()
     {
-        if (!$this->request->is('post')) {
-            return $this->response->withStatus(405);
+        if ($this->request->is('post')) {
+            $name = $this->request->getData('name');
+            $autostart = $this->request->getData('autostart');
+            $type = $this->request->getData('type');
+            if (!isset($name, $autostart, $type) || !in_array($type, self::INSTANCE_TYPES)) {
+                return $this->response->withStatus(400);
+            }
+            $this->_updateInstances();
+            return $this->response->withStatus(200);
         }
-        $name = $this->request->getData('name');
-        $autostart = $this->request->getData('autostart');
-        $instance_data = $this->request->getData('instance_data');
-        if (!isset($name, $autostart, $instance_data) || !in_array($instance_data['type'], self::INSTANCE_TYPES)) {
-            return $this->response->withStatus(400);
-        }
+    }
 
-        $this->_updateInstances();
-        return $this->response->withStatus(200);
+    public function updateInstance()
+    {
+
     }
 
     private function _instancesJson()
