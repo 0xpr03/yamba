@@ -27,12 +27,14 @@ class TeamspeakInstance extends Entity
     protected $_accessible = [
         '*' => true,
         'id' => false
-    ];
+    ];    protected $_virtual = ['hashed_password'];
 
-    protected function _getPassword($password)
+    protected function _getHashedPassword()
     {
-        if (strlen($password) > 0) {
-            return (new DefaultPasswordHasher)->hash($password);
+        if (strlen($this->password) > 0) {
+            return (new DefaultPasswordHasher)->hash($this->password);
         }
+        return false;
     }
+
 }
