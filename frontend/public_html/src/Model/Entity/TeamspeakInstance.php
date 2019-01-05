@@ -27,7 +27,9 @@ class TeamspeakInstance extends Entity
     protected $_accessible = [
         '*' => true,
         'id' => false
-    ];    protected $_virtual = ['hashed_password'];
+    ];
+    protected $_virtual = ['hashed_password'];
+    protected $_hidden = ['password'];
 
     protected function _getHashedPassword()
     {
