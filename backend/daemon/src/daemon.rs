@@ -70,11 +70,11 @@ pub enum DaemonErr {
     ShutdownError(#[cause] io::Error),
 }
 
-/// Format player name
+/*/// Format player name
 /// Standardizes the naming required for identification
 fn format_player_name(id: &i32) -> String {
     format!("player#{}", id)
-}
+}*/
 
 /// Start runtime
 pub fn start_runtime() -> Fallible<()> {
