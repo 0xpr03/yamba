@@ -29,7 +29,7 @@ CREATE TABLE `titles_to_playlists` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `instances` (
-  `id` INT AUTO_INCREMENT NOT NULL,
+  `id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
   `name` VARCHAR(255) NOT NULL,
   `autostart` BIT NOT NULL,
   `type` VARCHAR(255) NOT NULL,
