@@ -57,7 +57,7 @@ pub fn init_pool() -> Fallible<Pool> {
         .db_name(Some(SETTINGS.db.db.clone()))
         .user(Some(SETTINGS.db.user.clone()))
         .pass(Some(SETTINGS.db.password.clone()))
-        .tcp_keepalive_time_ms(Some(6000 * 5))
+        .tcp_keepalive_time_ms(Some(60_000 * 5))
         .tcp_port(SETTINGS.db.port);
     let opts: Opts = builder.into();
     Ok(Pool::new(opts)?)
