@@ -24,6 +24,7 @@ use tokio::timer::Interval;
 
 use std::clone::Clone;
 use std::cmp::Eq;
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::{Send, Sync};
 use std::sync::Arc;
@@ -32,7 +33,7 @@ use std::time::{Duration, Instant};
 /// Cache with aging entries
 pub struct Cache<K, V>
 where
-    K: Sync + Send + Hash + Eq,
+    K: Sync + Send + Hash + Eq + Debug,
     V: Sync + Send,
 {
     map: Arc<HashMap<K, CacheEntry<V>>>,
@@ -50,7 +51,7 @@ use SETTINGS;
 // https://github.com/rust-lang/rust/issues/26925
 impl<K, V> Clone for Cache<K, V>
 where
-    K: Sync + Send + Hash + Eq,
+    K: Sync + Send + Hash + Eq + Debug,
     V: Sync + Send,
 {
     fn clone(&self) -> Self {
@@ -62,7 +63,7 @@ where
 
 impl<K, V> Cache<K, V>
 where
-    K: 'static + Sync + Send + Hash + Eq,
+    K: 'static + Sync + Send + Hash + Eq + Debug,
     V: 'static + Sync + Send + Clone,
 {
     pub fn new(runtime: &mut Runtime) -> Cache<K, V> {
@@ -87,6 +88,7 @@ where
                             }
                         })
                         .collect();
+                    trace!("Found {} expired entries.", outdated.len());
                     outdated.into_iter().for_each(|key| {
                         c_cache.map.remove(key);
                     });
@@ -99,6 +101,7 @@ where
 
     /// Insert or update value for key
     pub fn upsert(&self, key: K, val: V) {
+        trace!("Inserting cache entry for {:?}", key);
         self.map.insert(
             key,
             CacheEntry {
@@ -113,12 +116,17 @@ where
         match self.map.find(key) {
             Some(v) => {
                 if v.get().time.elapsed().as_secs() < SETTINGS.main.cache_lifetime_secs {
+                    trace!("Found cache entry for {:?}", key);
                     Some(v.get().value.clone())
                 } else {
+                    trace!("Cache entry for {:?} expired", key);
                     None
                 }
             }
-            None => None,
+            None => {
+                trace!("No cache entry for {:?}", key);
+                None
+            }
         }
     }
 }
