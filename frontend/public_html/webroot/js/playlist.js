@@ -126,10 +126,6 @@ function deleteTitle(playlist, title) {
 }
 
 function deletePlaylist(playlist) {
-    let tableBody = $('#titles-table-body');
-    if (tableBody.attr('data-playlist-id') === playlist) {
-        tableBody.html('');
-    }
     $.ajax({
         method: 'get',
         url: '/Music/deletePlaylist',
@@ -152,4 +148,17 @@ function ajaxSuccessFlash(message, statusCode) {
 
 function ajaxErrorFlash(message) {
     flash('alert', message);
+}
+
+function flash(type, message) {
+    if (message !== undefined) {
+        let id = guid();
+        $.get('mustache/flashes.mst', function (template) {
+            let flash = Mustache.render(template, {id: id, type: type, message: message});
+            $('div.main').prepend(flash);
+        });
+        setTimeout(function () {
+            $('#flash-' + id).hide()
+        }, 5000);
+    }
 }
