@@ -231,7 +231,7 @@ impl Instance {
             let inst = self.clone();
             thread::spawn(move || {
                 if let Err(e) = Instance::play_track_inner(inst, source, id) {
-                    warn!("Error while resolving next track!");
+                    warn!("Error while resolving next track! {}", e);
                 }
             });
         } else {
