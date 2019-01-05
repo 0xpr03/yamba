@@ -18,3 +18,16 @@
 $(function () {
     $(document).foundation();
 });
+
+function flash(type, message) {
+    if (message !== undefined) {
+        let id = guid();
+        $.get('mustache/flashes.mst', function (template) {
+            let flash = Mustache.render(template, {id: id, type: type, message: message});
+            $('div.main').prepend(flash);
+        });
+        setTimeout(function () {
+            $('#flash-' + id).hide()
+        }, 5000);
+    }
+}
