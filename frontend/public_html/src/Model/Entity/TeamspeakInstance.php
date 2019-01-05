@@ -17,7 +17,10 @@
  */
 
 namespace App\Model\Entity;
+
+use Cake\Auth\DefaultPasswordHasher;
 use Cake\ORM\Entity;
+
 class TeamspeakInstance extends Entity
 {
     // Make all fields mass assignable except for primary key field "id".
@@ -25,4 +28,11 @@ class TeamspeakInstance extends Entity
         '*' => true,
         'id' => false
     ];
+
+    protected function _getPassword($password)
+    {
+        if (strlen($password) > 0) {
+            return (new DefaultPasswordHasher)->hash($password);
+        }
+    }
 }
