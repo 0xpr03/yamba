@@ -17,8 +17,6 @@
 
 use chrono::naive::NaiveDateTime;
 
-use instance::ID;
-
 /// Song identifier, char(32)
 pub type SongID = String;
 pub type QueueID = u32;
@@ -38,6 +36,7 @@ pub struct Song {
 
 impl Song {
     /// Convert Song into minimal song model
+    #[allow(dead_code)]
     pub fn into_song_min(self) -> SongMin {
         SongMin {
             id: self.id,

@@ -41,6 +41,7 @@ enum InstanceErr {
     #[fail(display = "No Audio track for URL {}", _0)]
     NoAudioTrack(String),
     #[fail(display = "Unused {}", _0)]
+    #[allow(dead_code)]
     SomeErr(String),
 }
 
@@ -159,7 +160,7 @@ impl Instance {
     }
 
     /// Get current playback info
-    /// Contains track name, current playback position, total length
+    /// Contains track name, artist, current playback position, total length
     pub fn playback_info(&self) -> String {
         let song_guard = self.current_song.read().expect("Can't lock current track!");
         match song_guard.as_ref() {

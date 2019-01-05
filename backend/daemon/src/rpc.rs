@@ -26,7 +26,7 @@ use serde_json::{self, to_value, Value};
 use tokio::runtime;
 
 use hashbrown::HashMap;
-use std::sync::{atomic::Ordering, RwLock, RwLockReadGuard};
+use std::sync::{RwLock, RwLockReadGuard};
 
 use daemon::{self, BoxFut, Instances};
 use instance::{Instance, InstanceType};
@@ -52,12 +52,12 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
                         "volume_get" => handle_volume_get(req_id, instances, instance_id),
                         "volume_set" => handle_volume_set(req_id, params, instances, instance_id),
                         "playlist_queue" => handle_enqueue(req_id, params, instances, instance_id),
-                        "track_stop" => handle_stop(req_id, params, instances, instance_id),
-                        "track_resume" => handle_resume(req_id, params, instances, instance_id),
-                        "track_next" => handle_next(req_id, params, instances, instance_id),
-                        "track_get" => handle_playback_info(req_id, params, instances, instance_id),
-                        "track_previous" => handle_previous(req_id, params, instances, instance_id),
-                        "queue_clear" => handle_queue_clear(req_id, params, instances, instance_id),
+                        "track_stop" => handle_stop(req_id, instances, instance_id),
+                        "track_resume" => handle_resume(req_id, instances, instance_id),
+                        "track_next" => handle_next(req_id, instances, instance_id),
+                        "track_get" => handle_playback_info(req_id, instances, instance_id),
+                        "track_previous" => handle_previous(req_id, instances, instance_id),
+                        "queue_clear" => handle_queue_clear(req_id, instances, instance_id),
                         _ => {
                             trace!("Unknown rpc request: {:?}", rpc);
                             JsonRpc::error(req_id, Error::method_not_found())
@@ -82,12 +82,7 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
 }
 
 /// handle track_get
-fn handle_queue_clear(
-    req_id: Id,
-    params: Vec<Value>,
-    instances: Instances,
-    instance_id: i32,
-) -> JsonRpc {
+fn handle_queue_clear(req_id: Id, instances: Instances, instance_id: i32) -> JsonRpc {
     let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
         Ok(v) => v,
         Err(e) => return e,
@@ -100,12 +95,7 @@ fn handle_queue_clear(
 }
 
 /// handle track_get
-fn handle_playback_info(
-    req_id: Id,
-    params: Vec<Value>,
-    instances: Instances,
-    instance_id: i32,
-) -> JsonRpc {
+fn handle_playback_info(req_id: Id, instances: Instances, instance_id: i32) -> JsonRpc {
     let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
         Ok(v) => v,
         Err(e) => return e,
@@ -114,12 +104,7 @@ fn handle_playback_info(
 }
 
 /// handle track_previous
-fn handle_previous(
-    req_id: Id,
-    params: Vec<Value>,
-    instances: Instances,
-    instance_id: i32,
-) -> JsonRpc {
+fn handle_previous(req_id: Id, instances: Instances, instance_id: i32) -> JsonRpc {
     let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
         Ok(v) => v,
         Err(e) => return e,
@@ -133,7 +118,7 @@ fn handle_previous(
 }
 
 /// handle track_next
-fn handle_next(req_id: Id, params: Vec<Value>, instances: Instances, instance_id: i32) -> JsonRpc {
+fn handle_next(req_id: Id, instances: Instances, instance_id: i32) -> JsonRpc {
     let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
         Ok(v) => v,
         Err(e) => return e,
@@ -147,12 +132,7 @@ fn handle_next(req_id: Id, params: Vec<Value>, instances: Instances, instance_id
 }
 
 /// handle track_resume
-fn handle_resume(
-    req_id: Id,
-    params: Vec<Value>,
-    instances: Instances,
-    instance_id: i32,
-) -> JsonRpc {
+fn handle_resume(req_id: Id, instances: Instances, instance_id: i32) -> JsonRpc {
     let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
         Ok(v) => v,
         Err(e) => return e,
@@ -165,7 +145,7 @@ fn handle_resume(
 }
 
 /// handle track_stop
-fn handle_stop(req_id: Id, params: Vec<Value>, instances: Instances, instance_id: i32) -> JsonRpc {
+fn handle_stop(req_id: Id, instances: Instances, instance_id: i32) -> JsonRpc {
     let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
         Ok(v) => v,
         Err(e) => return e,

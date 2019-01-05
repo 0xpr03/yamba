@@ -22,11 +22,10 @@ use glib::FlagsClass;
 use gst;
 use gst::prelude::*;
 use gst_player::{self, Cast};
-use mysql::Pool;
 use tokio::runtime;
 
 use std::path::Path;
-use std::sync::{atomic::Ordering, Arc, RwLock};
+use std::sync::RwLock;
 
 use daemon::Instances;
 use instance::ID;
@@ -57,7 +56,6 @@ pub enum PlayerEventType {
     StateChanged(PlaybackState),
     VolumeChanged(f64),
     Error(gst_player::Error),
-    Buffering,
 }
 
 /// Player event
@@ -69,8 +67,6 @@ pub struct PlayerEvent {
 
 #[derive(Fail, Debug)]
 pub enum PlaybackErr {
-    #[fail(display = "Playback Media error {}", _0)]
-    Media(&'static str),
     #[fail(display = "Player error {}", _0)]
     Player(&'static str),
     #[fail(display = "Can't play file, non UTF8 path: {}", _0)]
@@ -155,7 +151,7 @@ impl Player {
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_end_of_stream(move |player| {
+        player.connect_end_of_stream(move |_| {
             let mut events = events_clone.clone();
             let id = id_clone.clone();
             events
@@ -168,7 +164,7 @@ impl Player {
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_media_info_updated(move |player, info| {
+        player.connect_media_info_updated(move |_, _| {
             let mut events = events_clone.clone();
             let id = id_clone.clone();
             events
@@ -181,7 +177,7 @@ impl Player {
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_position_updated(move |player, _| {
+        player.connect_position_updated(move |_, _| {
             let mut events = events_clone.clone();
             let id = id_clone.clone();
             events
@@ -194,7 +190,7 @@ impl Player {
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_state_changed(move |player, state| {
+        player.connect_state_changed(move |_, state| {
             let mut events = events_clone.clone();
             debug!("state changed: {:?}", state);
             let state = match state {
@@ -229,7 +225,7 @@ impl Player {
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_error(move |player, error| {
+        player.connect_error(move |_, error| {
             debug!("Error event: {:?}", error);
             let mut events = events_clone.clone();
             let id = id_clone.clone();
@@ -271,6 +267,7 @@ impl Player {
     }
 
     /// Set file as media
+    #[allow(dead_code)]
     pub fn set_file(&self, file: &Path) -> Fallible<()> {
         self.set_uri(&format!(
             "file://{}",
@@ -364,7 +361,7 @@ pub fn create_playback_server(
                 {
                     v.end_of_stream();
                 } else {
-                    debug!("Instance not found {}",event.id);
+                    debug!("Instance not found {}", event.id);
                 }
             }
             PlayerEventType::StateChanged(state) => {
@@ -376,9 +373,6 @@ pub fn create_playback_server(
                 {
                     *v.player.state.write().unwrap() = state;
                 }
-            }
-            PlayerEventType::Buffering => {
-                trace!("Player {} is buffering", event.id);
             }
             PlayerEventType::PositionUpdated => (), // silence
             PlayerEventType::MediaInfoUpdated => (), // silence
@@ -401,9 +395,10 @@ mod tests {
     use futures::sync::mpsc;
     use futures::Stream;
     use gst;
+    use std::sync::Arc;
     use std::thread;
     use std::time::Duration;
-    use tokio::runtime::{self, Runtime};
+    use tokio::runtime::Runtime;
 
     lazy_static! {
         // simplify downloader, perform startup_test just once, this also tests it on the fly
@@ -440,7 +435,7 @@ mod tests {
         sender
             .try_send(PlayerEvent {
                 id: TEST_ID.clone(),
-                event_type: PlayerEventType::Buffering,
+                event_type: PlayerEventType::PositionUpdated,
             })
             .unwrap();
         loop {
@@ -454,7 +449,7 @@ mod tests {
             sender
                 .try_send(PlayerEvent {
                     id: TEST_ID.clone(),
-                    event_type: PlayerEventType::Buffering,
+                    event_type: PlayerEventType::PositionUpdated,
                 })
                 .unwrap();
         }

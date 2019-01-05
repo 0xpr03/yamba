@@ -27,7 +27,6 @@ use tokio::{self, runtime::Runtime};
 use tokio_signal::unix::{self, Signal};
 
 use std::env::{args, current_exe};
-use std::io;
 use std::net::SocketAddr;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
@@ -39,7 +38,7 @@ use api;
 use audio::{self, CContext, CMainloop, NullSink};
 use cache::Cache;
 use db;
-use models::{DBInstanceType, InstanceStorage, SongID, SongMin, TSSettings};
+use models::{DBInstanceType, InstanceStorage, SongID, TSSettings};
 use playback::{self, PlaybackSender, Player, PlayerEvent};
 use rpc;
 use ts::TSInstance;
@@ -66,8 +65,6 @@ pub enum DaemonErr {
     RPCCreationError(#[cause] failure::Error),
     #[fail(display = "Unable to create api server {}", _0)]
     APICreationError(#[cause] failure::Error),
-    #[fail(display = "Error on shutdown of runtime")]
-    ShutdownError(#[cause] io::Error),
 }
 
 /*/// Format player name

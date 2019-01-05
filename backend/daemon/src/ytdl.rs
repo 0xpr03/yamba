@@ -18,7 +18,7 @@
 use std::env::current_dir;
 use std::fs::{remove_file, rename, set_permissions, DirBuilder, File};
 use std::hash::{Hash, Hasher};
-use std::io::{self, BufRead, BufReader, ErrorKind, Read};
+use std::io::{BufRead, BufReader, ErrorKind, Read};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -200,8 +200,6 @@ pub struct HttpHeaders {
 
 #[derive(Fail, Debug)]
 pub enum YtDLErr {
-    #[fail(display = "{}", _0)]
-    Io(#[cause] io::Error),
     #[fail(display = "Pipe error processing ytdl output {}", _0)]
     PipeError(String),
     #[fail(display = "Json invalid input {}", _0)]
@@ -210,8 +208,6 @@ pub enum YtDLErr {
     ResponseError(String),
     #[fail(display = "Incorrect hash for {}", _0)]
     InvalidHash(String),
-    #[fail(display = "Json parsing error {}", _0)]
-    IncorrectJson(#[cause] serde_json::Error),
     #[fail(display = "Thread panicked at {}", _0)]
     ThreadPanic(String),
 }

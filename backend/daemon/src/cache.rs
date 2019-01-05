@@ -15,10 +15,9 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use concurrent_hashmap::{Accessor, ConcHashMap as HashMap};
+use concurrent_hashmap::ConcHashMap as HashMap;
 use futures::Future;
 use futures::Stream;
-use owning_ref::OwningRef;
 use tokio::runtime::Runtime;
 use tokio::timer::Interval;
 

@@ -546,6 +546,7 @@ fn get_process_device(
 }
 
 /// Set source of process to specified source_id
+#[allow(dead_code)]
 fn set_process_source(
     mainloop: CMainloop,
     context: CContext,

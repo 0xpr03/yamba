@@ -273,20 +273,11 @@ impl TSInstance {
         Ok(())
     }
 
-    pub fn get_id(&self) -> i32 {
-        self.id
-    }
-
     pub fn kill(&mut self) -> Fallible<()> {
         Ok(self.process.kill()?)
     }
 
     pub fn is_running(&mut self) -> Fallible<bool> {
         Ok(self.process.try_wait()?.is_none())
-    }
-
-    /// Returns process id of ts instance
-    pub fn get_process_id(&self) -> u32 {
-        self.process.id()
     }
 }
