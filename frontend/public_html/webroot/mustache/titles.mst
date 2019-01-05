@@ -9,7 +9,7 @@
         </a>
     </td>
     <td class="title-button">
-        <a href="#" onclick="event.stopPropagation(); deleteTitle('{{playlist}}', '{{id}}')">
+        <a href="#" onclick="$(this).closest('tr').hide(); event.stopPropagation(); deleteTitle('{{playlist}}', '{{id}}')">
             <span aria-hidden="true">&times;</span>
         </a>
     </td>
