@@ -67,7 +67,9 @@ function renderInstanceData() {
                     $('#teamspeak-host').val(teamspeak.host);
                     $('#teamspeak-identity').val(teamspeak.identity);
                     //$('#teamspeak-cid').val(teamspeak.cid).change();
-                    $('#teamspeak-password').val(teamspeak.password);
+                    if(teamspeak.hashed_password) {
+                        $('#teamspeak-password').val(teamspeak.hashed_password);
+                    }
                 default:
                     break;
             }
