@@ -15,7 +15,6 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#[macro_use]
 extern crate ts3plugin;
 #[macro_use]
 extern crate lazy_static;
@@ -111,8 +110,8 @@ lazy_static! {
     pub static ref R_QUEUE_CLEAR: Regex = Regex::new("^!c(lear)?").unwrap();
     pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck)?( )?p((laylist)|(lst))").unwrap();
     pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!un?l(o?ck)?( )?p((laylist)|(lst))").unwrap();
-    pub static ref R_PLAYLIST_QUEUE: Regex = Regex::new(r"^!q(ueue)? ([^ ]+)").unwrap();
-    pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^!l(oa)?d (.+)").unwrap();
+    pub static ref R_ENQUEUE: Regex = Regex::new(r"^!q(ueue)? ([^ ]+)").unwrap();
+    pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^!pl(oa)?d (.+)").unwrap();
 }
 
 #[derive(Debug)]
@@ -126,100 +125,25 @@ const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
 const HELP: &str = r#"
 [b]YAMBA HELP[/b]
 
-SHOW HELP: !help
+[b]Help[/b]: !help
 
-GET [b]VOLUME[/b]: [i]!volume[/i]
-SET VOLUME TO <vol>: !volume <vol>
-LOCK VOLUME: !lock volume
-UNLOCK VOLUME: !unlock volume
+[i]Get[/i] [b]volume[/b]: [i]!volume[/i]
+[i]Set[/i] volume <vol>: [i]!volume[/i] <vol>
+[i]Lock[/i] volume: [i]!lock volume[/i]
+[i]Unlock[/i] volume: [i]!unlock volume[/i]
 
-GET CURRENT TRACK: !playing
-PLAY NEXT TRACK: !next
-PLAY PREVIOUS TRACK: !previous
-RESUME TRACK: !resume
-PAUSE TRACK: !pause
-STOP TRACK: !stop
-
-GET NEXT 5 TRACKS: !tracks
-GET NEXT <n> TRACKS: !tracks <n>
-CLEAR QUEUE: !clear
-LOCK QUEUE: !lock playlist
-UNLOCK QUEUE: !lock playlist
-
-GET PLAYLIST NAME: !playlist
-GET PLAYLIST TRACKLIST: !tracks all
-ENQUEUE <url> IN PLAYLIST: !queue <url>
-LOAD PLAYLIST <playlist>: !load <playlist>
-
-Copyright Yamba Authors
-"#;
-
-const _HELP_DETAILED: &str = r#"
-YAMBA HELP
-
-SHOW HELP:
-    Syntax: [ !help | !hlp | !h | ? ]
-    Example: !help
-
-GET VOLUME:
-    Syntax: [ !volume | !vol | !v ]
-    Example: !volume
-SET VOLUME TO <vol>:
-    Syntax: [ !volume | !vol | !v ] <vol>
-    Example: !volume 90
-LOCK VOLUME:
-    Syntax: [ !lock | !lck | !l ] [ !volume | !vol | !v ] <vol>
-    Example: !lock volume
-UNLOCK VOLUME:
-    Syntax: [ !unlock | !unlck | !unl | !ulock | !ulck | !ul ] [ !volume | !vol | !v ] <vol>
-    Example: !unlock volume
-
-GET CURRENT TRACK:
-    Syntax: [ !playing | !p ]
-    Example: !playing
-PLAY NEXT TRACK:
-    Syntax: [ !next | !nxt | !n | >> ]
-    Example: !next
-PLAY PREVIOUS TRACK:
-    Syntax: [ !previous | !prv | << ]
-    Example: !previous
-RESUME TRACK:
-    Syntax: [ !resume | !res | !r | > ]
-    Example: !resume
-PAUSE TRACK:
-    Syntax: [ !pause | || ]
-    Example: !pause
-STOP TRACK:
-    Syntax: [ !stop | !stp | !s ]
-    Example: !stop
-
-GET PLAYLIST NAME:
-    Syntax: [ !playlist | !plst ]
-    Example: !playlist
-GET PLAYLIST TRACKLIST:
-    Syntax: [ !tracks | !trx | !t ] [ all | a ]
-    Example: !tracks all
-GET NEXT <n> TRACKS:
-    Syntax: [ !tracks | !trx | !t ] <n>
-    Example: !tracks 2
-GET NEXT 5 TRACKS:
-    Syntax: [ !tracks | !trx | !t ]
-    Example: !tracks
-CLEAR PLAYLIST:
-    Syntax: [ !clear | !c ]
-    Example: !clear
-LOCK PLAYLIST:
-    Syntax: [ !lock | !lck | !l ] [ playlist | plst | p ]
-    Example: !lock playlist
-UNLOCK PLAYLIST:
-    Syntax: [ !unlock | !unlck | !unl | !ulock | !ulck | !ul ] [ playlist | plst | p ]
-    Example: !lock playlist
-ENQUEUE <url> IN PLAYLIST:
-    Syntax: [ !queue | !q ] <url>
-    Example: !queue https://www.youtube.com/watch?v=ZZ5LpwO-An4
-LOAD PLAYLIST <playlist>:
-    Syntax: [ !load | !ld ] <playlist>
-    Example: !load Awesome Mix v3
+Get [b]current track[/b]: [I]!playing[/I]
+[b]Enqueue[/b] <url> : [I]!queue[/I] <url>
+Adds track to playback queue.
+[b]Load playlist[/b] <playlist>: [I]!lpload [/I]<playlist>
+Load playlist with specified name into queue
+[b]Enqueue playlist of tracks[/b] <url>: [I]!pqueue[/I] <playlist>
+Add a playlist (yt..) to playback queue.
+[b]Next[/b] track: [I]!next[/I]
+[b]Previous[/b] track: [I]!previous[/I]
+[b]Resume[/b] playback: [I]!resume[/I]
+[b]Pause[/b] playback: [I]!pause[/I]
+[b]Stop[/b] playback: [I]!stop[/I]
 "#;
 
 pub fn print_tracks(connection: &ts3plugin::Connection, mut tracks: Vec<String>) {
@@ -751,7 +675,7 @@ impl Plugin for MyTsPlugin {
                                 rpc_error = e;
                             }
                         }
-                    } else if let Some(caps) = R_PLAYLIST_QUEUE.captures(&message) {
+                    } else if let Some(caps) = R_ENQUEUE.captures(&message) {
                         let url = String::from(&caps[2])
                             .replace("[URL]", "")
                             .replace("[/URL]", "");
