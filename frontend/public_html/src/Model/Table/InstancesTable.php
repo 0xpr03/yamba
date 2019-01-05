@@ -23,7 +23,7 @@ class InstancesTable extends Table
     public function initialize(array $config)
     {
         parent::initialize($config);
-        $this->hasMany('TeamspeakInstances', [
+        $this->hasOne('TeamspeakInstances', [
             'dependent' => true
         ]);
     }
