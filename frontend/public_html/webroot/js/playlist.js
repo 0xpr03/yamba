@@ -126,6 +126,10 @@ function deleteTitle(playlist, title) {
 }
 
 function deletePlaylist(playlist) {
+    let tableBody = $('#titles-table-body');
+    if (tableBody.attr('data-playlist-id') === playlist) {
+        tableBody.html('');
+    }
     $.ajax({
         method: 'get',
         url: '/Music/deletePlaylist',
