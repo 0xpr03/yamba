@@ -38,5 +38,4 @@ class TeamspeakInstance extends Entity
         }
         return false;
     }
-
 }
