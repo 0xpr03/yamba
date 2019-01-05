@@ -459,7 +459,7 @@ fn get_process_device(
     mainloop: &CMainloop,
     context: &CContext,
     process: u32,
-    deviceType: DeviceType,
+    device_type: DeviceType,
 ) -> Fallible<DeviceID> {
     let success: Arc<Mutex<DeviceFilterResult>> = Arc::new(Mutex::new(DeviceFilterResult::Running));
     let success_ref = success.clone();
@@ -468,7 +468,7 @@ fn get_process_device(
         .lock()
         .map_err(|_| AudioErr::LockError("PA Context"))?;
 
-    match deviceType {
+    match device_type {
         DeviceType::Source => {
             context
                 .introspect()
