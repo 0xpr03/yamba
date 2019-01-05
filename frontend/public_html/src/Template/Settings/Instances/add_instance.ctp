@@ -23,4 +23,3 @@
     <br>
     <?= $this->element('instanceForm'); ?>
 </div>
-<script>$('#instance-id').val(-1);</script>
