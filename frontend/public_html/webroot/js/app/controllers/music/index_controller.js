@@ -19,6 +19,7 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
     startup: function () {
         App.Websocket.onEvent('playlistsUpdated', function (payload) {
             fillPlaylistTable(JSON.parse(payload.json));
+            getTitles($('#titles-table-body').attr('data-playlist-id'));
         }.bind(this));
         App.Websocket.onEvent('titlesUpdated', function (payload) {
             if ($('#titles-table-body').attr('data-playlist-id') === payload.playlist) {
