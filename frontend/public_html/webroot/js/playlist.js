@@ -147,7 +147,9 @@ function ajaxSuccessFlash(message, statusCode) {
 }
 
 function ajaxErrorFlash(message) {
-    flash('alert', message);
+    if (message.status === 404) {
+        flash('alert', 'Unable to delete resource');
+    }
 }
 
 function flash(type, message) {
