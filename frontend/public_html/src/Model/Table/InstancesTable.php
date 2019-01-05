@@ -17,7 +17,9 @@
  */
 
 namespace App\Model\Table;
+
 use Cake\ORM\Table;
+
 class InstancesTable extends Table
 {
     public function initialize(array $config)
@@ -26,5 +28,11 @@ class InstancesTable extends Table
         $this->hasOne('TeamspeakInstances', [
             'dependent' => true
         ]);
+    }
+
+    protected function _initializeSchema(\Cake\Database\Schema\Table $schema)
+    {
+        $schema->columnType('autostart', 'boolean');
+        return $schema;
     }
 }
