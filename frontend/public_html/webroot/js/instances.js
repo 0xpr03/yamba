@@ -50,9 +50,20 @@ function renderInstanceData() {
             let instance = instances.filter(function (instance) {
                 return instance.id === parseInt($('#instance-select option:selected').val());
             })[0];
-            console.log(instance);
+            $('#name').val(instance.name);
+            $('#instance-type').val(instance.type).change();
+            switch (instance.type) {
+                case 'teamspeak_instances':
+                    let teamspeak = instance['teamspeak_instance'];
+                    $('#teamspeak-host').val(teamspeak.host);
+                    $('#teamspeak-identity').val(teamspeak.identity);
+                    $('#teamspeak-cid').val(teamspeak.cid).change();
+                    $('#teamspeak-password').val(teamspeak.password);
+                default:
+                    break;
+            }
         },
-        function(response) {
+        function (response) {
             flash('alert', 'Unable to fetch instance data');
         }
     );
@@ -62,7 +73,7 @@ function renderInstanceData() {
 function changeType() {
     let teamspeakContainer = $('#teamspeak-instances');
     let containers = [teamspeakContainer];
-    containers.forEach(function(container) {
+    containers.forEach(function (container) {
         container.hide();
     });
     switch ($('#instance-type').val()) {

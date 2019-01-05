@@ -22,18 +22,18 @@
     <br>
     <?= $this->Form->create(null, ['url' => ['action' => 'addInstance']]) ?>
     <div class="row">
-        <div class="columns">
+        <div class="small-12 medium-expand large-expand columns">
             <?= $this->Form->control('name', ['label' => ['class' => 'required', 'text' => 'Instance name'],
             'placeholder' => 'Yamba Music Bot', 'class' => 'input radius', 'required']) ?>
         </div>
-        <div class="columns shrink">
+        <div class="small-12 medium-expand large-expand columns shrink">
             <?= $this->Form->control('type', ['label' => ['class' => 'required', 'text' => 'Instance type'],
             'class' => 'input radius', 'type' => 'select', 'onchange' => 'changeType()', 'id' => 'instance-type',
             'options' => ['teamspeak_instances' => 'Teamspeak', 'tbd' => 'TBD (e.g. discord)']]) ?>
         </div>
     </div>
     <div class="row">
-        <div class="columns shrink">
+        <div class="small-12 medium-expand large-expand columns shrink">
             <?= $this->Form->control('autostart', ['type' => 'checkbox', 'label' => ['class' => 'required'],
             'placeholder' => 'Instance name', 'class' => 'input radius']) ?>
         </div>
@@ -42,29 +42,25 @@
     <br>
     <div id="teamspeak-instances">
         <div class="row">
-            <div class="columns">
-                <?= $this->Form->control('host', ['label' => ['class' => 'required', 'text' => 'Teamspeak host'],
-                'placeholder' => 'example.domain.net', 'class' => 'input radius', 'required']) ?>
-            </div>
-            <div class="columns">
-                <?= $this->Form->control('identity', ['label' => ['class' => 'required', 'text' => 'Bot Identity'],
-                'placeholder' => 'xxxxxxxxxxxxx',
+            <div class="small-12 medium-expand large-expand columns">
+                <?= $this->Form->control('teamspeak-host', ['label' => ['class' => 'required',
+                'text' => 'Server host (may include port)'], 'placeholder' => 'example.domain.net',
                 'class' => 'input radius', 'required']) ?>
+            </div>
+            <div class="small-12 medium-expand large-expand columns">
+                <?= $this->Form->control('teamspeak-identity', ['label' => ['class' => 'required',
+                'text' => 'Bot Identity'], 'placeholder' => 'xxxxxxxxxxxxx', 'class' => 'input radius', 'required']) ?>
             </div>
         </div>
         <div class="row">
-            <div class="columns">
-                <?= $this->Form->control('cid', ['label' => ['text' => 'Default Channel ID'],
+            <div class="small-12 medium-expand large-expand columns">
+                <?= $this->Form->control('teamspeak-cid', ['label' => ['text' => 'Default Channel ID'],
                 'class' => 'input radius', 'type' => 'select', 'onchange' => 'changeType()',
                 'options' => ['1234' => 'example', '5678' => 'channel']]) ?>
             </div>
-            <div class="columns">
-                <?= $this->Form->control('port', ['label' => ['text' => 'Teamspeak port'],
-                'placeholder' => 'example.domain.net', 'class' => 'input radius', 'required']) ?>
-            </div>
-            <div class="columns">
-                <?= $this->Form->control('password', ['label' => ['text' => 'Teamspeak host'],
-                'placeholder' => 'example.domain.net', 'class' => 'input radius', 'required']) ?>
+            <div class="small-12 medium-expand large-expand columns">
+                <?= $this->Form->control('teamspeak-password', ['label' => ['text' => 'Server Password'],
+                'placeholder' => '1234five', 'class' => 'input radius', 'type' => 'password', 'required']) ?>
             </div>
         </div>
     </div>
