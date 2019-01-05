@@ -84,10 +84,10 @@ pub struct Player {
     player: gst_player::Player,
     pulsesink: gst::Element,
     volume: RwLock<f64>,
-    // player name
+    /*// player name
     name: String,
     // ID of player
-    id: Arc<i32>,
+    id: Arc<i32>,*/
     state: RwLock<PlaybackState>,
 }
 
@@ -245,20 +245,8 @@ impl Player {
             player,
             pulsesink,
             volume: RwLock::new(volume),
-            name: Player::get_name_by_id(&id),
-            id,
             state: RwLock::new(PlaybackState::Stopped),
         })
-    }
-
-    /// Get player name, used to identify on sound systems
-    pub fn get_name(&self) -> String {
-        Player::get_name_by_id(&self.id)
-    }
-
-    /// Get ID of player
-    pub fn get_id(&self) -> i32 {
-        *self.id
     }
 
     /// Get player name by id, used to identify on sound systems
