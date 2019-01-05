@@ -247,7 +247,7 @@ impl Instance {
             };
             inst.cache.upsert(song_id, audio_url.clone());
         }
-
+        inst.stop_flag.store(false, Ordering::Relaxed);
         inst.player.set_uri(audio_url.as_str());
 
         Ok(())
