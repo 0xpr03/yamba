@@ -226,8 +226,9 @@ pub fn get_next_in_queue(pool: &Pool, instance: &ID) -> Fallible<Option<(QueueID
 }
 
 /// Insert single track for playback
-pub fn insert_track(track: Track, pool: &Pool) -> Fallible<SongMin> {
+pub fn insert_track(mut track: Track, pool: &Pool) -> Fallible<SongMin> {
     let id = calculate_id(&track);
+    let artist = track.take_artist();
     pool.prep_exec(
         "INSERT INTO `titles` 
             (`id`,`name`,`source`,`downloaded`, `artist`, `length`) 
@@ -239,7 +240,7 @@ pub fn insert_track(track: Track, pool: &Pool) -> Fallible<SongMin> {
             &track.title,
             &track.webpage_url,
             0,
-            &track.artist,
+            &artist,
             track.duration,
         ),
     )?;
@@ -248,7 +249,7 @@ pub fn insert_track(track: Track, pool: &Pool) -> Fallible<SongMin> {
         id,
         name: track.title,
         source: track.webpage_url,
-        artist: track.artist,
+        artist: artist,
         length: duration,
     })
 }

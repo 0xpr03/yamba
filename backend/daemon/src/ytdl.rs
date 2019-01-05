@@ -58,6 +58,7 @@ pub struct Track {
     pub protocol: Option<String>,
     pub webpage_url: String,
     pub artist: Option<String>,
+    pub uploader: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -83,6 +84,17 @@ impl Hash for Track {
 }
 
 impl Track {
+    /// Takes the artist of this track
+    /// Can be uploader/artist
+    pub fn take_artist(&mut self) -> Option<String> {
+        if let Some(v) = self.artist.take() {
+            return Some(v);
+        } else if let Some(v) = self.uploader.take() {
+            return Some(v);
+        }
+        None
+    }
+
     /// Duration as u32
     pub fn duration_as_u32(&self) -> Option<u32> {
         if let Some(v) = self.duration {
