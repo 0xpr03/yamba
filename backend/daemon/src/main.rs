@@ -55,6 +55,7 @@ extern crate sha2;
 extern crate tokio;
 extern crate tokio_signal;
 extern crate tokio_threadpool;
+extern crate arraydeque;
 
 use std::alloc::System;
 

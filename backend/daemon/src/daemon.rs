@@ -15,6 +15,7 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use arraydeque::ArrayDeque;
 use failure::{self, Fallible};
 use futures::sync::mpsc;
 use futures::{future, Future, Stream};
@@ -30,7 +31,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
-use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, RwLock};
+use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Mutex, RwLock};
 use std::thread;
 use std::time::Instant;
 
@@ -304,6 +305,7 @@ fn create_ts_instance(
         })),
         player: Arc::new(player),
         id: id,
+        playback_history: Arc::new(Mutex::new(ArrayDeque::new())),
         stop_flag: Arc::new(AtomicBool::new(false)),
         store: Arc::new(RwLock::new(storage)),
         pool: pool.clone(),

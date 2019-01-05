@@ -56,6 +56,7 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
                         "track_resume" => handle_resume(req_id, params, instances, instance_id),
                         "track_next" => handle_next(req_id, params, instances, instance_id),
                         "track_get" => handle_playback_info(req_id, params, instances, instance_id),
+                        "track_previous" => handle_previous(req_id, params, instances, instance_id),
                         "queue_clear" => handle_queue_clear(req_id, params, instances, instance_id),
                         _ => {
                             trace!("Unknown rpc request: {:?}", rpc);
@@ -95,7 +96,7 @@ fn handle_queue_clear(
         warn!("Can't clear queue: {}\n{}", e, e.backtrace());
         return JsonRpc::error(req_id, Error::internal_error());
     }
-    JsonRpc::success(req_id, &json!((true, "")))
+    JsonRpc::success(req_id, &json!((true, "", true)))
 }
 
 /// handle track_get
@@ -110,6 +111,25 @@ fn handle_playback_info(
         Err(e) => return e,
     };
     JsonRpc::success(req_id, &json!((true, "", instance.playback_info())))
+}
+
+/// handle track_previous
+fn handle_previous(
+    req_id: Id,
+    params: Vec<Value>,
+    instances: Instances,
+    instance_id: i32,
+) -> JsonRpc {
+    let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+
+    if let Err(e) = instance.play_previous_track() {
+        warn!("Can't play next track. {}\n{}", e, e.backtrace());
+        return JsonRpc::error(req_id, Error::internal_error());
+    }
+    JsonRpc::success(req_id, &json!((true, "test", true)))
 }
 
 /// handle track_next

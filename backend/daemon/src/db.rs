@@ -178,6 +178,22 @@ pub fn add_song_to_queue(pool: &Pool, instance: &ID, id: &SongID) -> Fallible<Qu
     Ok(result.last_insert_id() as QueueID)
 }
 
+/// Add a song to queue under specified QueueID
+pub fn add_previous_song_to_queue(
+    pool: &Pool,
+    instance: &ID,
+    id: &SongID,
+    queue_id: &QueueID,
+) -> Fallible<()> {
+    let result = pool.prep_exec(
+        "INSERT INTO `queues` (`instance_id`,`title_id`,`index`)
+    VALUES (?,?,?)",
+        (**instance, id, queue_id),
+    )?;
+
+    Ok(())
+}
+
 /// Remove song from queue by queue index
 pub fn remove_from_queue(pool: &Pool, id: &QueueID) -> Fallible<()> {
     let result = pool.prep_exec("DELETE FROM `queues` WHERE `index` = ?", (id,))?;
