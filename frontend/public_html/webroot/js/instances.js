@@ -58,3 +58,19 @@ function renderInstanceData() {
     );
 
 }
+
+function changeType() {
+    let teamspeakContainer = $('#teamspeak-instances');
+    let containers = [teamspeakContainer];
+    containers.forEach(function(container) {
+        container.hide();
+    });
+    switch ($('#instance-type').val()) {
+        case 'teamspeak_instances':
+            teamspeakContainer.show();
+            break;
+        default:
+            flash('warning', 'this instance type is not yet supported');
+            break;
+    }
+}
