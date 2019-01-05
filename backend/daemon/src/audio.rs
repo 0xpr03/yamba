@@ -329,7 +329,7 @@ impl NullSink {
 impl Drop for NullSink {
     fn drop(&mut self) {
         if let Err(e) = delete_virtual_sink(&self.mainloop, &self.context, self.id) {
-            warn!("Unable to delete sink {}", self.id);
+            warn!("Unable to delete sink {} {}", self.id, e);
         }
         trace!("Deleted sink {}", self.name);
     }
