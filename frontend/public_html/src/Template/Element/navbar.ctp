@@ -34,7 +34,13 @@
                 <a href="#" class="header-font">Settings</a>
                 <ul class="menu" style="border-top: 0">
                     <li><a href="/settings/accounts" class="header-font">Account Settings</a></li>
-                    <li><a href="/settings/instances" class="header-font">Instance Settings</a></li>
+                    <li>
+                        <a href="/settings/instances" class="header-font">Instances</a>
+                        <ul class="menu" style="border-right: 0">
+                            <li><a href="/settings/instances/updateInstance" class="header-font">Manage Instance</a></li>
+                            <li><a href="/settings/instances/addInstance" class="header-font">Add new Instance</a></li>
+                        </ul>
+                    </li>
                 </ul>
             </li>
             <?php if($this->request->getParam('controller') === 'Music' || $this->request->getParam('controller') === 'Instances') { ?>
