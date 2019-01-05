@@ -190,6 +190,13 @@ pub fn add_previous_song_to_queue(
     VALUES (?,?,?)",
         (**instance, id, queue_id),
     )?;
+    if result.affected_rows() != 1 {
+        warn!(
+            "Adding previous song to queue affected {} entries!",
+            result.affected_rows()
+        );
+        return Err(DatabaseErr::QueueIDInvalid(queue_id.clone()).into());
+    }
 
     Ok(())
 }
