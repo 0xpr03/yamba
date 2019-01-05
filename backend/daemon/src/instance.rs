@@ -169,9 +169,14 @@ impl Instance {
                     Some(v) => format!("{:02}:{:02}", v / 60, v % 60),
                     None => String::from("--:--"),
                 };
+                let artist = match cur_song.song.artist.as_ref() {
+                    Some(v) => format!(" - {}", v),
+                    None => String::new(),
+                };
                 format!(
-                    "{} {:02}:{:02} / {} {}",
+                    "{}{} {:02}:{:02} / {} {}",
                     cur_song.song.name.as_str(),
+                    artist,
                     position.minutes + (position.hours * 60),
                     position.seconds,
                     length,
