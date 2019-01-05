@@ -32,7 +32,7 @@ class InstancesController extends AppController
     }
 
     const INSTANCE_TYPES = array(
-        "teamspeak_instances"
+        'teamspeak_instances'
     );
 
     public function addInstance()
