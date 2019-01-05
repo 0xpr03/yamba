@@ -57,7 +57,7 @@
         </div>
         <div class="small-12 medium-expand large-expand columns">
             <?= $this->Form->control('teamspeak-password', ['label' => ['text' => 'Server Password'],
-            'placeholder' => '1234five', 'class' => 'input radius', 'type' => 'password', 'required']) ?>
+            'placeholder' => '1234five', 'class' => 'input radius', 'type' => 'password']) ?>
         </div>
     </div>
 </div>
