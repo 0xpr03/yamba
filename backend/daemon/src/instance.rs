@@ -121,16 +121,24 @@ impl Instance {
     /// Handle end of stream event
     pub fn end_of_stream(&self) {
         // !stop-flag && no current song (avoid feedback loop)
-        if !self.stop_flag.load(Ordering::Relaxed)
-            && self
-                .current_song
-                .read()
-                .expect("Can't lock current song!")
-                .is_some()
-        {
+        let has_current_song = self
+            .current_song
+            .read()
+            .expect("Can't lock current song!")
+            .is_some();
+        let stop_flag = self.stop_flag.load(Ordering::Relaxed);
+        trace!(
+            "Stop flag: {} has_current_song_ {}",
+            stop_flag,
+            has_current_song
+        );
+
+        if !stop_flag && has_current_song {
             if let Err(e) = self.play_next_track() {
                 warn!("Couldn't play next track in queue. {}", e);
             }
+        } else {
+            trace!("Ignoring end of stream");
         }
     }
 
@@ -198,9 +206,11 @@ impl Instance {
     fn play_track(&self, queue_id: Option<QueueID>) -> Fallible<()> {
         let mut c_song_w = self.current_song.write().expect("Can't lock current song!");
         if let Some(song) = c_song_w.take() {
+            trace!("Removing old song from queue {}", song.queue_id);
             db::remove_from_queue(&self.pool, &song.queue_id)?;
             let mut lock = self.playback_history.lock().expect("Can't lock history!");
             lock.push_front(song);
+            drop(lock);
         }
 
         let song_data = match queue_id {
@@ -209,6 +219,7 @@ impl Instance {
         };
 
         if let Some((queue_id, song)) = song_data {
+            trace!("Found new song, queue_id: {}", queue_id);
             let source = song.source.clone();
             let id = song.id.clone();
             *c_song_w = Some(CurrentSong { queue_id, song });
@@ -219,6 +230,7 @@ impl Instance {
                 }
             });
         } else {
+            trace!("play_track can't find any song");
             *c_song_w = None;
             self.player.stop();
         }

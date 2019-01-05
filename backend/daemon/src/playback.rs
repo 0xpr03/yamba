@@ -375,6 +375,8 @@ pub fn create_playback_server(
                     .get(&event.id)
                 {
                     v.end_of_stream();
+                } else {
+                    debug!("Instance not found {}",event.id);
                 }
             }
             PlayerEventType::StateChanged(state) => {
