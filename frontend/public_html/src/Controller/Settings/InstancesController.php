@@ -20,6 +20,7 @@ namespace App\Controller\Settings;
 
 use App\Controller\AppController;
 use Cake\ORM\TableRegistry;
+use Websocket\Lib\Websocket;
 
 /**
  * @property \App\Controller\Component\EmailComponent $Email
@@ -32,27 +33,89 @@ class InstancesController extends AppController
         return $this->redirect(['action' => 'updateInstance']);
     }
 
-    const INSTANCE_TYPES = array(
-        'teamspeak_instances'
-    );
-
     public function addInstance()
     {
         if ($this->request->is('post')) {
             $name = $this->request->getData('name');
             $autostart = $this->request->getData('autostart');
             $type = $this->request->getData('type');
-            if (!isset($name, $autostart, $type) || !in_array($type, self::INSTANCE_TYPES)) {
+            if (!isset($name, $autostart, $type)) {
                 return $this->response->withStatus(400);
             }
-            $this->_updateInstances();
-            return $this->response->withStatus(200);
+            switch ($type) {
+                case 'teamspeak_instances':
+                    $host = $this->request->getData('teamspeak-host');
+                    $identity = $this->request->getData('teamspeak-identity');
+                    $password = $this->request->getData('teamspeak-password');
+                    if (!isset($host, $identity, $password)) {
+                        return $this->response->withStatus(400);
+                    }
+                    $instanceTable = TableRegistry::getTableLocator()->get('Instances');
+                    $instance = $instanceTable->newEntity([
+                        'name' => $name,
+                        'type' => $type,
+                        'autostart' => $autostart,
+                        'teamspeak_instance' => [
+                            'host' => $host,
+                            'identity' => $identity,
+                            'password' => $password
+                        ]
+                    ]);
+                    if ($instanceTable->save($instance)) {
+                        $this->_updateInstances();
+                        return $this->redirect(['action' => 'index']);
+                    } else {
+                        return $this->response->withStatus(500);
+                    }
+                    break;
+                default:
+                    return $this->response->withStatus(400);
+            }
         }
+        return null;
     }
 
     public function updateInstance()
     {
-
+        if ($this->request->is('post')) {
+            $name = $this->request->getData('name');
+            $autostart = $this->request->getData('autostart');
+            $type = $this->request->getData('type');
+            $id = $this->request->getData('id');
+            if (!isset($name, $autostart, $type, $id)) {
+                return $this->response->withStatus(400);
+            }
+            switch ($type) {
+                case 'teamspeak_instances':
+                    $host = $this->request->getData('teamspeak-host');
+                    $identity = $this->request->getData('teamspeak-identity');
+                    $password = $this->request->getData('teamspeak-password');
+                    if (!isset($host)) {
+                        return $this->response->withStatus(400);
+                    }
+                    $instanceTable = TableRegistry::getTableLocator()->get('Instances');
+                    $instance = $instanceTable->get($id)->set([
+                        'name' => $name,
+                        'type' => $type,
+                        'autostart' => $autostart,
+                        'teamspeak_instance' => [//TODO: fix assocation not updating
+                            'host' => $host,
+                            'identity' => $identity,
+                            'password' => $password
+                        ]
+                    ]);
+                    if ($instanceTable->save($instance)) {
+                        $this->_updateInstances();
+                        return $this->redirect(['action' => 'index']);
+                    } else {
+                        return $this->response->withStatus(500);
+                    }
+                    break;
+                default:
+                    return $this->response->withStatus(400);
+            }
+        }
+        return null;
     }
 
     private function _instancesJson()
