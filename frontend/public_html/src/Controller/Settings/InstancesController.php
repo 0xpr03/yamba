@@ -29,6 +29,11 @@ use Websocket\Lib\Websocket;
  */
 class InstancesController extends AppController
 {
+    public function initialize()
+    {
+        parent::initialize();
+        $this->loadComponent('Api');
+    }
 
     public function index()
     {
