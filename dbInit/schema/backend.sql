@@ -29,31 +29,47 @@ CREATE TABLE `titles_to_playlists` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `instances` (
-  `id` INT AUTO_INCREMENT NOT NULL,
+  `id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `autostart` BIT NOT NULL,
+  `type` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY (`id`, `autostart`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `teamspeak_instances` (
+  `instance_id` INT NOT NULL,
   `host` VARCHAR(255) NOT NULL,
   `port` INT(16) UNSIGNED,
   `identity` VARCHAR(255) NOT NULL,
-  `name` VARCHAR(255) NOT NULL,
   `password` VARCHAR (255),
-  `autostart` BIT NOT NULL,
   `cid` INT(32),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`instance_id`),
+  FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`)
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `instance_store` (
   `id` INT NOT NULL,
-  `volume` INT NOT NULL,
-  `index` INT NOT NULL,
-  `position` INT NOT NULL,
+  `volume` DOUBLE NOT NULL,
+  `index` INT,
+  `position` BIGINT UNSIGNED,
   `random` BIT NOT NULL,
-  PRIMARY KEY (`id`)
+  `repeat` BIT NOT NULL,
+  `queue_lock` BIT NOT NULL,
+  `volume_lock` BIT NOT NULL,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`id`) REFERENCES `instances`(`id`)
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `queues` (
-  `index` INT AUTO_INCREMENT NOT NULL,
+  `index` INT UNSIGNED AUTO_INCREMENT NOT NULL,
   `instance_id` INT NOT NULL,
   `title_id` CHAR(32) NOT NULL,
   PRIMARY KEY (`index`, `instance_id`),
-  FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`),
+  FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`)
+    ON DELETE CASCADE,
   FOREIGN KEY (`title_id`) REFERENCES `titles`(`id`)
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

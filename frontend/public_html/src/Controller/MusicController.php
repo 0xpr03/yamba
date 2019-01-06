@@ -18,7 +18,6 @@
 
 namespace App\Controller;
 
-
 use Cake\Core\Exception\Exception;
 use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\Event\Event;
@@ -53,6 +52,9 @@ class MusicController extends AppController
 
     public function addTitles()
     {
+        if (!$this->request->is('post')) {
+            return $this->response->withStatus(405);
+        }
         if (env('SERVER_PORT') != 82) {
             return $this->response->withStatus(403);
         }
@@ -109,6 +111,7 @@ class MusicController extends AppController
                 $this->_flash($type, $message, $userID);
                 return $this->response->withStatus(200);
             default:
+                $this->_updatePlaylists();
                 $this->_flash('alert', $message, $userID);
                 return $this->response->withStatus(500);
         }
@@ -116,9 +119,12 @@ class MusicController extends AppController
 
     public function addPlaylist()
     {
-        $name = $this->request->getQuery('name');
-        if (!isset($name) || mb_strlen($name) < 1) {
-            return $this->response->withStatus(400)->withStringBody('Bad request');
+        if (!$this->request->is('post')) {
+            return $this->response->withStatus(405);
+        }
+        $name = $this->request->getData('name');
+        if (!isset($name) || mb_strlen($name) < 1 || mb_strlen($name) > 50) {
+            return $this->response->withStatus(400);
         }
 
         $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
@@ -128,7 +134,7 @@ class MusicController extends AppController
         $status = 500;
         try {
             if ($playlist) {
-                $url = $this->request->getQuery('url');
+                $url = $this->request->getData('url');
                 if (isset($url) && mb_strlen($url) > 0) {
                     $response = $this->Api->createTitles($url);
                     if ($response->getStatusCode() === 202) {
@@ -138,7 +144,7 @@ class MusicController extends AppController
                         $addTitle->set('playlist_id', $playlist->get('id'));
                         $addTitle->set('user_id', $this->Auth->user('id'));
                         if ($addTitleTable->save($addTitle)) {
-                            $status = 200;
+                            $status = 202;
                             $message = 'Your playlist is now in processing. You will be notified once it is fully loaded';
                         } else {
                             $message = 'Database Error';
@@ -147,7 +153,7 @@ class MusicController extends AppController
                         $message = 'Could not resolve URL';
                     }
                 } else {
-                    $status = 200;
+                    $status = 201;
                     $message = 'Your playlist has been created';
                 }
             } else {
@@ -184,12 +190,33 @@ class MusicController extends AppController
         foreach ($res as $p) {
             $p->hasToken = (bool)$p->hasToken;
         }
-        return json_encode(['playlists' => $res]);
+        return json_encode($res);
+    }
+
+    private function _titlesJson($playlist_id)
+    {
+        $titlesTable = TableRegistry::getTableLocator()->get('Titles');
+        return json_encode($titlesTable->find()->leftJoinWith('TitlesToPlaylists')->where(['TitlesToPlaylists.playlist_id' => $playlist_id]));
     }
 
     public function getPlaylists()
     {
         return $this->response->withType('json')->withStringBody($this->_playlistsJson());
+    }
+
+    public function getTitles($playlist_id)
+    {
+        return $this->response->withType('json')->withStringBody($this->_titlesJson($playlist_id));
+    }
+
+    private function _updatePlaylists()
+    {
+        Websocket::publishEvent('playlistsUpdated', ['json' => $this->_playlistsJson()]);
+    }
+
+    private function _updateTitles($playlist_id)
+    {
+        Websocket::publishEvent('titlesUpdated', ['json' => $this->_titlesJson($playlist_id), 'playlist' => $playlist_id]);
     }
 
     public function deletePlaylist()
@@ -229,27 +256,6 @@ class MusicController extends AppController
         $this->_updatePlaylists();
         $this->_updateTitles($playlist_id);
         return $this->response->withStatus(200);
-    }
-
-    private function _updateTitles($playlist_id)
-    {
-        Websocket::publishEvent('titlesUpdated', ['json' => $this->_titlesJson($playlist_id), 'playlist' => $playlist_id]);
-    }
-
-    private function _titlesJson($playlist_id)
-    {
-        $titlesTable = TableRegistry::getTableLocator()->get('Titles');
-        return json_encode($titlesTable->find()->leftJoinWith('TitlesToPlaylists')->where(['TitlesToPlaylists.playlist_id' => $playlist_id]));
-    }
-
-    public function getTitles($playlist_id)
-    {
-        return $this->response->withType('json')->withStringBody($this->_titlesJson($playlist_id));
-    }
-
-    private function _updatePlaylists()
-    {
-        Websocket::publishEvent('playlistsUpdated', ['json' => $this->_playlistsJson()]);
     }
 
     private function _flash($type = null, $message = null, $userID = null)

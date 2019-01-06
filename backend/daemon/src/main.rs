@@ -15,7 +15,6 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 #![recursion_limit = "1024"]
-#[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
@@ -37,15 +36,8 @@ extern crate jsonrpc_lite;
 #[macro_use]
 extern crate serde_json;
 extern crate atomic;
-extern crate rusqlite;
-extern crate serde_urlencoded;
-extern crate sha2;
-extern crate tokio;
-extern crate tokio_signal;
-extern crate tokio_threadpool;
-#[macro_use]
-extern crate mysql;
 extern crate chrono;
+extern crate concurrent_hashmap;
 extern crate erased_serde;
 extern crate glib;
 extern crate gstreamer as gst;
@@ -55,6 +47,15 @@ extern crate libpulse_binding as pulse;
 extern crate libpulse_glib_binding as pglib;
 extern crate libpulse_sys as pulse_sys;
 extern crate metrohash;
+extern crate mysql;
+extern crate owning_ref;
+extern crate rusqlite;
+extern crate serde_urlencoded;
+extern crate sha2;
+extern crate tokio;
+extern crate tokio_signal;
+extern crate tokio_threadpool;
+extern crate arraydeque;
 
 use std::alloc::System;
 
@@ -63,10 +64,12 @@ static GLOBAL: System = System;
 
 mod api;
 mod audio;
+mod cache;
 mod config;
 mod daemon;
 mod db;
 mod http;
+mod instance;
 mod models;
 mod playback;
 mod rpc;
@@ -83,8 +86,6 @@ use tokio::runtime;
 use std::fs::{metadata, DirBuilder, File};
 use std::io::Write;
 use std::path::PathBuf;
-use std::thread;
-use std::time::Duration;
 
 use playback::{PlayerEvent, PlayerEventType};
 
@@ -126,7 +127,8 @@ fn main() -> Fallible<()> {
                         .takes_value(true)
                         .help("audio file"),
                 ),
-        ).subcommand(
+        )
+        .subcommand(
             SubCommand::with_name("test-url")
                 .about("Test command to play audio from url, requires existing pulse device.")
                 .arg(
@@ -136,7 +138,8 @@ fn main() -> Fallible<()> {
                         .takes_value(true)
                         .help("media url"),
                 ),
-        ).subcommand(
+        )
+        .subcommand(
             SubCommand::with_name("test-ts")
                 .about("Test ts instance start, for test use")
                 .arg(
@@ -145,19 +148,30 @@ fn main() -> Fallible<()> {
                         .required(true)
                         .takes_value(true)
                         .help("host address"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("port")
                         .short("p")
                         .required(false)
                         .takes_value(true)
                         .help("port address"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("cid")
+                        .long("cid")
                         .required(false)
                         .takes_value(true)
                         .help("channel id"),
+                )
+                .arg(
+                    Arg::with_name("clear-instances")
+                        .long("clear-instances")
+                        .required(false)
+                        .takes_value(false)
+                        .help("Clear all previous instances"),
                 ),
-        ).get_matches();
+        )
+        .get_matches();
 
     info!(
         "RPC Binding: {}:{}",
@@ -176,7 +190,7 @@ fn main() -> Fallible<()> {
             info!("Audio playback testing..");
             gst::init()?;
             let (send, recv) = mpsc::channel::<PlayerEvent>(10);
-            let mut player = playback::Player::new(send, -1)?;
+            let mut player = playback::Player::new(send, -1, 0.1)?;
             let path = get_path_for_existing_file(sub_m.value_of("file").unwrap()).unwrap();
             player.set_uri(&path.to_string_lossy());
             player.play();
@@ -191,34 +205,63 @@ fn main() -> Fallible<()> {
             info!("Finished");
         }
         ("test-url", Some(sub_m)) => {
+            use playback::PlaybackState;
+            use std::sync::{Arc, Mutex};
+            use std::thread;
             info!("Url play testing..");
             {
                 gst::init()?;
+                let glib_loop = glib::MainLoop::new(None, false);
+                gstreamer::debug_set_active(true);
+                gstreamer::debug_set_default_threshold(gstreamer::DebugLevel::Warning);
+                gstreamer::debug_set_threshold_for_name("player", gstreamer::DebugLevel::Debug);
+                let (mainloop, context) = audio::init().unwrap();
+
+                let glib_loop_clone = glib_loop.clone();
+                thread::spawn(move || {
+                    let glib_loop = &glib_loop_clone;
+                    glib_loop.run();
+                });
+
+                let sink = audio::NullSink::new(mainloop, context, "test1").unwrap();
+
                 let (send, recv) = mpsc::channel::<PlayerEvent>(10);
-                let (mut send_s, recv_s) = mpsc::channel::<bool>(1);
-                let player = playback::Player::new(send, -1)?;
+                let (mut send_s, recv_s) = mpsc::channel::<()>(1);
+                let player = Arc::new(Mutex::new(playback::Player::new(send, -1, 0.1)?));
+
                 let url = sub_m.value_of("url").unwrap();
-                player.set_uri(&url);
-                player.play();
 
                 let mut runtime = runtime::Runtime::new()?;
                 {
                     debug!("url: {:?}", url);
+                    let player_c = player.clone();
                     runtime.spawn(recv.for_each(move |event| {
-                        println!("Event: {:?}", event);
+                        let player = player_c.clone();
+                        trace!("Event: {:?}", event);
                         match event.event_type {
                             PlayerEventType::PositionUpdated => {
-                                player.set_volume(f64::from(player.get_position()) / 1000.0);
+                                let player_l = player.lock().unwrap();
+                                debug!("Position: {}", player_l.get_position_ms());
+                                //player.set_volume(f64::from(player.get_position()) / 1000.0);
                             }
-                            PlayerEventType::EndOfStream => {
-                                send_s.try_send(true).unwrap();
+                            PlayerEventType::EndOfStream
+                            | PlayerEventType::StateChanged(PlaybackState::Stopped) => {
+                                debug!("end of stream");
+                                let _ = send_s.try_send(());
                             }
                             _ => {}
                         }
                         Ok(())
                     }));
-
-                    runtime.block_on(recv_s.for_each(|b| Ok(()))).unwrap();
+                    {
+                        // drop player lock, or we'll block the whole event queue
+                        let player_l = player.lock().unwrap();
+                        player_l.set_pulse_device(sink.get_sink_name()).unwrap();
+                        player_l.set_uri(&url);
+                    }
+                    debug!("Starting playback");
+                    runtime.block_on(recv_s.into_future()).unwrap();
+                    glib_loop.quit();
                 }
                 println!("playthough finished");
             }
@@ -233,29 +276,27 @@ fn main() -> Fallible<()> {
             let addr = sub_m.value_of("host").unwrap();
             let port = sub_m.value_of("port").map(|v| v.parse::<u16>().unwrap());
             let cid = sub_m.value_of("cid").map(|v| v.parse::<i32>().unwrap());
+            let clear_instances = sub_m.is_present("clear-instances");
 
             let settings = models::TSSettings {
-                id: 0,
+                id: 1,
                 host: addr.to_string(),
                 port,
                 identity: "".to_string(),
                 cid,
-                name: "Test Bot Instance".to_string(),
+                name: "YAMBA_Test_Instance".to_string(),
                 password: None,
                 autostart: true,
             };
 
-            let _instance = match ts::TSInstance::spawn(&settings, &SETTINGS.main.rpc_bind_port) {
-                Ok(v) => v,
-                Err(e) => {
-                    error!("Error at instance start: {}", e);
-                    return Err(e);
-                }
-            };
+            let pool = db::init_pool_timeout()?;
 
-            info!("Started, starting RPC server..");
+            if clear_instances {
+                info!("Clearing previous instances!");
+                db::clear_instances(&pool)?;
+            }
 
-            //thread::sleep(Duration::from_millis(10000));
+            db::upsert_ts_instance(&settings, &pool)?;
 
             check_runtime()?;
             daemon::start_runtime()?;

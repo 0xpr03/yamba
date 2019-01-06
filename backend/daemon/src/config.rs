@@ -20,7 +20,7 @@ use std::ffi::OsStr;
 use std::fs::{read_dir, DirBuilder, OpenOptions};
 use std::io::{self, Write};
 
-use config_rs::{Config, ConfigError as ConfigRSError, Environment, File as CFile, FileFormat};
+use config_rs::{Config, ConfigError as ConfigRSError, Environment, File as CFile};
 use failure::Fallible;
 
 use {CONF_DIR, DEFAULT_CONFIG_NAME};
@@ -54,6 +54,8 @@ pub struct ConfigTS {
     pub dir: String,
     pub start_binary: String,
     pub additional_args_binary: Vec<String>,
+    pub plugin_path: String,
+    pub clear_config: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -65,6 +67,7 @@ pub struct ConfigMain {
     pub api_bind_ip: String,
     pub api_callback_port: u16,
     pub api_callback_ip: String,
+    pub cache_lifetime_secs: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -86,6 +89,7 @@ pub struct ConfigYtDL {
     pub version_key: String,
     pub download_source: String,
     pub timeout_version: u8,
+    pub min_audio_bitrate: i64,
 }
 
 /// Init settings
@@ -112,7 +116,8 @@ fn load_settings() -> Fallible<Config> {
                 warn!("can't handle {:?} during config loading: {}", x, e);
                 false
             }
-        }).map(|x| CFile::from(x.path()))
+        })
+        .map(|x| CFile::from(x.path()))
         .collect();
     debug!("config_files {:?}", config_files);
     settings.merge(config_files)?;
@@ -152,7 +157,7 @@ fn load_default() -> Fallible<Config> {
     }
     drop(config_file);
     settings
-        .merge(CFile::with_name(&path_config.to_string_lossy()))//(&format!("conf/{}", DEFAULT_CONFIG_NAME)))
+        .merge(CFile::with_name(&path_config.to_string_lossy())) //(&format!("conf/{}", DEFAULT_CONFIG_NAME)))
         .map_err(|e| ConfigErr::DefaultConfigParseError(e))?;
     Ok(settings)
 }

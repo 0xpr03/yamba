@@ -18,10 +18,10 @@
 use std::env::current_dir;
 use std::fs::{remove_file, rename, set_permissions, DirBuilder, File};
 use std::hash::{Hash, Hasher};
-use std::io::{self, BufRead, BufReader, ErrorKind, Read};
+use std::io::{BufRead, BufReader, ErrorKind, Read};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::{Arc, RwLock};
 use std::thread;
 
@@ -58,6 +58,7 @@ pub struct Track {
     pub protocol: Option<String>,
     pub webpage_url: String,
     pub artist: Option<String>,
+    pub uploader: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -83,11 +84,59 @@ impl Hash for Track {
 }
 
 impl Track {
-    pub fn best_audio_only_format(&self) -> Option<&Format> {
+    /// Takes the artist of this track
+    /// Can be uploader/artist
+    pub fn take_artist(&mut self) -> Option<String> {
+        if let Some(v) = self.artist.take() {
+            return Some(v);
+        } else if let Some(v) = self.uploader.take() {
+            return Some(v);
+        }
+        None
+    }
+
+    /// Duration as u32
+    pub fn duration_as_u32(&self) -> Option<u32> {
+        if let Some(v) = self.duration {
+            Some(v as u32)
+        } else {
+            None
+        }
+    }
+
+    /// Returns best audio format
+    pub fn best_audio_format(&self) -> Option<&Format> {
+        let track_audio = self.best_audio_only_format();
+        let track_mixed = self.best_mixed_audio_format();
+
+        if let Some(audio_track) = track_audio {
+            if let Some(mixed_track) = track_mixed {
+                let abr_audio = audio_track
+                    .abr
+                    .expect("No audio bitrate in audio-only track!");
+                if abr_audio >= mixed_track.abr.unwrap()
+                    || abr_audio >= SETTINGS.ytdl.min_audio_bitrate
+                {
+                    return Some(audio_track);
+                } else {
+                    return Some(mixed_track);
+                }
+            }
+        }
+        track_mixed
+    }
+
+    /// Returns bests audio format with video
+    pub fn best_mixed_audio_format(&self) -> Option<&Format> {
+        Track::filter_best_audio_format(self.mixed_only_formats())
+    }
+
+    /// Returns format with best audio bitrate from input
+    pub fn filter_best_audio_format(formats: Vec<&Format>) -> Option<&Format> {
         let mut max_bitrate: i64 = -1;
         let mut max_format: Option<&Format> = None;
 
-        self.audio_only_formats().iter().for_each(|format| {
+        formats.into_iter().for_each(|format| {
             if let Some(bitrate) = format.abr {
                 if max_bitrate < bitrate {
                     max_bitrate = bitrate;
@@ -95,30 +144,43 @@ impl Track {
                 }
             }
         });
-
-        return max_format;
+        max_format
     }
 
+    /// Returns best only-audio format
+    pub fn best_audio_only_format(&self) -> Option<&Format> {
+        Track::filter_best_audio_format(self.audio_only_formats())
+    }
+
+    /// Return audio+video formats
+    pub fn mixed_only_formats(&self) -> Vec<&Format> {
+        self.formats
+            .iter()
+            .filter(|f| f.has_audio() && f.has_video())
+            .collect()
+    }
+
+    /// Return audio only formats
     pub fn audio_only_formats(&self) -> Vec<&Format> {
-        return self.formats.iter().filter(|f| f.is_audio_only()).collect();
+        self.formats.iter().filter(|f| f.is_audio_only()).collect()
     }
 }
 
 impl Format {
     pub fn has_audio(&self) -> bool {
-        if let Some(ref ac) = self.acodec {
-            return ac != "none";
+        match self.acodec {
+            Some(ref ac) => ac != "none",
+            None => false,
         }
-        return false;
     }
     pub fn has_video(&self) -> bool {
-        if let Some(ref vc) = self.vcodec {
-            return vc != "none";
+        match self.vcodec {
+            Some(ref vc) => vc != "none",
+            None => false,
         }
-        return false;
     }
     pub fn is_audio_only(&self) -> bool {
-        return !self.has_video() && self.has_audio();
+        !self.has_video() && self.has_audio()
     }
 }
 
@@ -138,8 +200,6 @@ pub struct HttpHeaders {
 
 #[derive(Fail, Debug)]
 pub enum YtDLErr {
-    #[fail(display = "{}", _0)]
-    Io(#[cause] io::Error),
     #[fail(display = "Pipe error processing ytdl output {}", _0)]
     PipeError(String),
     #[fail(display = "Json invalid input {}", _0)]
@@ -148,8 +208,6 @@ pub enum YtDLErr {
     ResponseError(String),
     #[fail(display = "Incorrect hash for {}", _0)]
     InvalidHash(String),
-    #[fail(display = "Json parsing error {}", _0)]
-    IncorrectJson(#[cause] serde_json::Error),
     #[fail(display = "Thread panicked at {}", _0)]
     ThreadPanic(String),
 }
@@ -230,9 +288,11 @@ impl YtDL {
             .collect::<Fallible<Vec<Track>>>()?;
 
         match stderr_worker_handle.join() {
-            Ok(Ok(v)) => if v.len() > 0 {
-                return Err(YtDLErr::ResponseError(format!("stderr: {}", v)).into());
-            },
+            Ok(Ok(v)) => {
+                if v.len() > 0 {
+                    return Err(YtDLErr::ResponseError(format!("stderr: {}", v)).into());
+                }
+            }
             Ok(Err(e)) => return Err(e),
             Err(e) => return Err(YtDLErr::ThreadPanic(format!("stderr worker {:?}", e)).into()),
         }
@@ -270,7 +330,7 @@ impl YtDL {
         let mut parsed: JsonValue = serde_json::from_str(&result)?;
         let version: String = match parsed[UPDATE_VERSION_KEY].take() {
             JsonValue::Null => return Err(YtDLErr::JsonError("Version key not found!").into()),
-            JsonValue::String(v) => v, //.ok_or(YtDLErr::JsonError("Version value is not a str!"))?,
+            JsonValue::String(v) => v,
             _ => return Err(YtDLErr::JsonError("Version key is not of correct type!").into()),
         };
 
@@ -303,10 +363,12 @@ impl YtDL {
             Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())
         } else {
             Err(YtDLErr::ResponseError(format!(
-                "Process errored, response: {}; {}",
-                String::from_utf8_lossy(&result.stdout).trim().to_string(),
-                String::from_utf8_lossy(&result.stderr).trim().to_string()
-            )).into())
+                "Process errored {}, response:\n{};\n{}",
+                result.status,
+                String::from_utf8_lossy(&result.stdout).to_string(),
+                String::from_utf8_lossy(&result.stderr).to_string()
+            ))
+            .into())
         }
     }
 
@@ -411,6 +473,7 @@ impl YtDL {
         if self.check_sha256(hash)? {
             Ok(())
         } else {
+            remove_file(&target)?;
             Err(YtDLErr::InvalidHash(target.to_string_lossy().into()).into())
         }
     }
@@ -491,7 +554,8 @@ mod test {
         let output = DOWNLOADER
             .get_url_info(
                 "https://soundcloud.com/djsusumu/alan-walker-faded-susumu-melbourne-bounce-edit",
-            ).unwrap();
+            )
+            .unwrap();
         assert_eq!(Some(144.0), output.duration);
         assert_eq!(Some("https".into()), output.protocol);
     }

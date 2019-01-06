@@ -29,6 +29,8 @@ api_bind_ip = "127.0.0.1"
 # api callback data, daemon to frontend
 api_callback_ip = "127.0.0.1" # safe default, use 0.0.0.0 only if you know noone can access from external
 api_callback_port = "82"
+# entry max age for stream cache
+cache_lifetime_secs = 3600
 
 
 [db]
@@ -53,6 +55,8 @@ version_key = "latest"
 download_source="https://yt-dl.org/downloads/latest/youtube-dl"
 # timeout in seconds
 timeout_version=10
+# minimum okay'ish audio Bitrate
+min_audio_bitrate = 128
 
 [ts]
 # base folder of teamspeak executable
@@ -61,3 +65,7 @@ dir = "ts"
 start_binary = "ts3client_linux_amd64"
 # additional arguments to pass at first to the binary
 additional_args_binary= []
+# path to plugin
+plugin_path = "plugin/libyamba_plugin.so"
+# clear instance config in startup, required for plugin reload
+clear_config = true

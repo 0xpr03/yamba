@@ -1,3 +1,36 @@
+/**
+ *  This file is part of yamba.
+ *
+ *  yamba is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  yamba is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+function hiliteTableRow(playlist) {
+    let tableRows = $('#playlist-table > tbody > tr');
+    tableRows.each(function (index, item) {
+            let classList = item.classList;
+            let style = item.style;
+            if (item.getAttribute('data-playlist-id') === playlist) {
+                classList.add('black');
+                style.color = '#fefefe';
+            } else {
+                classList.remove('black');
+                style.color = '#0a0a0a';
+            }
+        }
+    );
+}
+
 function getTitles(playlist) {
     $.ajax({
         method: 'get',
@@ -5,16 +38,22 @@ function getTitles(playlist) {
         success: function (response) {
             fillSongTable(playlist, response);
         },
+        error: function (response) {
+            flash('alert', 'Unable to fetch titles');
+        }
     });
+    hiliteTableRow(playlist);
 }
 
 function fillSongTable(playlist, titles) {
     let tableBody = $('#titles-table-body');
     tableBody.attr('data-playlist-id', playlist);
     titles.forEach((title) => {
-       title.length = fancyTimeFormat(title.length);
+        title.length = fancyTimeFormat(title.length);
     });
-    tableBody.html(Mustache.render(titlesTemplate, {playlist: playlist, titles: titles}));
+    $.get('mustache/titles.mst', function (template) {
+        tableBody.html(Mustache.render(template, {playlist: playlist, titles: titles}));
+    });
 }
 
 function fancyTimeFormat(time) {
@@ -42,26 +81,36 @@ function getPlaylists() {
         success: function (response) {
             fillPlaylistTable(response);
         },
+        error: function (response) {
+            flash('alert', 'Unable to fetch playlists');
+        }
     });
 }
 
 function fillPlaylistTable(playlists) {
     let tableBody = $('#playlist-table-body');
-    tableBody.html(Mustache.render(playlistsTemplate, playlists));
+    $.get('mustache/playlists.mst', function (template) {
+        tableBody.html(Mustache.render(template, {playlists: playlists}));
+        hiliteTableRow($('#titles-table-body').attr('data-playlist-id'));
+    });
 }
 
-function addPlaylist(form) {
+function addPlaylist() {
+    let form = $('#add-playlist-form');
     let formData = form.serializeArray().reduce(function (obj, item) {
         obj[item.name] = item.value;
         return obj;
     }, {});
     $.ajax({
-        method: 'get',
-        url: '/Music/addPlaylist',
-        data: {'name': formData.name, 'url': formData.url},
-        success: function (response) {
-            ajaxSuccessFlash(response);
-            form.find('input[type=text]').val('');
+        method: 'post',
+        url: form.attr('action'),
+        beforeSend: function (xhr) {
+            xhr.setRequestHeader('X-CSRF-Token', $('[name="_csrfToken"]').val());
+        },
+        data: formData,
+        success: function (message, status, jqXHR) {
+            ajaxSuccessFlash(message, jqXHR.status);
+            form.find('input[type=reset]').click();
         },
         error: ajaxErrorFlash
     });
@@ -85,10 +134,33 @@ function deletePlaylist(playlist) {
     });
 }
 
-function ajaxSuccessFlash(response) {
-    flash('success', response);
+function ajaxSuccessFlash(message, statusCode) {
+    let status = '';
+    if (statusCode === 201) {
+        status = 'success';
+    } else if (statusCode === 202) {
+        status = 'warning';
+    } else {
+        status = 'primary';
+    }
+    flash(status, message);
 }
 
-function ajaxErrorFlash(response) {
-    flash('alert', response);
+function ajaxErrorFlash(message) {
+    if (message.status === 404) {
+        flash('alert', 'Unable to delete resource');
+    }
+}
+
+function flash(type, message) {
+    if (message !== undefined) {
+        let id = guid();
+        $.get('mustache/flashes.mst', function (template) {
+            let flash = Mustache.render(template, {id: id, type: type, message: message});
+            $('div.main').prepend(flash);
+        });
+        setTimeout(function () {
+            $('#flash-' + id).hide()
+        }, 5000);
+    }
 }

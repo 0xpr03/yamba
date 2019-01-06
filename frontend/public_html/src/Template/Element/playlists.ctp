@@ -24,7 +24,7 @@
             <button class="button expanded" data-open="add-playlist-modal"
                     style="margin-bottom:0;width: 100%; height: 100%"><?= __('New Playlist') ?></button>
             <div class="reveal small" id="add-playlist-modal" data-reveal>
-                <?= $this->Form->create(null, ['id' => 'add-playlist-form']) ?>
+                <?= $this->Form->create(null, ['id' => 'add-playlist-form', 'url' => 'Music/addPlaylist', 'onsubmit' => 'event.preventDefault(); addPlaylist();']) ?>
                 <fieldset class="fieldset">
                     <legend><?= __('Create Playlist') ?></legend>
                     <div class="row">
@@ -46,6 +46,9 @@
                                 <span aria-hidden="true">Close</span>
                             </button>
                         </div>
+                        <div class="columns shrink">
+                            <?= $this->Form->submit('Reset', ['type' => 'reset', 'class' => 'button warning hollow radius']); ?>
+                        </div>
                         <div class="columns">
                             <?= $this->Form->submit('Create Playlist', ['class' => 'button expanded radius']); ?>
                         </div>
@@ -59,11 +62,3 @@
     <tbody id="playlist-table-body">
     </tbody>
 </table>
-<script>
-    getPlaylists();
-    let form = $('#add-playlist-form');
-    form.submit(function (event) {
-        event.preventDefault();
-        addPlaylist(form);
-    });
-</script>

@@ -15,12 +15,13 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use failure::{Fallible, ResultExt};
+use failure::Fallible;
 use serde_urlencoded;
 
 use std::env;
-use std::fs::{read_dir, DirBuilder, OpenOptions};
-use std::io::{self, Error};
+use std::fs::{remove_dir_all, DirBuilder};
+use std::io;
+use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::thread;
@@ -39,6 +40,7 @@ use SETTINGS;
 const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
 const TS_ENV_ID: &'static str = "ID_YAMBA";
 const TS_SETTINGS_FILE: &'static str = "settings.db";
+const TS_PLUGINS_DIR: &'static str = "plugins";
 
 #[derive(Fail, Debug)]
 pub enum TSInstanceErr {
@@ -46,10 +48,6 @@ pub enum TSInstanceErr {
     Database(#[cause] rusqlite::Error),
     #[fail(display = "TS Instance spawn error {}", _0)]
     SpawnError(#[cause] io::Error),
-    #[fail(display = "Pipe error processing ytdl output {}", _0)]
-    PipeError(String),
-    #[fail(display = "Thread panicked at {}", _0)]
-    ThreadPanic(String),
     #[fail(display = "TS Instance config creation error for IO {}", _0)]
     ConfigCreationIOError(#[cause] io::Error),
     #[fail(display = "TS Instance config creation error {}", _0)]
@@ -63,6 +61,10 @@ impl Drop for TSInstance {
         match self.is_running() {
             Ok(true) | Err(_) => {
                 // ignore error, otherwise run only if alive
+                if let Err(e) = TSInstance::kill_by_ppid(&self.process.id()) {
+                    warn!("Couldn't kill instance by ppid: {}", e);
+                }
+
                 match self.kill() {
                     Ok(()) => (),
                     Err(e) => warn!("Couldn't kill instance on cleanup {}", e),
@@ -108,12 +110,17 @@ impl TSInstance {
             env::var("LD_LIBRARY_PATH").unwrap_or("".to_string())
         );
 
-        let path = current_dir()?.join("ts").join(format!("{}", settings.id));
+        let path_config = current_dir()?.join("ts").join(format!("{}", settings.id));
+
+        if path_config.exists() && SETTINGS.ts.clear_config {
+            remove_dir_all(&path_config).map_err(|e| TSInstanceErr::ConfigCreationIOError(e))?;
+        }
+
         DirBuilder::new()
             .recursive(true)
-            .create(&path)
+            .create(&path_config)
             .map_err(|e| TSInstanceErr::ConfigCreationIOError(e))?;
-        debug!("TS Instance config path: {:?}", path);
+        debug!("TS Instance config path: {:?}", path_config);
 
         let mut cmd = Command::new("xvfb-run");
         cmd.current_dir(&SETTINGS.ts.dir)
@@ -122,7 +129,7 @@ impl TSInstance {
             .env("LD_LIBRARY_PATH", library_path)
             .env("KDEDIR", "")
             .env("KDEDIRS", "")
-            .env("TS3_CONFIG_DIR", path.to_string_lossy().into_owned())
+            .env("TS3_CONFIG_DIR", path_config.to_string_lossy().into_owned())
             .env(TS_ENV_ID, settings.id.to_string())
             .env(TS_ENV_CALLBACK, rpc_port.to_string())
             .args(&["--auto-servernum", "--server-args=-screen 0 640x480x24:32"])
@@ -133,29 +140,45 @@ impl TSInstance {
         trace!("TS Workdir: {}", &SETTINGS.ts.dir);
         trace!("CMD: {:?}", cmd);
 
-        let path = path.join(TS_SETTINGS_FILE);
-        debug!("TS Instance config path: {:?}", path);
+        let path_db = path_config.join(TS_SETTINGS_FILE);
+        debug!("TS Instance config path: {:?}", path_config);
 
-        if !path.exists() {
+        if !path_db.exists() {
             info!("Missing instance settings, creating..");
             let mut child = cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?;
             thread::sleep(Duration::from_millis(5000));
-            child.kill()?;
+            TSInstance::kill_by_ppid(&child.id())?;
+            child.kill()?; // evaluate
             TSInstance::wait_for_child_timeout(1000, &mut child)?;
-            if !path.exists() {
+            if !path_config.exists() {
                 warn!("Unable to create configuration, no db existing!");
                 return Err(TSInstanceErr::ConfigCreationError(
                     "No settings db, creation failed!".into(),
-                ).into());
+                )
+                .into());
             }
             info!("Configuring..");
-            TSInstance::configure_settings(&path)?;
+            TSInstance::configure_settings(&path_db, &path_config)?;
         }
 
         Ok(TSInstance {
             id: settings.id.clone(), // TODO decide for non copy solution
             process: cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?,
         })
+    }
+
+    /// Kill childs of xvfb
+    fn kill_by_ppid(ppid: &u32) -> Fallible<()> {
+        let output = Command::new("pkill")
+            .arg("-P")
+            .arg(ppid.to_string())
+            .output()?;
+        trace!(
+            "pkill status: {} stderr: {:?}",
+            output.status,
+            output.stderr
+        );
+        Ok(())
     }
 
     fn wait_for_child_timeout(sleep_ms: i32, child: &mut Child) -> Fallible<()> {
@@ -177,30 +200,77 @@ impl TSInstance {
         }
     }
 
-    fn configure_settings(path: &Path) -> Fallible<()> {
-        let connection = Connection::open(path)?;
+    fn configure_settings(path_db: &Path, path_config: &Path) -> Fallible<()> {
+        trace!("Configuring ts instance under {:?}", path_db);
+        let connection = Connection::open(path_db)?;
         {
-            let mut stmt = connection
-                .prepare("INSERT INTO `General` (`timestamp`,`key`,`value`) SELECT MAX(`timestamp`),?,? FROM `General`")?;
             let values = ["en", "true", "4"];
             let keys = [
                 "LastShownLicenseLang",
                 "SyncOverviewShown",
                 "LastShownLicense",
             ];
+            TSInstance::insert_or_replace(&connection, &keys, &values, "General")?;
 
-            for (&k, &v) in keys.iter().zip(values.iter()) {
-                debug!("Inserting {}{}", k, v);
-                stmt.execute(&[k, v])?;
-            }
+            let keys = [
+                "DefaultCaptureProfile",
+                "DefaultPlaybackProfile",
+                "Capture/musik",
+                "Capture/musik/PreProcessing",
+                "Playback/mute",
+            ];
+            let values = [
+                "musik",
+                "mute",
+                include_str!("../resources/capture.txt"),
+                include_str!("../resources/capture_preprocessing.txt"),
+                include_str!("../resources/playback.txt"),
+            ];
+            TSInstance::insert_or_replace(&connection, &keys, &values, "Profiles")?;
+
+            // let values = ["CloseActiveServerTab"];
+            // let keys = ["false"];
+            // TSInstance::insert_or_replace(&connection, &keys, &values, "Ask")?;
+
+            connection
+                .close()
+                .map_err(|(_, e)| TSInstanceErr::Database(e))?;
         }
-        Ok(connection
-            .close()
-            .map_err(|(_, e)| TSInstanceErr::Database(e))?)
+        {
+            let path_addons = path_config.join(TS_PLUGINS_DIR);
+            DirBuilder::new()
+                .recursive(true)
+                .create(&path_addons)
+                .map_err(|e| TSInstanceErr::ConfigCreationIOError(e))?;
+            debug!(
+                "Linking {} to {}",
+                &SETTINGS.ts.plugin_path,
+                path_addons.join("yamba_plugin.so").to_string_lossy()
+            );
+            symlink(
+                &SETTINGS.ts.plugin_path,
+                path_addons.join("yamba_plugin.so"),
+            )
+            .map_err(|e| TSInstanceErr::ConfigCreationIOError(e))?;
+        }
+
+        Ok(())
     }
 
-    pub fn get_id(&self) -> i32 {
-        self.id
+    /// Insert or replace multiple values for sqlite connection
+    fn insert_or_replace(
+        connection: &Connection,
+        keys: &[&str],
+        values: &[&str],
+        table: &'static str,
+    ) -> Fallible<()> {
+        let mut stmt = connection
+                .prepare(&format!("INSERT OR REPLACE INTO `{}` (`timestamp`,`key`,`value`) SELECT MAX(`timestamp`),?,? FROM `{}`",table,table))?;
+        for (&k, &v) in keys.iter().zip(values.iter()) {
+            debug!("Inserting {}{}", k, v);
+            stmt.execute(&[k, v])?;
+        }
+        Ok(())
     }
 
     pub fn kill(&mut self) -> Fallible<()> {

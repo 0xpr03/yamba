@@ -21,18 +21,25 @@ use futures::Stream;
 use glib::FlagsClass;
 use gst;
 use gst::prelude::*;
-use gst_player::{self, Cast, Error, PlayerConfig};
-use mysql::Pool;
+use gst_player::{self, Cast};
 use tokio::runtime;
 
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::RwLock;
 
-use daemon::ID;
+use daemon::Instances;
+use instance::ID;
 
 /// Playback abstraction
 
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Debug)]
+pub struct Position {
+    pub hours: u64,
+    pub minutes: u64,
+    pub seconds: u64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum PlaybackState {
     Stopped,
     Paused,
@@ -42,13 +49,13 @@ pub enum PlaybackState {
 /// Player event types
 #[derive(Clone, Debug)]
 pub enum PlayerEventType {
+    UriLoaded,
     MediaInfoUpdated,
     PositionUpdated,
     EndOfStream,
     StateChanged(PlaybackState),
     VolumeChanged(f64),
     Error(gst_player::Error),
-    Buffering,
 }
 
 /// Player event
@@ -60,8 +67,6 @@ pub struct PlayerEvent {
 
 #[derive(Fail, Debug)]
 pub enum PlaybackErr {
-    #[fail(display = "Playback Media error {}", _0)]
-    Media(&'static str),
     #[fail(display = "Player error {}", _0)]
     Player(&'static str),
     #[fail(display = "Can't play file, non UTF8 path: {}", _0)]
@@ -74,8 +79,12 @@ pub enum PlaybackErr {
 pub struct Player {
     player: gst_player::Player,
     pulsesink: gst::Element,
+    volume: RwLock<f64>,
+    /*// player name
     name: String,
-    id: Arc<i32>,
+    // ID of player
+    id: Arc<i32>,*/
+    state: RwLock<PlaybackState>,
 }
 
 unsafe impl Send for Player {}
@@ -86,7 +95,7 @@ pub type PlaybackSender = Sender<PlayerEvent>;
 
 impl Player {
     /// Create new Player with given instance
-    pub fn new<T: Into<ID>>(events: PlaybackSender, id: T) -> Fallible<Player> {
+    pub fn new<T: Into<ID>>(events: PlaybackSender, id: T, volume: f64) -> Fallible<Player> {
         debug!("player init");
 
         let id = id.into(); // share it across all events
@@ -104,6 +113,7 @@ impl Player {
         let name = Player::get_name_by_id(&*id);
 
         config.set_name(&name);
+        config.set_position_update_interval(250);
         player.set_config(config).unwrap();
 
         let playbin = player.get_pipeline();
@@ -126,42 +136,63 @@ impl Player {
             .set_property("audio-sink", &pulsesink)
             .map_err(|_| PlaybackErr::GST("Couldn't set audio sink to playbin!"))?;
 
-        player.connect_uri_loaded(|player, uri| {
-            player.play();
+        let events_clone = events.clone();
+        let id_clone = id.clone();
+        player.connect_uri_loaded(move |_, _| {
+            let mut events = events_clone.clone();
+            let id = id_clone.clone();
+            events
+                .try_send(PlayerEvent {
+                    id,
+                    event_type: PlayerEventType::UriLoaded,
+                })
+                .unwrap();
         });
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_end_of_stream(move |player| {
+        player.connect_end_of_stream(move |_| {
             let mut events = events_clone.clone();
             let id = id_clone.clone();
             events
                 .try_send(PlayerEvent {
                     id,
                     event_type: PlayerEventType::EndOfStream,
-                }).unwrap();
+                })
+                .unwrap();
         });
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_media_info_updated(move |player, info| {
+        player.connect_media_info_updated(move |_, _| {
             let mut events = events_clone.clone();
             let id = id_clone.clone();
             events
                 .try_send(PlayerEvent {
                     id,
                     event_type: PlayerEventType::MediaInfoUpdated,
-                }).unwrap();
-        });
-
-        player.connect_position_updated(|player, _| {
-            let player_id = player.get_name();
+                })
+                .unwrap();
         });
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_state_changed(move |player, state| {
+        player.connect_position_updated(move |_, _| {
             let mut events = events_clone.clone();
+            let id = id_clone.clone();
+            events
+                .try_send(PlayerEvent {
+                    id,
+                    event_type: PlayerEventType::PositionUpdated,
+                })
+                .unwrap();
+        });
+
+        let events_clone = events.clone();
+        let id_clone = id.clone();
+        player.connect_state_changed(move |_, state| {
+            let mut events = events_clone.clone();
+            debug!("state changed: {:?}", state);
             let state = match state {
                 gst_player::PlayerState::Playing => Some(PlaybackState::Playing),
                 gst_player::PlayerState::Paused => Some(PlaybackState::Paused),
@@ -174,7 +205,8 @@ impl Player {
                     .try_send(PlayerEvent {
                         id,
                         event_type: PlayerEventType::StateChanged(s),
-                    }).unwrap();
+                    })
+                    .unwrap();
             }
         });
 
@@ -187,37 +219,30 @@ impl Player {
                 .try_send(PlayerEvent {
                     id,
                     event_type: PlayerEventType::VolumeChanged(player.get_volume()),
-                }).unwrap();
+                })
+                .unwrap();
         });
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_error(move |player, error| {
+        player.connect_error(move |_, error| {
+            debug!("Error event: {:?}", error);
             let mut events = events_clone.clone();
             let id = id_clone.clone();
             events
                 .try_send(PlayerEvent {
                     id,
                     event_type: PlayerEventType::Error(error.clone()),
-                }).unwrap();
+                })
+                .unwrap();
         });
 
         Ok(Player {
             player,
             pulsesink,
-            name: Player::get_name_by_id(&id),
-            id,
+            volume: RwLock::new(volume),
+            state: RwLock::new(PlaybackState::Stopped),
         })
-    }
-
-    /// Get player name, used to identify on sound systems
-    pub fn get_name(&self) -> String {
-        Player::get_name_by_id(&self.id)
-    }
-
-    /// Get ID of player
-    pub fn get_id(&self) -> i32 {
-        *self.id
     }
 
     /// Get player name by id, used to identify on sound systems
@@ -227,16 +252,22 @@ impl Player {
 
     /// Set volume as value between 0 and 100
     pub fn set_volume(&self, volume: f64) {
+        *self.volume.write().expect("Can't write volume") = volume;
         self.player.set_volume(volume);
+    }
+
+    /// Get volume as value between 0 and 100
+    pub fn get_volume(&self) -> f64 {
+        *self.volume.read().expect("Can't read volume")
     }
 
     /// Set uri as media
     pub fn set_uri(&self, url: &str) {
         self.player.set_uri(url);
-        self.player.set_video_track_enabled(false);
     }
 
     /// Set file as media
+    #[allow(dead_code)]
     pub fn set_file(&self, file: &Path) -> Fallible<()> {
         self.set_uri(&format!(
             "file://{}",
@@ -247,25 +278,47 @@ impl Player {
         Ok(())
     }
 
-    /// Get position in song as seconds
-    pub fn get_position(&self) -> i32 {
+    /// Get position in song as ms
+    pub fn get_position_ms(&self) -> u64 {
+        // gst player reports in total MS
+        match self.player.get_position().mseconds() {
+            Some(ms) => ms,
+            None => 0,
+        }
+    }
+
+    /// Returns the current position as raw value
+    pub fn get_position(&self) -> Position {
         let clock = self.player.get_position();
-        let mut position: i32 = 0;
-        if let Some(s) = clock.seconds() {
-            position += s as i32;
+        let mut total_secs = match clock.seconds() {
+            Some(v) => v,
+            None => 0,
+        };
+        let hours = total_secs / 3600;
+        total_secs %= 3600;
+
+        Position {
+            hours,
+            minutes: total_secs / 60,
+            seconds: total_secs % 60,
         }
-        if let Some(m) = clock.minutes() {
-            position += m as i32 * 60;
-        }
-        if let Some(h) = clock.hours() {
-            position += h as i32 * 60 * 60;
-        }
-        position
     }
 
     /// Play current media
     pub fn play(&self) {
         self.player.play();
+        self.player
+            .set_volume(*self.volume.read().expect("Can't read volume!"));
+    }
+
+    /// Pause playback
+    pub fn pause(&self) {
+        self.player.pause();
+    }
+
+    /// Whether player is currently paused
+    pub fn is_paused(&self) -> bool {
+        *self.state.read().expect("Can't read player state") == PlaybackState::Paused
     }
 
     /// Set pulse device for player
@@ -274,56 +327,78 @@ impl Player {
             .set_property("device", &device)
             .map_err(|_| PlaybackErr::GST("Can't set pulse device!").into())
     }
+
+    /// Stop current media
+    pub fn stop(&self) {
+        self.player.stop();
+    }
 }
 
 /// Register event handler for playback in daemon
 pub fn create_playback_server(
     runtime: &mut runtime::Runtime,
     tx: Receiver<PlayerEvent>,
-    pool: Pool,
+    instances: Instances,
 ) -> Fallible<()> {
     let stream = tx.for_each(move |event| {
         match event.event_type {
+            PlayerEventType::UriLoaded => {
+                trace!("URI loaded for {}", event.id);
+                let instances_r = instances.read().expect("Can't read instance!");
+                if let Some(v) = instances_r.get(&event.id) {
+                    v.player.play();
+                }
+            }
             PlayerEventType::VolumeChanged(v) => {
-                debug!("Audio changed to {} for {}", v, event.id);
+                trace!("Volume changed to {} for {}", v, event.id);
             }
             PlayerEventType::EndOfStream => {
-                debug!("End of stream for {}", event.id);
+                trace!("End of stream for {}", event.id);
+                if let Some(v) = instances
+                    .read()
+                    .expect("Can't read instance!")
+                    .get(&event.id)
+                {
+                    v.end_of_stream();
+                } else {
+                    debug!("Instance not found {}", event.id);
+                }
             }
             PlayerEventType::StateChanged(state) => {
-                debug!("State changed for {}: {:?}", event.id, state);
+                trace!("State changed for {}: {:?}", event.id, state);
+                if let Some(v) = instances
+                    .read()
+                    .expect("Can't read instance!")
+                    .get(&event.id)
+                {
+                    *v.player.state.write().unwrap() = state;
+                }
             }
-            PlayerEventType::Buffering => {
-                debug!("Player {} is buffering", event.id);
+            PlayerEventType::PositionUpdated => (), // silence
+            PlayerEventType::MediaInfoUpdated => (), // silence
+            PlayerEventType::Error(e) => {
+                warn!("Internal playback error for instance {}:\n{}", event.id, e);
             }
-            _ => (),
         }
         Ok(())
     });
 
-    /*
-    MediaInfoUpdated,
-    PositionUpdated,
-    EndOfStream,
-    StateChanged(PlaybackState),
-    VolumeChanged(f64),
-    Error(gst_player::Error),
-    Buffering,
-    */
-
     runtime.spawn(stream);
+    debug!("Running ");
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use audio;
     use futures::sync::mpsc;
     use futures::Stream;
     use gst;
+    use std::sync::Arc;
     use std::thread;
     use std::time::Duration;
-    use tokio::runtime::{self, Runtime};
+    use tokio::runtime::Runtime;
 
     lazy_static! {
         // simplify downloader, perform startup_test just once, this also tests it on the fly
@@ -332,11 +407,20 @@ mod tests {
 
     #[test]
     fn test_playback() {
-        println!("test");
+        println!("testing playback");
         gst::init().unwrap();
         let (mut sender, recv) = mpsc::channel::<PlayerEvent>(20);
 
-        let player = Player::new(sender.clone(), TEST_ID.clone()).unwrap();
+        let (mainloop, context) = audio::init().unwrap();
+
+        let default_sink =
+            audio::NullSink::new(mainloop.clone(), context.clone(), "default_sink").unwrap();
+        default_sink.set_sink_as_default().unwrap();
+        default_sink.set_source_as_default().unwrap();
+        let sink = audio::NullSink::new(mainloop, context, "test1").unwrap();
+
+        let player = Player::new(sender.clone(), TEST_ID.clone(), 0.0).unwrap();
+        player.set_pulse_device(sink.get_sink_name()).unwrap();
         let mut runtime = Runtime::new().unwrap();
 
         let stream = recv.for_each(move |event| {
@@ -351,8 +435,9 @@ mod tests {
         sender
             .try_send(PlayerEvent {
                 id: TEST_ID.clone(),
-                event_type: PlayerEventType::Buffering,
-            }).unwrap();
+                event_type: PlayerEventType::PositionUpdated,
+            })
+            .unwrap();
         loop {
             if vol > 100 {
                 vol = 0;
@@ -364,8 +449,9 @@ mod tests {
             sender
                 .try_send(PlayerEvent {
                     id: TEST_ID.clone(),
-                    event_type: PlayerEventType::Buffering,
-                }).unwrap();
+                    event_type: PlayerEventType::PositionUpdated,
+                })
+                .unwrap();
         }
     }
 }

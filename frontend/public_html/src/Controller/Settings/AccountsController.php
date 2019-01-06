@@ -16,8 +16,9 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace App\Controller;
+namespace App\Controller\Settings;
 
+use App\Controller\AppController;
 use Cake\Core\Configure;
 use Cake\Event\Event;
 use Cake\ORM\TableRegistry;
@@ -39,18 +40,16 @@ class AccountsController extends AppController
         $this->loadComponent('Email');
     }
 
-    public function index() {
-        return $this->redirect(['action' => 'settings']);
-    }
-
-    public function settings() {
+    public function index()
+    {
         $usersTable = TableRegistry::getTableLocator()->get('Users');
         $user = $usersTable->newEntity();
         $this->set('minlength', Configure::read('password_minlength'));
         $this->set('user', $user);
     }
 
-    public function deleteAccount() {
+    public function deleteAccount()
+    {
         if ($this->request->is('post')) {
             $email = $this->request->getData('email');
             if (!isset($email)) {
@@ -68,7 +67,8 @@ class AccountsController extends AppController
         return $this->redirect(['action' => 'settings']);
     }
 
-    public function changeEmail() {
+    public function changeEmail()
+    {
         if ($this->request->is('post')) {
             $password = $this->request->getData('password');
             $email = $this->request->getData('new_email');
@@ -92,7 +92,8 @@ class AccountsController extends AppController
         return $this->redirect(['action' => 'settings']);
     }
 
-    public function changePassword() {
+    public function changePassword()
+    {
         if ($this->request->is('post')) {
             $old_password = $this->request->getData('password');
             $new_password = $this->request->getData('new_password');
@@ -131,7 +132,8 @@ class AccountsController extends AppController
         return $this->redirect(['action' => 'settings']);
     }
 
-    public function goodbye() {
+    public function goodbye()
+    {
 
     }
 }

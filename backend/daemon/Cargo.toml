@@ -39,3 +39,6 @@ libpulse-glib-binding = { version = "2.3", default-features = false }
 gstreamer-player = "0.12"
 gstreamer = "0.12"
 glib = "0.6"
+owning_ref = "0.4"
+concurrent-hashmap = {version = "0.2", default-features = false}
+arraydeque = "0.4"

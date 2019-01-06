@@ -4,6 +4,7 @@ version: '3'
 
 services:
   database:
+    container_name: database
     image: mariadb:10.3.10-bionic
     restart: always
     ports:
@@ -21,6 +22,7 @@ services:
       MYSQL_ROOT_PASSWORD: "${YAMBA_DATABASE_ROOT_PASSWORD}"
 
   frontend:
+    container_name: frontend
     build: ./frontend
     ports:
       - 9000:80
@@ -32,9 +34,12 @@ services:
       - ./config/database_root.env
 
   backend:
+    container_name: backend
     build: ./backend
     volumes:
+# dev mounts
 #      - ./backend/daemon/target/debug:/opt/yamba/daemon/target/debug
+#      - ./backend/ts3plugin/target/debug:/opt/yamba/ts3plugin/target/debug
       - ./backend/ts3client:/opt/ts3client
     env_file:
       - ./config/backend.env

@@ -17,25 +17,33 @@
 
 use chrono::naive::NaiveDateTime;
 
+/// Song identifier, char(32)
+pub type SongID = String;
+pub type QueueID = u32;
+
 /// Database models
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Song {
-    pub id: String,
+    pub id: SongID,
     pub name: String,
     pub source: String,
-    pub length: Option<i32>,
-    pub downloaded: bool,
     pub artist: Option<String>,
+    pub length: Option<u32>,
+    pub downloaded: bool,
     pub last_used: NaiveDateTime,
 }
 
 impl Song {
     /// Convert Song into minimal song model
+    #[allow(dead_code)]
     pub fn into_song_min(self) -> SongMin {
         SongMin {
             id: self.id,
             source: self.source,
+            artist: self.artist,
+            name: self.name,
+            length: self.length,
         }
     }
 }
@@ -43,8 +51,24 @@ impl Song {
 /// Minimal song representation as required for playback
 #[derive(Debug, Clone, Deserialize)]
 pub struct SongMin {
-    pub id: String,
+    pub id: SongID,
+    pub name: String,
     pub source: String,
+    pub artist: Option<String>,
+    pub length: Option<u32>,
+}
+
+/// Instance settings storage
+#[derive(Debug, Clone, Deserialize)]
+pub struct InstanceStorage {
+    pub id: i32,
+    pub volume: f64,
+    pub index: Option<QueueID>,
+    pub position: Option<f64>,
+    pub random: bool,
+    pub repeat: bool,
+    pub queue_lock: bool,
+    pub volume_lock: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -54,6 +78,11 @@ pub struct Playlist {
     pub keep: bool,
     pub created: NaiveDateTime,
     pub modified: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub enum DBInstanceType {
+    TS(TSSettings),
 }
 
 #[derive(Debug, Clone, Deserialize)]

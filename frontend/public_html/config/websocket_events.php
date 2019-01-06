@@ -29,6 +29,12 @@ return [
             'includeAllAuthenticated' => true
         ]
     ],
+    'instancesUpdated' => [
+        'audience' => [
+            'includeAllNotAuthenticated' => true,
+            'includeAllAuthenticated' => true
+        ]
+    ],
     'flash' => [
         'audience' => [
             'includeAllNotAuthenticated' => true,

@@ -22,11 +22,7 @@ use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use reqwest;
-use reqwest::header::HeaderMap;
-use reqwest::header::{
-    ACCEPT, ACCEPT_ENCODING, CONNECTION, CONTENT_ENCODING, LOCATION, USER_AGENT,
-};
-use reqwest::{Client, Response as RQResponse};
+use reqwest::header::USER_AGENT;
 use serde::de::Deserialize;
 use serde::Serialize;
 use serde_json;
@@ -223,7 +219,8 @@ pub fn create_api_server(runtime: &mut runtime::Runtime, channel: APIChannel) ->
             let counter = counter.clone();
             let channel = channel.clone();
             service_fn(move |req: Request<Body>| api(req, counter.clone(), channel.clone()))
-        }).map_err(|e| eprintln!("server error: {}", e));
+        })
+        .map_err(|e| error!("server error: {}", e));
 
     info!("API Listening on http://{}", addr);
     runtime.spawn(server);
@@ -261,6 +258,7 @@ mod test {
             SETTINGS.main.api_callback_port,
             "music/addSongs/",
             &CallbackErrorType::NoError,
-        ).unwrap();
+        )
+        .unwrap();
     }
 }
