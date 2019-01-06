@@ -25,6 +25,7 @@ use Cake\ORM\TableRegistry;
 class ApiComponent extends Component
 {
     private $backendAddress = 'http://backend:1338';
+
     /**
      * @param String $url
      * @return Client\Response
@@ -78,5 +79,14 @@ class ApiComponent extends Component
     public function cancelJobs()
     {
 
+    }
+
+    /**
+     * @return Client\Response
+     */
+    public function notifyInstances()
+    {
+        $http = new Client();
+        return $http->post($this->backendAddress . '/notify/updateInstances');
     }
 }

@@ -19,11 +19,13 @@
 namespace App\Controller\Settings;
 
 use App\Controller\AppController;
+use Cake\Core\Exception\Exception;
 use Cake\ORM\TableRegistry;
 use Websocket\Lib\Websocket;
 
 /**
  * @property \App\Controller\Component\EmailComponent $Email
+ * @property \App\Controller\Component\ApiComponent $Api
  */
 class InstancesController extends AppController
 {
@@ -135,5 +137,10 @@ class InstancesController extends AppController
     private function _updateInstances()
     {
         Websocket::publishEvent('instancesUpdated', ['json' => $this->_instancesJson()]);
+        try {
+            $this->Api->notifyInstances();
+        } catch (Exception $e) {
+            return $this->response->withStatus(500)->withStringBody('Unable to connect to backend');
+        }
     }
 }
