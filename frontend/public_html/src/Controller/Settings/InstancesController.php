@@ -94,17 +94,18 @@ class InstancesController extends AppController
                         return $this->response->withStatus(400);
                     }
                     $instanceTable = TableRegistry::getTableLocator()->get('Instances');
-                    $instance = $instanceTable->get($id)->set([
+                    $instance = $instanceTable->get($id, ['contain' => 'TeamspeakInstances']);
+                    $instance->set([
                         'name' => $name,
                         'type' => $type,
                         'autostart' => $autostart,
-                        'teamspeak_instance' => [//TODO: fix assocation not updating
+                        'teamspeak_instance' => $instance->get('teamspeak_instance')->set([
                             'host' => $host,
                             'identity' => $identity,
                             'password' => $password
-                        ]
+                        ])
                     ]);
-                    if ($instanceTable->save($instance)) {
+                    if ($instanceTable->save($instance, true)) {
                         $this->_updateInstances();
                         return $this->redirect(['action' => 'index']);
                     } else {
