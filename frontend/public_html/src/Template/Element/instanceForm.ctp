@@ -32,7 +32,7 @@
 <div class="row">
     <div class="small-12 medium-expand large-expand columns shrink">
         <?= $this->Form->control('autostart', ['type' => 'checkbox', 'label' => ['class' => 'required'],
-        'placeholder' => 'Instance name', 'class' => 'input radius']) ?>
+        'placeholder' => 'Instance name', 'class' => 'input radius', 'id' => 'instance-autostart']) ?>
     </div>
 </div>
 <hr>

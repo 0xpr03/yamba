@@ -61,6 +61,7 @@ function renderInstanceData() {
             $('#instance-id').val(instance.id);
             $('#instance-name').val(instance.name);
             $('#instance-type').val(instance.type).change();
+            $('#instance-autostart').prop('checked', instance.autostart);
             switch (instance.type) {
                 case 'teamspeak_instances':
                     let teamspeak = instance['teamspeak_instance'];

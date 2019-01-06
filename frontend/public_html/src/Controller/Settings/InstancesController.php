@@ -61,7 +61,7 @@ class InstancesController extends AppController
                     $instance = $instanceTable->newEntity([
                         'name' => $name,
                         'type' => $type,
-                        'autostart' => $autostart,
+                        'autostart' => $autostart == '0' ? false : true,
                         'teamspeak_instance' => [
                             'host' => $host,
                             'identity' => $identity,
@@ -106,14 +106,14 @@ class InstancesController extends AppController
                     $instance->set([
                         'name' => $name,
                         'type' => $type,
-                        'autostart' => $autostart,
+                        'autostart' => $autostart == '0' ? false : true,
                         'teamspeak_instance' => $instance->get('teamspeak_instance')->set([
                             'host' => $host,
                             'identity' => $identity,
                             'password' => $password
                         ])
                     ]);
-                    if ($instanceTable->save($instance, true)) {
+                    if ($instanceTable->save($instance)) {
                         $this->_updateInstances();
                         return $this->redirect(['action' => 'index']);
                     } else {
