@@ -63,6 +63,6 @@
 </div>
 <?= $this->Form->hidden('id', ['id' => 'instance-id', 'default' => '-1']); ?>
 <?= $this->Form->unlockField('id'); ?>
-<?= $this->Form->submit('Update instances', ['class' => 'button expanded radius']) ?>
+<?= $this->Form->submit($submitText, ['class' => 'button expanded radius']) ?>
 <?= $this->Form->end() ?>
 <script>changeType()</script>

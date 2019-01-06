@@ -72,6 +72,7 @@ class InstancesController extends AppController
                     return $this->response->withStatus(400);
             }
         }
+        $this->set('submitText', 'Add Instance');
         return null;
     }
 
@@ -116,6 +117,7 @@ class InstancesController extends AppController
                     return $this->response->withStatus(400);
             }
         }
+        $this->set('submitText', 'Update Instance');
         return null;
     }
 
