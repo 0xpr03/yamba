@@ -123,7 +123,7 @@ class MusicController extends AppController
             return $this->response->withStatus(405);
         }
         $name = $this->request->getData('name');
-        if (!isset($name) || mb_strlen($name) < 1) {
+        if (!isset($name) || mb_strlen($name) < 1 || mb_strlen($name) > 50) {
             return $this->response->withStatus(400);
         }
 
