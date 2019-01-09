@@ -31,28 +31,43 @@ function hiliteTableRow(playlist) {
     );
 }
 
-function getTitles(playlist) {
-    $.ajax({
-        method: 'get',
-        url: '/Music/getTitles/' + playlist,
-        success: function (response) {
-            fillSongTable(playlist, response);
-        },
-        error: function (response) {
-            flash('alert', 'Unable to fetch titles');
-        }
-    });
+function renderTitles(playlist) {
+    $('.titles-table-body').hide();
+
+    let titles = getPlaylistTitles(playlist);
+    if (titles.length > 0) {
+        titles.show();
+    } else {
+        $.ajax({
+            method: 'get',
+            url: '/Music/getTitles/' + playlist,
+            success: function (response) {
+                addTitleBody(playlist, response, true);
+            },
+            error: function (response) {
+                flash('alert', 'Unable to fetch titles');
+            }
+        });
+    }
     hiliteTableRow(playlist);
 }
 
-function fillSongTable(playlist, titles) {
-    let tableBody = $('#titles-table-body');
-    tableBody.attr('data-playlist-id', playlist);
+function getPlaylistTitles(playlist) {
+    return $('.titles-table-body[data-playlist-id="' + playlist + '"]');
+}
+
+function addTitleBody(playlist, titles, show) {
     titles.forEach((title) => {
         title.length = fancyTimeFormat(title.length);
     });
+    let titlesTable = $('#titles-table');
     $.get('mustache/titles.mst', function (template) {
-        tableBody.html(Mustache.render(template, {playlist: playlist, titles: titles}));
+        let playlistTitles = Mustache.render(template, {playlist: playlist, titles: titles});
+        if (show) {
+            titlesTable.append(playlistTitles);
+        } else {
+            getPlaylistTitles(playlist).replaceWith(playlistTitles);
+        }
     });
 }
 
@@ -89,9 +104,11 @@ function getPlaylists() {
 
 function fillPlaylistTable(playlists) {
     let tableBody = $('#playlist-table-body');
+    let currentPlaylist = $('#playlist-table > tbody > tr.black').attr('data-playlist-id');
+
     $.get('mustache/playlists.mst', function (template) {
         tableBody.html(Mustache.render(template, {playlists: playlists}));
-        hiliteTableRow($('#titles-table-body').attr('data-playlist-id'));
+        hiliteTableRow(currentPlaylist);
     });
 }
 

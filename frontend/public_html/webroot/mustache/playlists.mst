@@ -1,5 +1,5 @@
 {{#playlists}}
-<tr class="pointer" onclick="getTitles('{{id}}')" data-playlist-id="{{id}}">
+<tr class="pointer" onclick="renderTitles('{{id}}')" data-playlist-id="{{id}}">
     <td>
         <a href="#" onclick="$(this).closest('tr').hide(); event.stopPropagation(); deletePlaylist('{{id}}')">
             <i class="fi-trash red-trash"></i>

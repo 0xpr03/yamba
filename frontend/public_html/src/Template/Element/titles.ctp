@@ -17,7 +17,7 @@
 */
 ?>
 
-<table class="hover">
+<table id="titles-table" class="hover">
     <thead>
     <tr>
         <th>Name</th>
@@ -27,6 +27,4 @@
         <th></th>
     </tr>
     </thead>
-    <tbody id="titles-table-body">
-    </tbody>
 </table>
