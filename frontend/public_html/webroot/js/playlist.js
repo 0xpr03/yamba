@@ -32,7 +32,7 @@ function hiliteTableRow(playlist) {
 }
 
 function renderTitles(playlist) {
-    $('.titles-table-body').hide();
+    $('.playlist-titles').hide();
 
     let titles = getPlaylistTitles(playlist);
     if (titles.length > 0) {
@@ -53,7 +53,7 @@ function renderTitles(playlist) {
 }
 
 function getPlaylistTitles(playlist) {
-    return $('.titles-table-body[data-playlist-id="' + playlist + '"]');
+    return $('.playlist-titles[data-playlist-id="' + playlist + '"]');
 }
 
 function addTitleBody(playlist, titles, show) {
