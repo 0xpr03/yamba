@@ -32,7 +32,7 @@
             <?php if($this->request->getSession()->read('Auth.User')) { ?>
             <li>
                 <a href="#" class="header-font">Instances</a>
-                <ul class="menu" style="border-top: 0">
+                <ul class="menu">
                     <li class="divider"><a href="/settings/instances/updateInstance" class="header-font">Manage Instance</a></li>
                     <li class="divider"><a href="/settings/instances/addInstance" class="header-font">Add new Instance</a></li>
                     </li>
@@ -46,7 +46,7 @@
             <?php } ?>
             <li>
                 <a href="#" class="header-font">Account</a>
-                <ul class="menu" style="border-top: 0">
+                <ul class="menu">
                     <li class="divider"><a href="/settings/accounts" class="header-font">Account Settings</a></li>
                     <li>
                         <?= $this->Html->link(

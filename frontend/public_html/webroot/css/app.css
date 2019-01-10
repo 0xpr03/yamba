@@ -52,6 +52,7 @@ footer {
  */
 .menu, .top-bar {
     background: #2c3840 !important;
+    border-top: 0 !important;
 }
 
 .menu-text-top {
