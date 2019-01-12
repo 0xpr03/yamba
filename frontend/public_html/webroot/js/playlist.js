@@ -40,7 +40,7 @@ function renderTitles(playlist) {
     } else {
         $.ajax({
             method: 'get',
-            url: '/Music/getTitles/' + playlist,
+            url: (playlist === 'queue' ? 'Music/getQueueTitles/' + $('#instance-select').val() : '/Music/getTitles/' + playlist),
             success: function (response) {
                 addTitleBody(playlist, response, true);
             },
@@ -94,7 +94,7 @@ function getPlaylists() {
         method: 'get',
         url: '/Music/getPlaylists',
         success: function (response) {
-            fillPlaylistTable(response);
+            fillPlaylistTable(response, true);
         },
         error: function (response) {
             flash('alert', 'Unable to fetch playlists');
@@ -102,13 +102,24 @@ function getPlaylists() {
     });
 }
 
-function fillPlaylistTable(playlists) {
+function fillPlaylistTable(playlists, renderQueue) {
     let tableBody = $('#playlist-table-body');
     let currentPlaylist = $('#playlist-table > tbody > tr.black').attr('data-playlist-id');
 
-    $.get('mustache/playlists.mst', function (template) {
-        tableBody.html(Mustache.render(template, {playlists: playlists}));
-        hiliteTableRow(currentPlaylist);
+    $.get('/Music/getQueue/' + $('#instance-select').val(), function (queue) {
+        $.get('mustache/playlists.mst', function (template) {
+            tableBody.html(Mustache.render(template, {
+                playlists: playlists,
+                queue: {
+                    length: queue
+                }
+            }));
+            if (renderQueue) {
+                renderTitles('queue');
+            } else {
+                hiliteTableRow(currentPlaylist);
+            }
+        });
     });
 }
 
@@ -138,7 +149,10 @@ function deleteTitle(playlist, title) {
     $.ajax({
         method: 'get',
         url: '/Music/deleteTitle/' + playlist + '/' + title,
-        error: ajaxErrorFlash
+        error: function (response) {
+            ajaxErrorFlash(response);
+            $('tbody[data-playlist-id="' + playlist + '"] > tr[data-title-id="' + title + '"]').show();
+        }
     });
 }
 

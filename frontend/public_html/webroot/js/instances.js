@@ -36,6 +36,7 @@ function fillInstanceSelect(instances) {
     let instanceSelect = $('#instance-select');
     $.get('/mustache/instances_navbar.mst', function (template) {
         instanceSelect.html(Mustache.render(template, {instances: instances}));
+        getPlaylists();
     });
 }
 

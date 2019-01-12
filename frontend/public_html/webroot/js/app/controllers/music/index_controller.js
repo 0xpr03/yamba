@@ -18,7 +18,7 @@
 App.Controllers.MusicIndexController = Frontend.AppController.extend({
     startup: function () {
         App.Websocket.onEvent('playlistsUpdated', function (payload) {
-            fillPlaylistTable(JSON.parse(payload.json));
+            fillPlaylistTable(JSON.parse(payload.json), false);
         }.bind(this));
         App.Websocket.onEvent('titlesUpdated', function (payload) {
             addTitleBody(payload.playlist, JSON.parse(payload.json), false);
@@ -34,5 +34,4 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
     }
 });
 
-getPlaylists();
 renderInstances();

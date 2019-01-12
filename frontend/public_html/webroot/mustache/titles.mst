@@ -1,6 +1,6 @@
 <tbody class="playlist-titles" data-playlist-id="{{playlist}}">
 {{#titles}}
-<tr class="pointer" onclick="/*TODO play title*/">
+<tr class="pointer" onclick="/*TODO: play title*/" data-title-id="{{id}}">
     <td>{{name}}</td>
     <td>{{artist}}</td>
     <td>{{length}}</td>
