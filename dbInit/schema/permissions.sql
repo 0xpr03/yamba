@@ -17,7 +17,7 @@ CREATE TABLE `users_to_permissions` (
 CREATE TABLE `permission_groups` (
   `id` char(36) NOT NULL,
   `name` varchar(50) NOT NULL,
-  `instance_id` INT NOT NULL,
+  `instance_id` INT UNSIGNED NOT NULL,
   PRIMARY KEY (`id`),
   FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

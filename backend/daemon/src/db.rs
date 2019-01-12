@@ -186,7 +186,7 @@ pub fn add_previous_song_to_queue(
     queue_id: &QueueID,
 ) -> Fallible<()> {
     let result = pool.prep_exec(
-        "INSERT INTO `queues` (`instance_id`,`title_id`,`index`)
+        "INSERT INTO `queues` (`instance_id`,`title_id`,`position`)
     VALUES (?,?,?)",
         (**instance, id, queue_id),
     )?;
@@ -201,9 +201,9 @@ pub fn add_previous_song_to_queue(
     Ok(())
 }
 
-/// Remove song from queue by queue index
+/// Remove song from queue by queue position
 pub fn remove_from_queue(pool: &Pool, id: &QueueID) -> Fallible<()> {
-    let result = pool.prep_exec("DELETE FROM `queues` WHERE `index` = ?", (id,))?;
+    let result = pool.prep_exec("DELETE FROM `queues` WHERE `position` = ?", (id,))?;
     if result.affected_rows() != 1 {
         warn!(
             "Removing a song from queue affected {} entries!",
@@ -217,7 +217,7 @@ pub fn remove_from_queue(pool: &Pool, id: &QueueID) -> Fallible<()> {
 /// Get sond in queue
 pub fn get_next_in_queue(pool: &Pool, instance: &ID) -> Fallible<Option<(QueueID, SongMin)>> {
     let mut result = pool.prep_exec(
-        "SELECT MIN(`index`) FROM `queues` WHERE `instance_id` = ?",
+        "SELECT MIN(`position`) FROM `queues` WHERE `instance_id` = ?",
         (**instance,),
     )?;
 
@@ -323,7 +323,7 @@ pub fn get_track_by_url(url: &str, pool: &Pool) -> Fallible<Option<SongMin>> {
 pub fn get_track_by_queue_id(pool: &Pool, queue_id: &QueueID) -> Fallible<SongMin> {
     let mut result = pool.prep_exec(
         "SELECT `id`,`name`,`source`,`artist`,`length` FROM `titles` t
-    JOIN `queues` q ON q.title_id = t.id WHERE q.`index` = ?",
+    JOIN `queues` q ON q.title_id = t.id WHERE q.`position` = ?",
         (queue_id,),
     )?;
 
