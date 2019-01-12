@@ -186,7 +186,7 @@ class MusicController extends AppController
             ->leftJoinWith('TitlesToPlaylists')
             ->contain('AddTitlesJobs')
             ->group('Playlists.id')
-            ->orderDesc('created')->toList();
+            ->orderAsc('created')->toList();
         foreach ($res as $p) {
             $p->hasToken = (bool)$p->hasToken;
         }
