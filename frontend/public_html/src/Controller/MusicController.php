@@ -210,7 +210,7 @@ class MusicController extends AppController
     private function _queueTitlesJson($instance_id)
     {
         $titlesTable = TableRegistry::getTableLocator()->get('Titles');
-        return json_encode($titlesTable->find()->where(function(QueryExpression $exp, Query $q) use ($instance_id) {
+        return json_encode($titlesTable->find()->where(function (QueryExpression $exp, Query $q) use ($instance_id) {
             $queueTable = TableRegistry::getTableLocator()->get('Queues');
             return $exp->in('id', $queueTable->find()->select('title_id')->where(['instance_id' => $instance_id]));
         }));
