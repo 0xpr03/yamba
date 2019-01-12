@@ -19,8 +19,10 @@
 namespace App\Controller;
 
 use Cake\Core\Exception\Exception;
+use Cake\Database\Expression\QueryExpression;
 use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\Event\Event;
+use Cake\ORM\Query;
 use Cake\ORM\TableRegistry;
 use Websocket\Lib\Websocket;
 
@@ -199,6 +201,21 @@ class MusicController extends AppController
         return json_encode($titlesTable->find()->leftJoinWith('TitlesToPlaylists')->where(['TitlesToPlaylists.playlist_id' => $playlist_id]));
     }
 
+    private function _queueJson($instance_id)
+    {
+        $queueTable = TableRegistry::getTableLocator()->get('Queues');
+        return json_encode($queueTable->find()->where(['instance_id' => $instance_id])->count());
+    }
+
+    private function _queueTitlesJson($instance_id)
+    {
+        $titlesTable = TableRegistry::getTableLocator()->get('Titles');
+        return json_encode($titlesTable->find()->where(function(QueryExpression $exp, Query $q) use ($instance_id) {
+            $queueTable = TableRegistry::getTableLocator()->get('Queues');
+            return $exp->in('id', $queueTable->find()->select('title_id')->where(['instance_id' => $instance_id]));
+        }));
+    }
+
     public function getPlaylists()
     {
         return $this->response->withType('json')->withStringBody($this->_playlistsJson());
@@ -207,6 +224,16 @@ class MusicController extends AppController
     public function getTitles($playlist_id)
     {
         return $this->response->withType('json')->withStringBody($this->_titlesJson($playlist_id));
+    }
+
+    public function getQueue($instance_id)
+    {
+        return $this->response->withType('json')->withStringBody($this->_queueJson($instance_id));
+    }
+
+    public function getQueueTitles($instance_id)
+    {
+        return $this->response->withType('json')->withStringBody($this->_queueTitlesJson($instance_id));
     }
 
     private function _updatePlaylists()

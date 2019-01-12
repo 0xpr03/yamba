@@ -26,5 +26,6 @@ class TitlesTable extends Table
         $this->hasMany('TitlesToPlaylists', [
             'dependent' => true
         ]);
+        $this->hasMany('Queues');
     }
 }
