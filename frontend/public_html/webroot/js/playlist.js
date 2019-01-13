@@ -57,12 +57,17 @@ function getPlaylistTitles(playlist) {
 }
 
 function addTitleBody(playlist, titles, show) {
+    if (playlist === 'queue') {
+        titles = titles.map(function(entry) {
+            return entry.title;
+        })
+    }
     titles.forEach((title) => {
         title.length = fancyTimeFormat(title.length);
     });
     let titlesTable = $('#titles-table');
     $.get('mustache/titles.mst', function (template) {
-        let playlistTitles = Mustache.render(template, {playlist: playlist, titles: titles});
+        let playlistTitles = Mustache.render(template, {playlist: playlist, titles: titles, show: show ? "" : "display:none;"});
         if (show) {
             titlesTable.append(playlistTitles);
         } else {
@@ -148,7 +153,7 @@ function addPlaylist() {
 function deleteTitle(playlist, title) {
     $.ajax({
         method: 'get',
-        url: '/Music/deleteTitle/' + playlist + '/' + title,
+        url: '/Music/deleteTitle/' + playlist + '/' + title + '/' + $('#instance-select').val(),
         error: function (response) {
             ajaxErrorFlash(response);
             $('tbody[data-playlist-id="' + playlist + '"] > tr[data-title-id="' + title + '"]').show();

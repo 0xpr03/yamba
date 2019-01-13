@@ -37,25 +37,15 @@ class ApiComponent extends Component
     }
 
     /**
-     * @param String $playlist_id
+     * @param array $title_ids
      * @return Client\Response
      */
-    public function deleteTitles($playlist_id)
+    public function deleteTitles($title_ids)
     {
-        $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
         $http = new Client();
         return $http->post($this->backendAddress . '/delete/titles',
             json_encode([
-                'titles' => array_map(
-                    function ($title) {
-                        return $title->title_id;
-                    },
-                    $titlesToPlaylistTable->find('all', [
-                        'conditions' => [
-                            'playlist_id' => $playlist_id
-                        ]
-                    ])->select('title_id')->toArray()
-                )
+                'titles' => $title_ids
             ])
         );
     }

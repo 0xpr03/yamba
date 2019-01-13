@@ -203,17 +203,14 @@ class MusicController extends AppController
 
     private function _queueJson($instance_id)
     {
-        $queueTable = TableRegistry::getTableLocator()->get('Queues');
-        return json_encode($queueTable->find()->where(['instance_id' => $instance_id])->count());
+        $queuesTable = TableRegistry::getTableLocator()->get('Queues');
+        return json_encode($queuesTable->find()->where(['instance_id' => $instance_id])->count());
     }
 
     private function _queueTitlesJson($instance_id)
     {
-        $titlesTable = TableRegistry::getTableLocator()->get('Titles');
-        return json_encode($titlesTable->find()->where(function (QueryExpression $exp, Query $q) use ($instance_id) {
-            $queueTable = TableRegistry::getTableLocator()->get('Queues');
-            return $exp->in('id', $queueTable->find()->select('title_id')->where(['instance_id' => $instance_id]));
-        }));
+        $queuesTable = TableRegistry::getTableLocator()->get('Queues');
+        return json_encode($queuesTable->find()->contain('Titles')->where(['instance_id' => $instance_id])->orderAsc('position'));
     }
 
     public function getPlaylists()
@@ -246,6 +243,11 @@ class MusicController extends AppController
         Websocket::publishEvent('titlesUpdated', ['json' => $this->_titlesJson($playlist_id), 'playlist' => $playlist_id]);
     }
 
+    private function _updateQueue($instance_id)
+    {
+        Websocket::publishEvent('titlesUpdated', ['json' => $this->_queueTitlesJson($instance_id), 'playlist' => 'queue']);
+    }
+
     public function deletePlaylist()
     {
         $id = $this->request->getQuery('id');
@@ -256,33 +258,66 @@ class MusicController extends AppController
         $playlist = $playlistTable->get($id);
 
         $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
-        if ($titlesToPlaylistTable->find()->where(['playlist_id' => $id])->count()) {
+        $titles = $titlesToPlaylistTable->find()->select('title_id')->where(['playlist_id' => $id])->toArray();
+
+        $playlistTable->delete($playlist);
+        $titles = array_map(
+            function ($title) {
+                return $title->title_id;
+            },
+            array_filter(
+                $titles,
+                function ($title) {
+                    return !$this->titleAssociated($title->title_id);
+                }
+            )
+        );
+        if ($titles) {
             try {
-                $this->Api->deleteTitles($playlist->get('id'));
+                $this->Api->deleteTitles($titles);
             } catch (Exception $e) {
                 return $this->response->withStatus(500)->withStringBody('Unable to connect to backend');
             }
         }
 
-        $playlistTable->delete($playlist);
         $this->_updatePlaylists();
         return $this->response->withStatus(200);
     }
 
-    public function deleteTitle($playlist_id, $title_id)
+    public function deleteTitle($playlist_id, $title_id, $instance_id)
     {
+        $queuesTable = TableRegistry::getTableLocator()->get('Queues');
         $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
-        $titlesToPlaylistTable->delete($titlesToPlaylistTable->get([$title_id, $playlist_id]));
-        if (!$titlesToPlaylistTable->find()->where(['title_id' => $title_id])->count()) {
+
+        if ($playlist_id === 'queue') {
+            $queuesTable->delete($queuesTable->find()->where(['instance_id' => $instance_id, 'title_id' => $title_id])->firstOrFail());
+        } else {
+            $titlesToPlaylistTable->delete($titlesToPlaylistTable->find()->where(['playlist_id' => $playlist_id, 'title_id' => $title_id])->firstOrFail());
+        }
+        if (!$this->titleAssociated($title_id)) {
             try {
                 $this->Api->deleteTitle($title_id);
             } catch (Exception $e) {
                 return $this->response->withStatus(500)->withStringBody('Unable to connect to backend');
             }
         }
+
         $this->_updatePlaylists();
-        $this->_updateTitles($playlist_id);
+        if ($playlist_id === 'queue') {
+            $this->_updateQueue($instance_id);
+        } else {
+            $this->_updateTitles($playlist_id);
+        }
         return $this->response->withStatus(200);
+    }
+
+    private function titleAssociated($title_id)
+    {
+        $queuesTable = TableRegistry::getTableLocator()->get('Queues');
+        $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
+
+        return $titlesToPlaylistTable->find()->where(['title_id' => $title_id])->count() ||
+            $queuesTable->find()->where(['title_id' => $title_id])->count();
     }
 
     private function _flash($type = null, $message = null, $userID = null)

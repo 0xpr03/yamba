@@ -21,9 +21,10 @@ CREATE TABLE `playlists` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `titles_to_playlists` (
+  `position` INT UNSIGNED AUTO_INCREMENT NOT NULL,
   `title_id` CHAR(32) NOT NULL,
   `playlist_id` CHAR(36) NOT NULL,
-  PRIMARY KEY (`title_id`, `playlist_id`),
+  PRIMARY KEY (`position`),
   FOREIGN KEY (`title_id`) REFERENCES `titles`(`id`),
   FOREIGN KEY (`playlist_id`) REFERENCES `playlists`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
