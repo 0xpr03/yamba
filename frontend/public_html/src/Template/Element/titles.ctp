@@ -27,4 +27,26 @@
         <th></th>
     </tr>
     </thead>
+    <tbody data-playlist-id="queue"></tbody>
+    <script id="titles-table-body-template" type="x-tmpl-mustache">
+<tbody class="playlist-titles" data-playlist-id="{{playlist}}">
+{{#titles}}
+    <tr class="pointer" onclick="/*TODO: play title*/" data-title-id="{{id}}">
+        <td>{{name}}</td>
+        <td>{{artist}}</td>
+        <td>{{length}}</td>
+        <td class="title-button">
+           <a href="#" onclick="event.stopPropagation(); /*TODO configure title*/">
+                <i class="fi-list"></i>
+            </a>
+        </td>
+        <td class="title-button">
+           <a href="#" onclick="$(this).closest('tr').hide(); event.stopPropagation(); deleteTitle('{{playlist}}', '{{id}}')">
+               <span aria-hidden="true">&times;</span>
+           </a>
+        </td>
+    </tr>
+{{/titles}}
+</tbody>
+    </script>
 </table>

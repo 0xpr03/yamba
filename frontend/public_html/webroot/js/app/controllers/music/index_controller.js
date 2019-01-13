@@ -18,10 +18,14 @@
 App.Controllers.MusicIndexController = Frontend.AppController.extend({
     startup: function () {
         App.Websocket.onEvent('playlistsUpdated', function (payload) {
-            fillPlaylistTable(JSON.parse(payload.json), false);
+            renderPlaylists(JSON.parse(payload.json), $('#queue').attr('data-length'));
         }.bind(this));
         App.Websocket.onEvent('titlesUpdated', function (payload) {
-            addTitleBody(payload.playlist, JSON.parse(payload.json), false);
+            if (payload.playlist === 'queue') {
+                renderQueueTitles(JSON.parse(payload.json));
+            } else {
+                renderTitles(JSON.parse(payload.json), payload.playlist)
+            }
         }.bind(this));
         App.Websocket.onEvent('instancesUpdated', function (payload) {
             fillInstanceSelect(JSON.parse(payload.json));
@@ -34,4 +38,4 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
     }
 });
 
-renderInstances();
+initYamba();

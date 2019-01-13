@@ -40,8 +40,7 @@
             </li>
             <?php if($this->request->getParam('controller') === 'Music' || $this->request->getParam('controller') === 'Instances') { ?>
             <li>
-                <select id="instance-select" onchange="renderInstanceData()">
-                </select>
+                <?= $this->element('instanceSelect'); ?>
             </li>
             <?php } ?>
             <li>

@@ -24,7 +24,8 @@
             <button class="button expanded" data-open="add-playlist-modal"
                     style="margin-bottom:0;width: 100%; height: 100%"><?= __('New Playlist') ?></button>
             <div class="reveal small" id="add-playlist-modal" data-reveal>
-                <?= $this->Form->create(null, ['id' => 'add-playlist-form', 'url' => 'Music/addPlaylist', 'onsubmit' => 'event.preventDefault(); addPlaylist();']) ?>
+                <?= $this->Form->create(null, ['id' => 'add-playlist-form', 'url' => 'Music/addPlaylist',
+                'onsubmit' => 'event.preventDefault(); addPlaylist();']) ?>
                 <fieldset class="fieldset">
                     <legend><?= __('Create Playlist') ?></legend>
                     <div class="row">
@@ -47,7 +48,8 @@
                             </button>
                         </div>
                         <div class="columns shrink">
-                            <?= $this->Form->submit('Reset', ['type' => 'reset', 'class' => 'button warning hollow radius']); ?>
+                            <?= $this->Form->submit('Reset', ['type' => 'reset',
+                            'class' => 'button warning hollow radius']); ?>
                         </div>
                         <div class="columns">
                             <?= $this->Form->submit('Create Playlist', ['class' => 'button expanded radius']); ?>
@@ -61,4 +63,39 @@
     </thead>
     <tbody id="playlist-table-body">
     </tbody>
+    <script id="playlist-table-body-template" type="x-tmpl-mustache">
+<tr id="queue" class="pointer" onclick="selectPlaylist('queue')" data-playlist-id="queue" data-length="{{queue.length}}">
+    <td><i class="fi-music"></i></td>
+    <td>Queue</td>
+    <td>
+        <span class="badge badge-right">
+            {{queue.length}}
+        </span>
+    </td>
+</tr>
+{{#playlists}}
+<tr class="pointer" onclick="selectPlaylist('{{id}}')" data-playlist-id="{{id}}">
+    <td>
+        <a href="#" onclick="$(this).closest('tr').hide(); event.stopPropagation(); deletePlaylist('{{id}}')">
+            <i class="fi-trash red-trash"></i>
+        </a>
+    </td>
+    <td>{{name}}</td>
+    <td>
+        <span class="badge badge-right">
+            {{#hasToken}}
+                <i class="fi-refresh large"></i>
+            {{/hasToken}}
+            {{^hasToken}}
+                {{titles}}
+            {{/hasToken}}
+        </span>
+    </td>
+</tr>
+{{/playlists}}
+
+
+
+
+    </script>
 </table>
