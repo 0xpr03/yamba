@@ -33,6 +33,7 @@ function instanceAjax() {
 function selectInstance() {
     return instanceAjax().done(function (data) {
         renderInstanceData(data);
+        getPlaylists();
     });
 }
 

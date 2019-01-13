@@ -27,7 +27,7 @@
             <button class="button expanded" data-open="add-title-modal"
                     style="margin-bottom:0"><?= __('Add') ?></button>
             <div class="reveal small" id="add-title-modal" data-reveal>
-                <?= $this->Form->create(null, ['id' => 'add-title-form', 'url' => 'Music/addTitle/',
+                <?= $this->Form->create(null, ['id' => 'add-title-form', 'url' => 'Music/addTitle',
                 'onsubmit' => 'event.preventDefault(); addTitle();']) ?>
                 <fieldset class="fieldset">
                     <legend><?= __('Add title(s)') ?></legend>
