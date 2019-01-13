@@ -43,6 +43,14 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
 <div<?= $this->FrontendBridge->getControllerAttributes() ?>>
     <div class="main">
         <?= $this->Flash->render() ?>
+        <script id="flash-template" type="x-tmpl-mustache">
+<div id="flash-{{id}}" class="row callout {{type}}" data-closable>
+    <span>{{message}}</span>
+    <button class="close-button" aria-label="Dismiss alert" type="button" data-close>
+        <span aria-hidden="true">&times;</span>
+    </button>
+</div>
+        </script>
         <?= $this->fetch('content'); ?>
     </div>
 </div>

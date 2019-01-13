@@ -63,10 +63,14 @@ function fancyTimeFormat(time) {
 function flash(type, message) {
     if (message !== undefined) {
         let id = guid();
-        $.get('mustache/flashes.mst', function (template) {
-            let flash = Mustache.render(template, {id: id, type: type, message: message});
-            $('div.main').prepend(flash);
-        });
+        $('div.main').prepend(Mustache.render(
+            $('#flash-template').html(),
+            {
+                id: id,
+                type: type,
+                message: message
+            }
+        ));
         setTimeout(function () {
             $('#flash-' + id).hide()
         }, 5000);
