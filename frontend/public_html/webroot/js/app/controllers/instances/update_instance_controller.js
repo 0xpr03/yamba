@@ -19,6 +19,7 @@ App.Controllers.InstancesUpdateInstanceController = Frontend.AppController.exten
     startup: function () {
         App.Websocket.onEvent('instancesUpdated', function (payload) {
             renderInstances(JSON.parse(payload.json));
+            renderInstanceData(JSON.parse(payload.json));
         }.bind(this));
         App.Websocket.onEvent('flash', function (payload) {
             if (this.getVar('userID') === payload.userID) {
