@@ -15,10 +15,6 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-function initYamba() {
-    getInstances();
-}
-
 function hiliteTableRow(tbodySelector, playlist, attribute) {
     let tableRows = tbodySelector.find('tr');
     tableRows.each(function (index, item) {

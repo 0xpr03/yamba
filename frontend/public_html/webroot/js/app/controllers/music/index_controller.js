@@ -28,7 +28,7 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
             }
         }.bind(this));
         App.Websocket.onEvent('instancesUpdated', function (payload) {
-            fillInstanceSelect(JSON.parse(payload.json));
+            renderInstances(JSON.parse(payload.json));
         }.bind(this));
         App.Websocket.onEvent('flash', function (payload) {
             if (this.getVar('userID') === payload.userID) {
@@ -38,4 +38,6 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
     }
 });
 
-initYamba();
+getInstances().always(function () {
+    getPlaylists();
+});

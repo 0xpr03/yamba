@@ -16,7 +16,7 @@
  */
 
 function getInstances() {
-    $.ajax({
+    return $.ajax({
         url: '/settings/Instances/getInstances',
         success: function (data) {
             renderInstances(data);
@@ -24,8 +24,6 @@ function getInstances() {
         error: function (data) {
             flash('alert', 'Unable to get instances');
         },
-    }).always(function () {
-        getPlaylists();
     });
 }
 
@@ -34,6 +32,44 @@ function renderInstances(instances) {
         $('#instance-select-template').html(),
         {instances: instances}
     ));
+}
+
+function renderInstanceData(instances) {
+    let instance = instances.filter(function (instance) {
+        return instance.id === parseInt($('#instance-select option:selected').val());
+    })[0];
+    $('#instance-id').val(instance.id);
+    $('#instance-name').val(instance.name);
+    $('#instance-type').val(instance.type).change();
+    $('#instance-autostart').prop('checked', instance.autostart);
+    switch (instance.type) {
+        case 'teamspeak_instances':
+            let teamspeak = instance['teamspeak_instance'];
+            $('#teamspeak-host').val(teamspeak.host);
+            $('#teamspeak-identity').val(teamspeak.identity);
+            //$('#teamspeak-cid').val(teamspeak.cid).change();
+            if (teamspeak.hashed_password) {
+                $('#teamspeak-password').val(teamspeak.hashed_password);
+            }
+        default:
+            break;
+    }
+}
+
+function changeType() {
+    let teamspeakContainer = $('#teamspeak-instances');
+    let containers = [teamspeakContainer];
+    containers.forEach(function (container) {
+        container.hide();
+    });
+    switch ($('#instance-type').val()) {
+        case 'teamspeak_instances':
+            teamspeakContainer.show();
+            break;
+        default:
+            flash('warning', 'this instance type is not yet supported');
+            break;
+    }
 }
 
 function instanceSelect() {
