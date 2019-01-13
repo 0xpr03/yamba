@@ -18,7 +18,7 @@
 App.Controllers.InstancesUpdateInstanceController = Frontend.AppController.extend({
     startup: function () {
         App.Websocket.onEvent('instancesUpdated', function (payload) {
-            fillInstanceSelect(JSON.parse(payload.json));
+            renderInstances(JSON.parse(payload.json));
         }.bind(this));
         App.Websocket.onEvent('flash', function (payload) {
             if (this.getVar('userID') === payload.userID) {
@@ -28,4 +28,6 @@ App.Controllers.InstancesUpdateInstanceController = Frontend.AppController.exten
     }
 });
 
-renderInstancesWithData();
+getInstances().done(function (data) {
+    renderInstanceData(data);
+});
