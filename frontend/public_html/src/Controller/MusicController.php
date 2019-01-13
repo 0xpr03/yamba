@@ -120,6 +120,17 @@ class MusicController extends AppController
         }
     }
 
+    public function addTitle()
+    {
+        if (!$this->request->is('post')) {
+            return $this->response->withStatus(405);
+        }
+        $url = $this->request->getData('url');
+        if (!isset($url)) {
+            return $this->response->withStatus(400);
+        }
+    }
+
     public function addPlaylist()
     {
         if (!$this->request->is('post')) {

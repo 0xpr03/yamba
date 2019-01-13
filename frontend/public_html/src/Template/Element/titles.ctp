@@ -23,8 +23,44 @@
         <th>Name</th>
         <th>Artist</th>
         <th>Length</th>
-        <th></th>
-        <th></th>
+        <th colspan="2" style="padding: 0">
+            <button class="button expanded" data-open="add-title-modal"
+                    style="margin-bottom:0"><?= __('Add') ?></button>
+            <div class="reveal small" id="add-title-modal" data-reveal>
+                <?= $this->Form->create(null, ['id' => 'add-title-form', 'url' => 'Music/addTitle/',
+                'onsubmit' => 'event.preventDefault(); addTitle();']) ?>
+                <fieldset class="fieldset">
+                    <legend><?= __('Create Playlist') ?></legend>
+                    <div class="row">
+                        <div class="columns">
+                            <?= $this->Form->control('url', ['label' => ['class' => 'required', 'text' => 'Url'],
+                            'id' => 'title-url', 'class' => 'input radius', 'required',
+                            'placeholder' => 'URL to download title (e.g. youtube video link)']) ?>
+                        </div>
+                    </div>
+                    <?= $this->Form->hidden('playlist-id', ['id' => 'playlist-id', 'default' => '-1']); ?>
+                    <?= $this->Form->hidden('instance-id', ['id' => 'instance-id', 'default' => '-1']); ?>
+                    <?= $this->Form->unlockField('playlist-id'); ?>
+                    <?= $this->Form->unlockField('instance-id'); ?>
+                    <div class="row">
+                        <div class="columns shrink">
+                            <button id="close-add-title-modal" class="button hollow alert radius"
+                                    data-close aria-label="Close modal" type="button">
+                                <span aria-hidden="true">Close</span>
+                            </button>
+                        </div>
+                        <div class="columns shrink">
+                            <?= $this->Form->submit('Reset', ['type' => 'reset',
+                            'class' => 'button warning hollow radius']); ?>
+                        </div>
+                        <div class="columns">
+                            <?= $this->Form->submit('Add Title', ['class' => 'button expanded radius']); ?>
+                        </div>
+                    </div>
+                </fieldset>
+                <?= $this->Form->end() ?>
+            </div>
+        </th>
     </tr>
     </thead>
     <tbody data-playlist-id="queue"></tbody>
