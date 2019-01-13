@@ -69,7 +69,6 @@
     </div>
     <div class="columns">
         <?= $this->Form->submit($submitText, ['class' => 'button expanded radius']) ?>
-
     </div>
 </div>
 <?= $this->Form->end() ?>
