@@ -33,7 +33,10 @@ function getQueueTitles() {
     $.ajax({
         url: 'Music/getQueueTitles/' + instanceSelect().val(),
         success: function (data) {
-            renderQueueTitles(data);
+            titles = data.map(function (entry) {
+                return entry.title;
+            });
+            renderTitles(titles, 'queue');
         },
         error: function (data) {
             flash('alert', 'Unable to fetch queue titles');
@@ -61,19 +64,6 @@ function renderPlaylists(playlists, queue) {
     }
 }
 
-function renderQueueTitles(titles) {
-    titles = titles.map(function (entry) {
-        return entry.title;
-    });
-    $('#titles-table > tbody[data-playlist-id="queue"]').replaceWith(Mustache.render(
-        $('#titles-table-body-template').html(),
-        {
-            titles: mapLengthFancy(titles),
-            playlist: 'queue'
-        }
-    ));
-}
-
 function renderTitles(titles, playlist) {
     $(`#titles-table > tbody[data-playlist-id="${playlist}"]`).replaceWith(Mustache.render(
         $('#titles-table-body-template').html(),
@@ -82,6 +72,7 @@ function renderTitles(titles, playlist) {
             playlist: playlist
         }
     ));
+    $('#playlist-id').val(playlist);
 }
 
 function selectPlaylist(playlist) {
@@ -107,6 +98,30 @@ function selectPlaylist(playlist) {
         });
     }
     hiliteTableRow($('#playlist-table-body'), playlist, 'data-playlist-id');
+    $('#playlist-id').val(playlist);
+}
+
+function addTitle() {
+    let currentPlaylist = selectedTrAttr($('#playlist-table-body'), 'data-playlist-id');
+    let form = $('#add-title-form');
+    let formData = form.serializeArray().reduce(function (obj, item) {
+        obj[item.name] = item.value;
+        return obj;
+    }, {});
+    $.ajax({
+        method: 'post',
+        url: form.attr('action'),
+        beforeSend: function (xhr) {
+            xhr.setRequestHeader('X-CSRF-Token', $('[name="_csrfToken"]').val());
+        },
+        data: formData,
+        success: function (message, status, jqXHR) {
+            ajaxSuccessFlash(message, jqXHR.status);
+            form.find('input[type=reset]').click();
+        },
+        error: ajaxErrorFlash
+    });
+    $('#close-add-title-modal').click();
 }
 
 function addPlaylist() {

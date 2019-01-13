@@ -17,7 +17,7 @@
 */
 ?>
 
-<select id="instance-select" onchange="renderInstanceData()" title="Select Instance">
+<select id="instance-select" onchange="selectInstance()" title="Select Instance">
 </select>
 <script id="instance-select-template" type="x-tmpl-mustache">
 {{#instances}}

@@ -16,14 +16,23 @@
  */
 
 function getInstances() {
+    return instanceAjax().done(function (data) {
+        renderInstances(data);
+    });
+}
+
+function instanceAjax() {
     return $.ajax({
         url: '/settings/Instances/getInstances',
-        success: function (data) {
-            renderInstances(data);
-        },
         error: function (data) {
             flash('alert', 'Unable to get instances');
         },
+    });
+}
+
+function selectInstance() {
+    return instanceAjax().done(function (data) {
+        renderInstanceData(data);
     });
 }
 

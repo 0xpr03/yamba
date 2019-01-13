@@ -22,13 +22,14 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
         }.bind(this));
         App.Websocket.onEvent('titlesUpdated', function (payload) {
             if (payload.playlist === 'queue') {
-                renderQueueTitles(JSON.parse(payload.json));
+                payload.json = payload.json.map(function (entry) {
+                    return entry.title;
+                });
                 let queue = $('#queue');
                 queue.attr('data-length', payload.count);
                 queue.find("span").text(payload.count);
-            } else {
-                renderTitles(JSON.parse(payload.json), payload.playlist)
             }
+            renderTitles(JSON.parse(payload.json), payload.playlist)
         }.bind(this));
         App.Websocket.onEvent('instancesUpdated', function (payload) {
             renderInstances(JSON.parse(payload.json));
@@ -41,6 +42,7 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
     }
 });
 
-getInstances().always(function () {
+getInstances().done(function (data) {
     getPlaylists();
+    renderInstanceData(data);
 });
