@@ -90,9 +90,10 @@ class MusicController extends AppController
                 $incompleteTitles = false;
                 $attemptedTitleCount = 0;
                 foreach ($title_ids as $title_id) {
-                    $titlesToPlaylist = $titlesToPlaylistTable->newEntity();
-                    $titlesToPlaylist->set('title_id', $title_id);
-                    $titlesToPlaylist->set('playlist_id', $playlistID);
+                    $titlesToPlaylist = $titlesToPlaylistTable->newEntity([
+                        'title_id' => $title_id,
+                        'playlist_id' => $playlistID
+                    ]);
                     $attemptedTitleCount++;
                     if (!$titlesToPlaylistTable->save($titlesToPlaylist)) {
                         $this->log("Error saving titles_to_playlists");
