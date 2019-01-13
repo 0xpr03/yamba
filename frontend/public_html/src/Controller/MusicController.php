@@ -246,7 +246,7 @@ class MusicController extends AppController
 
     private function _updateQueue($instance_id)
     {
-        Websocket::publishEvent('titlesUpdated', ['json' => $this->_queueTitlesJson($instance_id), 'playlist' => 'queue']);
+        Websocket::publishEvent('titlesUpdated', ['json' => $this->_queueTitlesJson($instance_id), 'playlist' => 'queue', 'count' => $this->_queueJson($instance_id)]);
     }
 
     public function deletePlaylist()

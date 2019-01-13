@@ -23,6 +23,9 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
         App.Websocket.onEvent('titlesUpdated', function (payload) {
             if (payload.playlist === 'queue') {
                 renderQueueTitles(JSON.parse(payload.json));
+                let queue = $('#queue');
+                queue.attr('data-length', payload.count);
+                queue.find("span").text(payload.count);
             } else {
                 renderTitles(JSON.parse(payload.json), payload.playlist)
             }
