@@ -142,6 +142,7 @@ function deleteTitle(playlist, title) {
 }
 
 function deletePlaylist(playlist) {
+    $(`tbody[data-playlist-id="${playlist}"]`).hide();
     $.ajax({
         url: '/Music/deletePlaylist',
         data: {'id': playlist},
