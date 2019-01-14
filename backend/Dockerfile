@@ -45,9 +45,6 @@ RUN apt-get update -q && apt-get install -qqy \
 # copy entrypoint
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
-
-# build dependencies
-RUN ~/.cargo/bin/cargo install cargo-build-deps
     
 # copy daemon
 COPY ./daemon/resources /opt/yamba/daemon/resources
@@ -55,15 +52,22 @@ COPY ./daemon/src /opt/yamba/daemon/src
 COPY ./daemon/conf /opt/yamba/daemon/conf
 COPY ./daemon/default_log.yml /opt/yamba/daemon/default_log.yml
 COPY ./daemon/Cargo.toml /opt/yamba/daemon/Cargo.toml
-WORKDIR /opt/yamba/daemon
-RUN ~/.cargo/bin/cargo build-deps --release
-RUN ~/.cargo/bin/cargo build
 
 # copy ts3plugin
 COPY ./ts3plugin/src /opt/yamba/ts3plugin/src
 COPY ./ts3plugin/Cargo.toml /opt/yamba/ts3plugin/Cargo.toml
+
+# build dependencies
+RUN ~/.cargo/bin/cargo install cargo-build-deps
+WORKDIR /opt/yamba/daemon
+RUN ~/.cargo/bin/cargo build-deps --release
 WORKDIR /opt/yamba/ts3plugin
 RUN ~/.cargo/bin/cargo build-deps --release
+
+# build projects
+WORKDIR /opt/yamba/daemon
+RUN ~/.cargo/bin/cargo build
+WORKDIR /opt/yamba/ts3plugin
 RUN ~/.cargo/bin/cargo build
 
 WORKDIR /opt/yamba/daemon/target/debug
