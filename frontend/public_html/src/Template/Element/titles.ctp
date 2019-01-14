@@ -30,7 +30,7 @@
                 <?= $this->Form->create(null, ['id' => 'add-title-form', 'url' => 'Music/addTitle/',
                 'onsubmit' => 'event.preventDefault(); addTitle();']) ?>
                 <fieldset class="fieldset">
-                    <legend><?= __('Create Playlist') ?></legend>
+                    <legend><?= __('Add title(s)') ?></legend>
                     <div class="row">
                         <div class="columns">
                             <?= $this->Form->control('url', ['label' => ['class' => 'required', 'text' => 'Url'],
