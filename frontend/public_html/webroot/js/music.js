@@ -37,6 +37,7 @@ function getQueueTitles() {
                 return entry.title;
             });
             renderTitles(titles, 'queue');
+            $('#playlist-id').val('queue');
         },
         error: function (data) {
             flash('alert', 'Unable to fetch queue titles');
@@ -72,7 +73,6 @@ function renderTitles(titles, playlist) {
             playlist: playlist
         }
     ));
-    $('#playlist-id').val(playlist);
 }
 
 function selectPlaylist(playlist) {
