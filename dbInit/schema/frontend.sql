@@ -18,9 +18,11 @@ CREATE TABLE `users_not_confirmed` (
 
 CREATE TABLE `add_titles_jobs` (
   `backend_token` INT UNSIGNED NOT NULL,
-  `playlist_id` CHAR(36) NOT NULL,
+  `playlist_id` CHAR(36),
+  `instance_id` INT UNSIGNED,
   `user_id` CHAR(36) NOT NULL,
   PRIMARY KEY (`backend_token`),
   FOREIGN KEY (`playlist_id`) REFERENCES `playlists`(`id`),
+  FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
