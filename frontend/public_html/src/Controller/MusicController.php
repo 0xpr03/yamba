@@ -87,14 +87,30 @@ class MusicController extends AppController
                     $queuesTable = TableRegistry::getTableLocator()->get('Queues');
                     $instance_id = $addTitle->get('instance_id');
 
-                    if (!$queuesTable->save($queuesTable->newEntity([
-                        'instance_id' => $instance_id,
-                        'title_id' => $title_ids[0]
-                    ]))) {
-                        $this->_flash('alert', 'Could not save title to playlist');
-                    } else {
-                        $this->_flash('success', 'Successfully loaded title into playlist');
+                    $incompleteTitles = false;
+                    $attemptedTitleCount = 0;
+                    foreach ($title_ids as $title_id) {
+                        $titlesToPlaylist = $queuesTable->newEntity([
+                            'instance_id' => $instance_id,
+                            'title_id' => $title_id
+                        ]);
+                        $attemptedTitleCount++;
+                        if (!$queuesTable->save($titlesToPlaylist)) {
+                            $this->log("Error saving titles_to_playlists");
+                            $incompleteTitles = true;
+                        }
                     }
+
+                    $titleCount = $queuesTable->find('all', ['conditions' => ['instance_id' => $instance_id]])->count();
+                    if ($incompleteTitles) {
+                        $type = 'warning';
+                        $message = $titleCount . ' out of ' . $attemptedTitleCount . 'have successfully been added to "queue"';
+                    } else {
+                        $type = 'success';
+                        $message = $titleCount . ' titles have been successfully loaded into "queue"';
+                    }
+
+                    $this->_flash($type, $message, $userID);
                     $this->_updateQueue($instance_id);
                     return $this->response->withStatus(200);
                 } else {
