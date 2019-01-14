@@ -22,9 +22,11 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
         }.bind(this));
         App.Websocket.onEvent('titlesUpdated', function (payload) {
             if (payload.playlist === 'queue') {
-                payload.json = payload.json.map(function (entry) {
-                    return entry.title;
-                });
+                payload.json = JSON.stringify(
+                    JSON.parse(payload.json).map(function (entry) {
+                        return entry.title;
+                    })
+                );
                 let queue = $('#queue');
                 queue.attr('data-length', payload.count);
                 queue.find("span").text(payload.count);
