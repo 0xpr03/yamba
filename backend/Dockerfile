@@ -1,4 +1,4 @@
-FROM ubuntu:18.10
+FROM ubuntu:18.10 as toolchain
 
 LABEL maintainers="Aron Heinecke <Ox0p54r36@t-online.de>, \
                    Oliver Habersetzer <oliver.habersetzer@gmail.com>, \
@@ -42,38 +42,44 @@ RUN apt-get update -q && apt-get install -qqy \
     # install rust
     && curl -sf -L https://static.rust-lang.org/rustup.sh | sh -s -- -y
 
+FROM toolchain as dependencies
+
+# create dummy projects
+WORKDIR /opt/yamba
+RUN USER=root ~/.cargo/bin/cargo new --lib --vcs none ts3plugin
+RUN USER=root ~/.cargo/bin/cargo new --bin daemon
+
+# build daemon dependencies
+WORKDIR /opt/yamba/daemon
+COPY ./daemon/Cargo.toml ./daemon/Cargo.lock ./
+RUN ~/.cargo/bin/cargo build --release && rm ./src/*.rs ./target/release/deps/yamba_backend*
+
+# build ts3plugin dependencies
+WORKDIR /opt/yamba/ts3plugin
+COPY ./ts3plugin/Cargo.toml ./ts3plugin/Cargo.lock ./
+RUN ~/.cargo/bin/cargo build --release && rm ./src/*.rs ./target/release/deps/ts3plugin*
+
+FROM dependencies as application
+
+# build ts3plugin
+WORKDIR /opt/yamba/ts3plugin
+COPY ./ts3plugin/ ./
+RUN ~/.cargo/bin/cargo build
+
+# build daemon
+WORKDIR /opt/yamba/daemon
+COPY ./daemon/ ./
+RUN ~/.cargo/bin/cargo build
+
+WORKDIR /opt/yamba
+
 # copy entrypoint
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
-    
-# copy daemon
-COPY ./daemon/resources /opt/yamba/daemon/resources
-COPY ./daemon/src /opt/yamba/daemon/src
-COPY ./daemon/conf /opt/yamba/daemon/conf
-COPY ./daemon/default_log.yml /opt/yamba/daemon/default_log.yml
-COPY ./daemon/Cargo.toml /opt/yamba/daemon/Cargo.toml
 
-# copy ts3plugin
-COPY ./ts3plugin/src /opt/yamba/ts3plugin/src
-COPY ./ts3plugin/Cargo.toml /opt/yamba/ts3plugin/Cargo.toml
-
-# build dependencies
-RUN ~/.cargo/bin/cargo install cargo-build-deps
-WORKDIR /opt/yamba/daemon
-RUN ~/.cargo/bin/cargo build-deps --release
-WORKDIR /opt/yamba/ts3plugin
-RUN ~/.cargo/bin/cargo build-deps --release
-
-# build projects
-WORKDIR /opt/yamba/daemon
-RUN ~/.cargo/bin/cargo build
-WORKDIR /opt/yamba/ts3plugin
-RUN ~/.cargo/bin/cargo build
-
-WORKDIR /opt/yamba/daemon/target/debug
 # fixup: python3 -> python softlink
 RUN ln -s $(which python3) /usr/local/bin/python
 
 ENTRYPOINT ["/entrypoint.sh"]
 #CMD ["/opt/yamba/daemon/target/debug/yamba-backend"]
-CMD ["/opt/yamba/daemon/target/debug/yamba-backend", "test-ts","-h","ek.proctet.net","--cid","5368","--clear-instances"]
+CMD ["daemon/target/debug/yamba-backend", "test-ts","-h","ek.proctet.net","--cid","5368","--clear-instances"]
