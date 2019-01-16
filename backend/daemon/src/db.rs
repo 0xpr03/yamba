@@ -21,16 +21,15 @@ use metrohash::MetroHash128;
 use mysql::error::Error as MySqlError;
 use mysql::{from_row_opt, Opts, OptsBuilder, Pool, Row};
 
-use ytdl::Track;
-
 use std::hash::Hash;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 use std::vec::Vec;
 
-use instance::ID;
+use instance::{SongCache, ID};
 use models::*;
+use ytdl::Track;
 use SETTINGS;
 
 const TS_TYPE: &'static str = "teamspeak_instances";
@@ -261,20 +260,34 @@ pub fn insert_track(mut track: Track, pool: &Pool) -> Fallible<SongMin> {
     })
 }
 
-/// Save a set of tracks into the DB and return their IDs
-pub fn insert_tracks(tracks: &[Track], pool: &Pool) -> Fallible<Vec<String>> {
+/// Save a set of tracks into the DB and return their SongMin representation
+/// Also upserts cache entries due to loss of their format in SongMin,
+/// if cache is set
+pub fn insert_tracks(
+    cache: Option<SongCache>,
+    tracks: Vec<Track>,
+    pool: &Pool,
+) -> Fallible<Vec<SongMin>> {
     let mut transaction = pool.start_transaction(false, None, None)?;
 
     let ids = tracks
-        .iter()
-        .map(|track| {
-            let id = calculate_id(track);
+        .into_iter()
+        .map(|mut track| {
+            let id = calculate_id(&track);
+
+            if let Some(cache) = cache.as_ref() {
+                match track.best_audio_format() {
+                    Some(v) => cache.upsert(id.clone(), v.url.clone()),
+                    None => warn!("No audio track for {}", id),
+                }
+            }
+
             transaction.prep_exec(
                 "INSERT INTO `titles` 
-            (`id`,`name`,`source`,`downloaded`, `artist`, `length`) 
-            VALUES (?,?,?,?,?,?)
-            ON DUPLICATE KEY
-            UPDATE name=VALUES(name), length=VALUES(length)",
+                (`id`,`name`,`source`,`downloaded`, `artist`, `length`) 
+                VALUES (?,?,?,?,?,?)
+                ON DUPLICATE KEY
+                UPDATE name=VALUES(name), length=VALUES(length)",
                 (
                     &id,
                     &track.title,
@@ -284,9 +297,15 @@ pub fn insert_tracks(tracks: &[Track], pool: &Pool) -> Fallible<Vec<String>> {
                     track.duration,
                 ),
             )?;
-            Ok(id)
+            Ok(SongMin {
+                artist: track.take_artist(),
+                length: track.duration_as_u32(),
+                id: id,
+                source: track.webpage_url,
+                name: track.title,
+            })
         })
-        .collect::<Result<Vec<String>, MySqlError>>()?;
+        .collect::<Result<Vec<_>, MySqlError>>()?;
 
     transaction.commit()?;
 

@@ -56,6 +56,8 @@ macro_rules! enum_number {
     }
 }
 
+pub type RequestID = u32;
+
 //#[derive(Clone, Eq, PartialEq, Copy, Debug, Serialize)]
 #[allow(non_camel_case_types)]
 #[repr(i32)]
@@ -79,7 +81,7 @@ pub struct NewPlaylist {
 /// Playlist API callback structure
 #[derive(Debug, Serialize)]
 pub struct PlaylistAnswer {
-    pub request_id: u32,
+    pub request_id: RequestID,
     pub song_ids: Vec<String>,
     pub error_code: CallbackErrorType,
 }
@@ -87,7 +89,7 @@ pub struct PlaylistAnswer {
 /// Used for returning errors on failure callbacks
 #[derive(Debug, Serialize)]
 pub struct CallbackError {
-    pub request_id: u32,
+    pub request_id: RequestID,
     pub message: String,
     pub error_code: CallbackErrorType,
 }
@@ -172,7 +174,7 @@ where
 fn new_playlist(
     playlist: NewPlaylist,
     response: &mut Response<Body>,
-    request_id: u32,
+    request_id: RequestID,
     mut channel: APIChannel,
 ) -> Fallible<()> {
     info!("URL: {}", playlist.url);
