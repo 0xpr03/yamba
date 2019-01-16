@@ -104,7 +104,7 @@ where
         self.map.insert(
             key,
             CacheEntry {
-                value: val.clone(),
+                value: val,
                 time: Instant::now(),
             },
         );
