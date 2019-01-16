@@ -31,6 +31,7 @@ use models::{InstanceStorage, QueueID, SongMin};
 use playback::Player;
 use ts::TSInstance;
 use ytdl::YtDL;
+use ytdl_worker::YTSender;
 
 /// module containing a single instance
 
@@ -70,6 +71,7 @@ pub struct Instance {
     pub ytdl: Arc<YtDL>,
     pub current_song: CURRENT_SONG,
     pub cache: SongCache,
+    pub ytdl_tx: YTSender,
 }
 
 impl Drop for Instance {

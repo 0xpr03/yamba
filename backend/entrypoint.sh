@@ -1,9 +1,8 @@
 #!/bin/sh
 set -e
 
-cd $HOME
-rm -rf .pulse/
-mkdir .pulse
+rm -rf $HOME/.pulse/
+mkdir $HOME/.pulse
 
 pulseaudio --kill || true
 pulseaudio --exit-idle-time=-1 &

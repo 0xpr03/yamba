@@ -31,29 +31,30 @@
         <ul class="dropdown menu" data-dropdown-menu>
             <?php if($this->request->getSession()->read('Auth.User')) { ?>
             <li>
-                <a href="#" class="header-font">Settings</a>
-                <ul class="menu" style="border-top: 0">
-                    <li><a href="/settings/accounts" class="header-font">Account Settings</a></li>
-                    <li>
-                        <a href="/settings/instances" class="header-font">Instances</a>
-                        <ul class="menu" style="border-right: 0">
-                            <li><a href="/settings/instances/updateInstance" class="header-font">Manage Instance</a></li>
-                            <li><a href="/settings/instances/addInstance" class="header-font">Add new Instance</a></li>
-                        </ul>
+                <a href="#" class="header-font">Instances</a>
+                <ul class="menu">
+                    <li class="divider"><a href="/settings/instances/updateInstance" class="header-font">Manage Instance</a></li>
+                    <li class="divider"><a href="/settings/instances/addInstance" class="header-font">Add new Instance</a></li>
                     </li>
                 </ul>
             </li>
             <?php if($this->request->getParam('controller') === 'Music' || $this->request->getParam('controller') === 'Instances') { ?>
             <li>
-                <select id="instance-select" onchange="renderInstanceData()">
-                </select>
+                <?= $this->element('instanceSelect'); ?>
             </li>
             <?php } ?>
-            <li><?= $this->Html->link(
-                'Logout',
-                ['prefix' => false, 'controller' => 'Users', 'action' => 'logout'],
-                ['class' => 'header-font', 'title' => 'Logout']);
-                ?>
+            <li>
+                <a href="#" class="header-font">Account</a>
+                <ul class="menu">
+                    <li class="divider"><a href="/settings/accounts" class="header-font">Account Settings</a></li>
+                    <li>
+                        <?= $this->Html->link(
+                        'Logout',
+                        ['prefix' => false, 'controller' => 'Users', 'action' => 'logout'],
+                        ['class' => 'header-font', 'title' => 'Logout']);
+                        ?>
+                    </li>
+                </ul>
             </li>
             <?php } ?>
         </ul>

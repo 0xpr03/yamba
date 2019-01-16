@@ -18,16 +18,23 @@
 App.Controllers.MusicIndexController = Frontend.AppController.extend({
     startup: function () {
         App.Websocket.onEvent('playlistsUpdated', function (payload) {
-            fillPlaylistTable(JSON.parse(payload.json));
-            getTitles($('#titles-table-body').attr('data-playlist-id'));
+            renderPlaylists(JSON.parse(payload.json), $('#queue').attr('data-length'));
         }.bind(this));
         App.Websocket.onEvent('titlesUpdated', function (payload) {
-            if ($('#titles-table-body').attr('data-playlist-id') === payload.playlist) {
-                fillSongTable(payload.playlist, JSON.parse(payload.json));
+            if (payload.playlist === 'queue') {
+                payload.json = JSON.stringify(
+                    JSON.parse(payload.json).map(function (entry) {
+                        return entry.title;
+                    })
+                );
+                let queue = $('#queue');
+                queue.attr('data-length', payload.count);
+                queue.find("span").text(payload.count);
             }
+            renderTitles(JSON.parse(payload.json), payload.playlist)
         }.bind(this));
         App.Websocket.onEvent('instancesUpdated', function (payload) {
-            fillInstanceSelect(JSON.parse(payload.json));
+            renderInstances(JSON.parse(payload.json));
         }.bind(this));
         App.Websocket.onEvent('flash', function (payload) {
             if (this.getVar('userID') === payload.userID) {
@@ -37,5 +44,7 @@ App.Controllers.MusicIndexController = Frontend.AppController.extend({
     }
 });
 
-getPlaylists();
-renderInstances();
+getInstances().done(function (data) {
+    getPlaylists();
+    renderInstanceData(data);
+});

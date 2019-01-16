@@ -27,6 +27,7 @@ pub type QueueID = u32;
 pub struct Song {
     pub id: SongID,
     pub name: String,
+    /// URL (not youtube-dl Format URL)
     pub source: String,
     pub artist: Option<String>,
     pub length: Option<u32>,
@@ -53,6 +54,7 @@ impl Song {
 pub struct SongMin {
     pub id: SongID,
     pub name: String,
+    /// URL (not youtube-dl Format URL)
     pub source: String,
     pub artist: Option<String>,
     pub length: Option<u32>,

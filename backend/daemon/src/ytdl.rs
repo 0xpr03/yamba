@@ -121,9 +121,13 @@ impl Track {
                 } else {
                     return Some(mixed_track);
                 }
+            } else {
+                track_mixed
             }
+        } else {
+            trace!("Using fallback track..");
+            self.formats.get(0)
         }
-        track_mixed
     }
 
     /// Returns bests audio format with video

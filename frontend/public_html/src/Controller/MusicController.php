@@ -19,8 +19,10 @@
 namespace App\Controller;
 
 use Cake\Core\Exception\Exception;
+use Cake\Database\Expression\QueryExpression;
 use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\Event\Event;
+use Cake\ORM\Query;
 use Cake\ORM\TableRegistry;
 use Websocket\Lib\Websocket;
 
@@ -79,42 +81,122 @@ class MusicController extends AppController
 
         switch ($code) {
             case 0:
-                $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
-                $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
-
                 $playlistID = $addTitle->get('playlist_id');
-                $playlistName = $playlistTable->find('all', ['conditions' => ['id' => $playlistID]])->select('name')->first()->get('name');
+                if (!isset($playlistID)) {
+                    //Queue
+                    $queuesTable = TableRegistry::getTableLocator()->get('Queues');
+                    $instance_id = $addTitle->get('instance_id');
 
-                $incompleteTitles = false;
-                $attemptedTitleCount = 0;
-                foreach ($title_ids as $title_id) {
-                    $titlesToPlaylist = $titlesToPlaylistTable->newEntity();
-                    $titlesToPlaylist->set('title_id', $title_id);
-                    $titlesToPlaylist->set('playlist_id', $playlistID);
-                    $attemptedTitleCount++;
-                    if (!$titlesToPlaylistTable->save($titlesToPlaylist)) {
-                        $this->log("Error saving titles_to_playlists");
-                        $incompleteTitles = true;
+                    $incompleteTitles = false;
+                    $attemptedTitleCount = 0;
+                    foreach ($title_ids as $title_id) {
+                        $titlesToPlaylist = $queuesTable->newEntity([
+                            'instance_id' => $instance_id,
+                            'title_id' => $title_id
+                        ]);
+                        $attemptedTitleCount++;
+                        if (!$queuesTable->save($titlesToPlaylist)) {
+                            $this->log("Error saving titles_to_playlists");
+                            $incompleteTitles = true;
+                        }
                     }
-                }
 
-                $titleCount = $titlesToPlaylistTable->find('all', ['conditions' => ['playlist_id' => $playlistID]])->count();
-                if ($incompleteTitles) {
-                    $type = 'warning';
-                    $message = $titleCount . ' out of ' . $attemptedTitleCount . 'have successfully been added to "' . $playlistName . '"';
+                    $titleCount = $queuesTable->find('all', ['conditions' => ['instance_id' => $instance_id]])->count();
+                    if ($incompleteTitles) {
+                        $type = 'warning';
+                        $message = $titleCount . ' out of ' . $attemptedTitleCount . 'have successfully been added to "queue"';
+                    } else {
+                        $type = 'success';
+                        $message = $titleCount . ' titles have been successfully loaded into "queue"';
+                    }
+
+                    $this->_flash($type, $message, $userID);
+                    $this->_updateQueue($instance_id);
+                    return $this->response->withStatus(200);
                 } else {
-                    $type = 'success';
-                    $message = $titleCount . ' titles have been successfully loaded into "' . $playlistName . '"';
+                    $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
+                    $playlistTable = TableRegistry::getTableLocator()->get('Playlists');
+
+                    $playlistName = $playlistTable->find('all', ['conditions' => ['id' => $playlistID]])->select('name')->first()->get('name');
+
+                    $incompleteTitles = false;
+                    $attemptedTitleCount = 0;
+                    foreach ($title_ids as $title_id) {
+                        $titlesToPlaylist = $titlesToPlaylistTable->newEntity([
+                            'title_id' => $title_id,
+                            'playlist_id' => $playlistID
+                        ]);
+                        $attemptedTitleCount++;
+                        if (!$titlesToPlaylistTable->save($titlesToPlaylist)) {
+                            $this->log("Error saving titles_to_playlists");
+                            $incompleteTitles = true;
+                        }
+                    }
+
+                    $titleCount = $titlesToPlaylistTable->find('all', ['conditions' => ['playlist_id' => $playlistID]])->count();
+                    if ($incompleteTitles) {
+                        $type = 'warning';
+                        $message = $titleCount . ' out of ' . $attemptedTitleCount . 'have successfully been added to "' . $playlistName . '"';
+                    } else {
+                        $type = 'success';
+                        $message = $titleCount . ' titles have been successfully loaded into "' . $playlistName . '"';
+                    }
+                    $this->_updatePlaylists();
+                    $this->_updateTitles($playlistID);
+                    $this->_flash($type, $message, $userID);
+                    return $this->response->withStatus(200);
                 }
-                $this->_updatePlaylists();
-                $this->_updateTitles($playlistID);
-                $this->_flash($type, $message, $userID);
-                return $this->response->withStatus(200);
             default:
                 $this->_updatePlaylists();
                 $this->_flash('alert', $message, $userID);
                 return $this->response->withStatus(500);
         }
+    }
+
+    public function addTitle()
+    {
+        if (!$this->request->is('post')) {
+            return $this->response->withStatus(405);
+        }
+        $url = $this->request->getData('url');
+        $playlist_id = $this->request->getData('playlist-id');
+        $instance_id = $this->request->getData('instance-id');
+        if (!isset($url, $playlist_id, $instance_id)) {
+            return $this->response->withStatus(400);
+        }
+
+        try {
+            $response = $this->Api->createTitles($url);
+        } catch (Exception $e) {
+            return $this->response->withStatus(500)->withStringBody('Unable to connect to backend');
+        }
+
+        $status = 500;
+        if ($response->getStatusCode() === 202) {
+            $addTitleTable = TableRegistry::getTableLocator()->get('AddTitlesJobs');
+            if ($playlist_id === 'queue') {
+                $addTitle = $addTitleTable->newEntity([
+                    'backend_token' => $response->getJson()['request_id'],
+                    'instance_id' => $instance_id,
+                    'user_id' => $this->Auth->user('id')
+                ]);
+            } else {
+                $addTitle = $addTitleTable->newEntity([
+                    'backend_token' => $response->getJson()['request_id'],
+                    'playlist_id' => $playlist_id,
+                    'user_id' => $this->Auth->user('id')
+                ]);
+            }
+            if ($addTitleTable->save($addTitle)) {
+                $status = 202;
+                $message = 'Your title is now in processing. You will be notified once it has been loaded into the playlist';
+            } else {
+                $message = 'Database Error';
+            }
+        } else {
+            $message = 'Could not resolve URL';
+        }
+        return $this->response->withStatus($status)->withStringBody($message);
     }
 
     public function addPlaylist()
@@ -139,10 +221,11 @@ class MusicController extends AppController
                     $response = $this->Api->createTitles($url);
                     if ($response->getStatusCode() === 202) {
                         $addTitleTable = TableRegistry::getTableLocator()->get('AddTitlesJobs');
-                        $addTitle = $addTitleTable->newEntity();
-                        $addTitle->set('backend_token', $response->getJson()['request_id']);
-                        $addTitle->set('playlist_id', $playlist->get('id'));
-                        $addTitle->set('user_id', $this->Auth->user('id'));
+                        $addTitle = $addTitleTable->newEntity([
+                            'backend_token' => $response->getJson()['request_id'],
+                            'playlist_id' => $playlist->get('id'),
+                            'user_id' => $this->Auth->user('id')
+                        ]);
                         if ($addTitleTable->save($addTitle)) {
                             $status = 202;
                             $message = 'Your playlist is now in processing. You will be notified once it is fully loaded';
@@ -186,7 +269,7 @@ class MusicController extends AppController
             ->leftJoinWith('TitlesToPlaylists')
             ->contain('AddTitlesJobs')
             ->group('Playlists.id')
-            ->orderDesc('created')->toList();
+            ->orderAsc('created')->toList();
         foreach ($res as $p) {
             $p->hasToken = (bool)$p->hasToken;
         }
@@ -199,6 +282,18 @@ class MusicController extends AppController
         return json_encode($titlesTable->find()->leftJoinWith('TitlesToPlaylists')->where(['TitlesToPlaylists.playlist_id' => $playlist_id]));
     }
 
+    private function _queueJson($instance_id)
+    {
+        $queuesTable = TableRegistry::getTableLocator()->get('Queues');
+        return json_encode($queuesTable->find()->where(['instance_id' => $instance_id])->count());
+    }
+
+    private function _queueTitlesJson($instance_id)
+    {
+        $queuesTable = TableRegistry::getTableLocator()->get('Queues');
+        return json_encode($queuesTable->find()->contain('Titles')->where(['instance_id' => $instance_id])->orderAsc('position'));
+    }
+
     public function getPlaylists()
     {
         return $this->response->withType('json')->withStringBody($this->_playlistsJson());
@@ -207,6 +302,16 @@ class MusicController extends AppController
     public function getTitles($playlist_id)
     {
         return $this->response->withType('json')->withStringBody($this->_titlesJson($playlist_id));
+    }
+
+    public function getQueue($instance_id)
+    {
+        return $this->response->withType('json')->withStringBody($this->_queueJson($instance_id));
+    }
+
+    public function getQueueTitles($instance_id)
+    {
+        return $this->response->withType('json')->withStringBody($this->_queueTitlesJson($instance_id));
     }
 
     private function _updatePlaylists()
@@ -219,6 +324,11 @@ class MusicController extends AppController
         Websocket::publishEvent('titlesUpdated', ['json' => $this->_titlesJson($playlist_id), 'playlist' => $playlist_id]);
     }
 
+    private function _updateQueue($instance_id)
+    {
+        Websocket::publishEvent('titlesUpdated', ['json' => $this->_queueTitlesJson($instance_id), 'playlist' => 'queue', 'count' => $this->_queueJson($instance_id)]);
+    }
+
     public function deletePlaylist()
     {
         $id = $this->request->getQuery('id');
@@ -229,33 +339,66 @@ class MusicController extends AppController
         $playlist = $playlistTable->get($id);
 
         $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
-        if ($titlesToPlaylistTable->find()->where(['playlist_id' => $id])->count()) {
+        $titles = $titlesToPlaylistTable->find()->select('title_id')->where(['playlist_id' => $id])->toArray();
+
+        $playlistTable->delete($playlist);
+        $titles = array_map(
+            function ($title) {
+                return $title->title_id;
+            },
+            array_filter(
+                $titles,
+                function ($title) {
+                    return !$this->titleAssociated($title->title_id);
+                }
+            )
+        );
+        if ($titles) {
             try {
-                $this->Api->deleteTitles($playlist->get('id'));
+                $this->Api->deleteTitles($titles);
             } catch (Exception $e) {
                 return $this->response->withStatus(500)->withStringBody('Unable to connect to backend');
             }
         }
 
-        $playlistTable->delete($playlist);
         $this->_updatePlaylists();
         return $this->response->withStatus(200);
     }
 
-    public function deleteTitle($playlist_id, $title_id)
+    public function deleteTitle($playlist_id, $title_id, $instance_id)
     {
+        $queuesTable = TableRegistry::getTableLocator()->get('Queues');
         $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
-        $titlesToPlaylistTable->delete($titlesToPlaylistTable->get([$title_id, $playlist_id]));
-        if (!$titlesToPlaylistTable->find()->where(['title_id' => $title_id])->count()) {
+
+        if ($playlist_id === 'queue') {
+            $queuesTable->delete($queuesTable->find()->where(['instance_id' => $instance_id, 'title_id' => $title_id])->firstOrFail());
+        } else {
+            $titlesToPlaylistTable->delete($titlesToPlaylistTable->find()->where(['playlist_id' => $playlist_id, 'title_id' => $title_id])->firstOrFail());
+        }
+        if (!$this->titleAssociated($title_id)) {
             try {
                 $this->Api->deleteTitle($title_id);
             } catch (Exception $e) {
                 return $this->response->withStatus(500)->withStringBody('Unable to connect to backend');
             }
         }
+
         $this->_updatePlaylists();
-        $this->_updateTitles($playlist_id);
+        if ($playlist_id === 'queue') {
+            $this->_updateQueue($instance_id);
+        } else {
+            $this->_updateTitles($playlist_id);
+        }
         return $this->response->withStatus(200);
+    }
+
+    private function titleAssociated($title_id)
+    {
+        $queuesTable = TableRegistry::getTableLocator()->get('Queues');
+        $titlesToPlaylistTable = TableRegistry::getTableLocator()->get('TitlesToPlaylists');
+
+        return $titlesToPlaylistTable->find()->where(['title_id' => $title_id])->count() ||
+            $queuesTable->find()->where(['title_id' => $title_id])->count();
     }
 
     private function _flash($type = null, $message = null, $userID = null)

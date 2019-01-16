@@ -52,6 +52,7 @@ footer {
  */
 .menu, .top-bar {
     background: #2c3840 !important;
+    border-top: 0 !important;
 }
 
 .menu-text-top {
@@ -75,7 +76,7 @@ nav.top-bar {
 .header-font, .header-font:visited {
     color: #bdbdbd !important;
     height: 2.4375em;
-    padding-top: 0.45em !important;
+    padding-top: 0.33em !important;
 }
 
 .header-font:hover, .header-font:active {
@@ -86,7 +87,7 @@ a.logo-font, a.logo-font:visited {
     color: #f5f5f5;
     height: 2.4375em;
     font-weight: bold;
-    padding-top: 0.45em !important;
+    padding-top: 0.33em !important;
 }
 
 a.logo-font:hover, a.logo-font:active {
@@ -94,7 +95,11 @@ a.logo-font:hover, a.logo-font:active {
 }
 
 li:not(:last-child).divider {
-    border-right: 0.1em solid #7d7d7d;
+    border-bottom: 0.1em solid #7d7d7d;
+}
+
+select#instance-select {
+    padding-top: 0.33em !important;
 }
 
 /*

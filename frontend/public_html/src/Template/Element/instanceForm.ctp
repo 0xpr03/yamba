@@ -63,6 +63,13 @@
 </div>
 <?= $this->Form->hidden('id', ['id' => 'instance-id', 'default' => '-1']); ?>
 <?= $this->Form->unlockField('id'); ?>
-<?= $this->Form->submit($submitText, ['class' => 'button expanded radius']) ?>
+<div class="row">
+    <div class="columns shrink">
+        <?= $this->Form->submit('Reset', ['type' => 'reset', 'class' => 'button warning hollow radius']); ?>
+    </div>
+    <div class="columns">
+        <?= $this->Form->submit($submitText, ['class' => 'button expanded radius']) ?>
+    </div>
+</div>
 <?= $this->Form->end() ?>
 <script>changeType()</script>

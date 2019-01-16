@@ -14,18 +14,13 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
- */
+*/
+?>
 
-namespace App\Model\Table;
-use Cake\ORM\Table;
-class TitlesTable extends Table
-{
-    public function initialize(array $config)
-    {
-        parent::initialize($config);
-        $this->hasMany('TitlesToPlaylists', [
-            'dependent' => true
-        ]);
-        $this->hasMany('Queues');
-    }
-}
+<select id="instance-select" onchange="selectInstance()" title="Select Instance">
+</select>
+<script id="instance-select-template" type="x-tmpl-mustache">
+{{#instances}}
+<option value="{{id}}">{{name}}</option>
+{{/instances}}
+</script>

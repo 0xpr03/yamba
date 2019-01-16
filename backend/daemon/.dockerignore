@@ -1,0 +1,7 @@
+*
+!src
+!Cargo.toml
+!Cargo.lock
+!conf
+!resources
+!default_log.yml

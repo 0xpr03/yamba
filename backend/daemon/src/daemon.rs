@@ -27,6 +27,7 @@ use tokio::{self, runtime::Runtime};
 use tokio_signal::unix::{self, Signal};
 
 use std::env::{args, current_exe};
+use std::i32;
 use std::net::SocketAddr;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
@@ -38,21 +39,19 @@ use api;
 use audio::{self, CContext, CMainloop, NullSink};
 use cache::Cache;
 use db;
+use instance::*;
 use models::{DBInstanceType, InstanceStorage, SongID, TSSettings};
 use playback::{self, PlaybackSender, Player, PlayerEvent};
 use rpc;
 use ts::TSInstance;
 use ytdl::YtDL;
 use ytdl_worker;
-
-use instance::*;
 use SETTINGS;
 
 /// Daemon init & startup of all servers
 
 // types used by rpc, api, playback daemons
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
-pub type APIChannel = mpsc::Sender<api::APIRequest>;
 pub type Instances<'a> = Arc<RwLock<HashMap<i32, Instance>>>;
 
 #[derive(Fail, Debug)]
@@ -72,6 +71,17 @@ pub enum DaemonErr {
 fn format_player_name(id: &i32) -> String {
     format!("player#{}", id)
 }*/
+
+struct InstanceBase<'a> {
+    pub pool: Pool,
+    pub player_send: PlaybackSender,
+    pub mainloop: &'a CMainloop,
+    pub context: &'a CContext,
+    pub default_sink: &'a Arc<NullSink>,
+    pub ytdl: &'a Arc<YtDL>,
+    pub cache: &'a SongCache,
+    pub controller: &'a ytdl_worker::Controller,
+}
 
 /// Start runtime
 pub fn start_runtime() -> Fallible<()> {
@@ -100,7 +110,6 @@ pub fn start_runtime() -> Fallible<()> {
             }
         };
 
-        let (tx, rx) = mpsc::channel::<api::APIRequest>(100);
         let (player_tx, player_rx) = mpsc::channel::<PlayerEvent>(128);
 
         let (mainloop, context) = audio::init()?;
@@ -118,24 +127,39 @@ pub fn start_runtime() -> Fallible<()> {
         let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
 
         let cache = Cache::<SongID, String>::new(&mut rt);
+
+        let controller = Box::new(ytdl_worker::crate_ytdl_scheduler(
+            &mut rt,
+            ytdl.clone(),
+            pool.clone(),
+            cache.clone(),
+        ));
+
         rpc::create_rpc_server(&mut rt, instances.clone())
             .map_err(|e| DaemonErr::RPCCreationError(e))?;
-        api::create_api_server(&mut rt, tx.clone()).map_err(|e| DaemonErr::APICreationError(e))?;
+
+        ytdl_worker::crate_yt_updater(&mut rt, ytdl.clone());
+
+        // let api run on i32::max, as no instance will reach this
+        let id_api = Arc::new(i32::MAX);
+        api::create_api_server(&mut rt, controller.channel(id_api.clone(), 32))
+            .map_err(|e| DaemonErr::APICreationError(e))?;
         playback::create_playback_server(&mut rt, player_rx, instances.clone())?;
-        ytdl_worker::create_ytdl_worker(&mut rt, rx, ytdl.clone(), pool.clone());
 
         info!("Loading instances..");
 
-        match load_instances(
-            &instances,
-            pool.clone(),
-            player_tx,
-            &mainloop,
-            &context,
-            &default_sink,
-            &ytdl,
-            &cache,
-        ) {
+        let inst_data = InstanceBase {
+            pool: pool.clone(),
+            player_send: player_tx,
+            mainloop: &mainloop,
+            context: &context,
+            default_sink: &default_sink,
+            ytdl: &ytdl,
+            cache: &cache,
+            controller: &controller,
+        };
+
+        match load_instances(inst_data, &instances) {
             Ok(_) => (),
             Err(e) => {
                 error!("Unable to load instances: {}\n{}", e, e.backtrace());
@@ -202,30 +226,12 @@ fn restart() {
 
 /// Load instances
 /// Stops previous instances
-fn load_instances(
-    instances: &Instances,
-    pool: Pool,
-    player_send: PlaybackSender,
-    mainloop: &CMainloop,
-    context: &CContext,
-    default_sink: &Arc<NullSink>,
-    ytdl: &Arc<YtDL>,
-    cache: &SongCache,
-) -> Fallible<()> {
+fn load_instances(base: InstanceBase, instances: &Instances) -> Fallible<()> {
     let mut instances = instances.write().expect("Main RwLock is poisoned!");
     instances.clear();
-    let instance_ids = db::get_autostart_instance_ids(&pool)?;
+    let instance_ids = db::get_autostart_instance_ids(&base.pool)?;
     for id in instance_ids {
-        let instance = match create_instance_from_id(
-            &id,
-            &pool,
-            player_send.clone(),
-            &mainloop,
-            &context,
-            default_sink,
-            ytdl,
-            cache,
-        ) {
+        let instance = match create_instance_from_id(&base, &id) {
             Ok(v) => v,
             Err(e) => {
                 error!(
@@ -243,52 +249,27 @@ fn load_instances(
 }
 
 /// Load & create single instance by ID
-fn create_instance_from_id(
-    id: &i32,
-    pool: &Pool,
-    player_send: PlaybackSender,
-    mainloop: &CMainloop,
-    context: &CContext,
-    default_sink: &Arc<NullSink>,
-    ytdl: &Arc<YtDL>,
-    cache: &SongCache,
-) -> Fallible<Instance> {
-    let data = db::load_instance_data(&pool, id)?;
-    let storage = db::read_instance_storage(id, pool)?;
+fn create_instance_from_id(base: &InstanceBase, id: &i32) -> Fallible<Instance> {
+    let data = db::load_instance_data(&base.pool, id)?;
+    let storage = db::read_instance_storage(id, &base.pool)?;
 
     // can't match untill we have more than one type
     let DBInstanceType::TS(ts_data) = data;
-    create_ts_instance(
-        pool,
-        player_send,
-        mainloop,
-        context,
-        ts_data,
-        default_sink,
-        storage,
-        ytdl,
-        cache,
-    )
+    create_ts_instance(base, ts_data, storage)
 }
 
 /// Crate instance of type TS
 fn create_ts_instance(
-    pool: &Pool,
-    player_send: PlaybackSender,
-    mainloop: &CMainloop,
-    context: &CContext,
+    base: &InstanceBase,
     data: TSSettings,
-    default_sink: &Arc<NullSink>,
     storage: InstanceStorage,
-    ytdl: &Arc<YtDL>,
-    cache: &SongCache,
 ) -> Fallible<Instance> {
     let id = Arc::new(data.id);
 
-    let player = Player::new(player_send, id.clone(), storage.volume)?;
+    let player = Player::new(base.player_send.clone(), id.clone(), storage.volume)?;
     let sink = NullSink::new(
-        mainloop.clone(),
-        context.clone(),
+        base.mainloop.clone(),
+        base.context.clone(),
         format!("yambasink{}", &id),
     )?;
 
@@ -297,17 +278,20 @@ fn create_ts_instance(
         voip: Arc::new(InstanceType::Teamspeak(Teamspeak {
             ts: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
             sink,
-            mute_sink: default_sink.clone(),
+            mute_sink: base.default_sink.clone(),
             updated: RwLock::new(Instant::now()),
         })),
         player: Arc::new(player),
+        ytdl_tx: base
+            .controller
+            .channel(id.clone(), SETTINGS.ytdl.instance_backlog_max as usize),
         id: id,
         playback_history: Arc::new(Mutex::new(ArrayDeque::new())),
         stop_flag: Arc::new(AtomicBool::new(false)),
         store: Arc::new(RwLock::new(storage)),
-        pool: pool.clone(),
-        ytdl: ytdl.clone(),
-        cache: cache.clone(),
+        pool: base.pool.clone(),
+        ytdl: base.ytdl.clone(),
+        cache: base.cache.clone(),
         current_song: Arc::new(RwLock::new(None)),
     })
 }

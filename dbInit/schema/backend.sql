@@ -21,9 +21,10 @@ CREATE TABLE `playlists` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `titles_to_playlists` (
+  `position` INT UNSIGNED AUTO_INCREMENT NOT NULL,
   `title_id` CHAR(32) NOT NULL,
   `playlist_id` CHAR(36) NOT NULL,
-  PRIMARY KEY (`title_id`, `playlist_id`),
+  PRIMARY KEY (`position`),
   FOREIGN KEY (`title_id`) REFERENCES `titles`(`id`),
   FOREIGN KEY (`playlist_id`) REFERENCES `playlists`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -38,7 +39,7 @@ CREATE TABLE `instances` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `teamspeak_instances` (
-  `instance_id` INT NOT NULL,
+  `instance_id` INT UNSIGNED NOT NULL,
   `host` VARCHAR(255) NOT NULL,
   `port` INT(16) UNSIGNED,
   `identity` VARCHAR(255) NOT NULL,
@@ -50,7 +51,7 @@ CREATE TABLE `teamspeak_instances` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `instance_store` (
-  `id` INT NOT NULL,
+  `id` INT UNSIGNED NOT NULL,
   `volume` DOUBLE NOT NULL,
   `index` INT,
   `position` BIGINT UNSIGNED,
@@ -64,10 +65,10 @@ CREATE TABLE `instance_store` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `queues` (
-  `index` INT UNSIGNED AUTO_INCREMENT NOT NULL,
-  `instance_id` INT NOT NULL,
+  `position` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+  `instance_id` INT UNSIGNED NOT NULL,
   `title_id` CHAR(32) NOT NULL,
-  PRIMARY KEY (`index`, `instance_id`),
+  PRIMARY KEY (`position`, `instance_id`),
   FOREIGN KEY (`instance_id`) REFERENCES `instances`(`id`)
     ON DELETE CASCADE,
   FOREIGN KEY (`title_id`) REFERENCES `titles`(`id`)
