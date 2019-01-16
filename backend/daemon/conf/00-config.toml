@@ -44,6 +44,11 @@ host = "127.0.0.1"
 retry_time=60
 
 [ytdl]
+# amount of concurrent ytdl workers
+workers = 4
+# max amount of backlog requests per instance / web interface
+# any additional will get dropped
+instance_backlog_max = 32
 dir="ytdl"
 # intervall for updates in hours
 update_intervall=12

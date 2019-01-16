@@ -83,6 +83,8 @@ pub struct ConfigDB {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigYtDL {
+    pub instance_backlog_max: u16,
+    pub workers: u8,
     pub dir: String,
     pub update_intervall: u8,
     pub version_source: String,
