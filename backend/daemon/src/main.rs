@@ -35,6 +35,7 @@ extern crate hyper;
 extern crate jsonrpc_lite;
 #[macro_use]
 extern crate serde_json;
+extern crate arraydeque;
 extern crate atomic;
 extern crate chrono;
 extern crate concurrent_hashmap;
@@ -47,6 +48,7 @@ extern crate libpulse_binding as pulse;
 extern crate libpulse_glib_binding as pglib;
 extern crate libpulse_sys as pulse_sys;
 extern crate metrohash;
+extern crate mpmc_scheduler;
 extern crate mysql;
 extern crate owning_ref;
 extern crate rusqlite;
@@ -55,7 +57,6 @@ extern crate sha2;
 extern crate tokio;
 extern crate tokio_signal;
 extern crate tokio_threadpool;
-extern crate arraydeque;
 
 use std::alloc::System;
 

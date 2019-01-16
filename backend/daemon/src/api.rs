@@ -16,6 +16,7 @@
  */
 
 use atomic::{Atomic, Ordering};
+use erased_serde::Serialize as ESerialize;
 use failure::Fallible;
 use hyper;
 use hyper::rt::{Future, Stream};
@@ -30,7 +31,8 @@ use tokio::runtime;
 
 use std::sync::Arc;
 
-use daemon::{self, APIChannel, BoxFut};
+use daemon::{self, BoxFut};
+use ytdl_worker::{RSongs, Request as YTRequest, YTSender};
 use SETTINGS;
 use USERAGENT;
 
@@ -94,24 +96,9 @@ pub struct CallbackError {
     pub error_code: CallbackErrorType,
 }
 
-/// API Request containing its ID and the request type
-#[derive(Debug)]
-pub struct APIRequest {
-    pub request_id: u32,
-    /// Callback (web API)
-    pub callback: bool,
-    pub request_type: RequestType,
-}
-
-/// Request type
-#[derive(Debug)]
-pub enum RequestType {
-    Playlist(NewPlaylist),
-}
-
 //const COUNTER: Arc<Atomic<u32>> = Arc::new(Atomic::new(0));
 /// API main handler for requests
-fn api(req: Request<Body>, counter: Arc<Atomic<u32>>, channel: APIChannel) -> BoxFut {
+fn api(req: Request<Body>, counter: Arc<Atomic<u32>>, channel: YTSender) -> BoxFut {
     let mut response: Response<Body> = Response::new(Body::empty());
     let (parts, body) = req.into_parts();
     Box::new(body.concat2().map(move |b| {
@@ -140,10 +127,10 @@ fn handle_request<'a, T, F>(
     req_counter: Arc<Atomic<u32>>,
     data: &'a [u8],
     mut handler: F,
-    channel: APIChannel,
+    channel: YTSender,
 ) -> Response<Body>
 where
-    F: FnMut(T, &mut Response<Body>, u32, APIChannel) -> Fallible<()>,
+    F: FnMut(T, &mut Response<Body>, u32, YTSender) -> Fallible<()>,
     T: Deserialize<'a>,
 {
     let mut response = Response::new(Body::empty());
@@ -170,24 +157,67 @@ where
     response
 }
 
+struct PlaylistReq {
+    url: String,
+    request_id: RequestID,
+}
+
+impl YTRequest for PlaylistReq {
+    fn is_playlist(&self) -> bool {
+        true
+    }
+
+    fn url(&self) -> &str {
+        &self.url
+    }
+
+    fn callback(&mut self, songs: RSongs) {
+        let response = match songs {
+            Ok(s) => Ok(PlaylistAnswer {
+                request_id: self.request_id,
+                song_ids: s.into_iter().map(|song| song.source).collect(),
+                error_code: CallbackErrorType::NoError,
+            }),
+            Err(e) => Err(CallbackError {
+                request_id: self.request_id,
+                message: format!("{}", e),
+                error_code: CallbackErrorType::UnknownError,
+            }),
+        };
+
+        let response: Box<ESerialize> = match response {
+            Ok(v) => Box::new(v),
+            Err(e) => Box::new(e),
+        };
+
+        match api_send_callback(
+            &SETTINGS.main.api_callback_ip,
+            SETTINGS.main.api_callback_port,
+            "music/addTitles",
+            &response,
+        ) {
+            Ok(_) => info!("Callback successfull"),
+            Err(e) => warn!("Callback errored: {}", e),
+        }
+    }
+}
+
 /// Handle playlist request
 fn new_playlist(
     playlist: NewPlaylist,
     response: &mut Response<Body>,
     request_id: RequestID,
-    mut channel: APIChannel,
+    channel: YTSender,
 ) -> Fallible<()> {
     info!("URL: {}", playlist.url);
     *response.status_mut() = StatusCode::ACCEPTED;
     *response.body_mut() = serde_json::to_string(&json!({ "request_id": &request_id }))
         .unwrap()
         .into();
-    let job = APIRequest {
+    channel.try_send(Box::new(PlaylistReq {
+        url: playlist.url,
         request_id,
-        callback: true,
-        request_type: RequestType::Playlist(playlist),
-    };
-    channel.try_send(job)?;
+    }))?;
     Ok(())
 }
 
@@ -198,7 +228,7 @@ pub fn check_config() -> Fallible<()> {
 }
 
 /// Create api server, bind it & attach to runtime
-pub fn create_api_server(runtime: &mut runtime::Runtime, channel: APIChannel) -> Fallible<()> {
+pub fn create_api_server(runtime: &mut runtime::Runtime, channel: YTSender) -> Fallible<()> {
     let addr =
         daemon::parse_socket_address(&SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port)?;
 
