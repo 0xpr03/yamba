@@ -59,14 +59,14 @@ RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/yamba_backend*
 # build ts3plugin dependencies
 WORKDIR /opt/yamba/ts3plugin
 COPY ./ts3plugin/Cargo.* ./
-RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/ts3plugin*
+RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/yamba_plugin*
 
 FROM dependencies as application
 
 # build ts3plugin
 WORKDIR /opt/yamba/ts3plugin
 COPY ./ts3plugin ./
-RUN ~/.cargo/bin/cargo clean && ~/.cargo/bin/cargo build
+RUN ~/.cargo/bin/cargo build
 
 # build daemon
 WORKDIR /opt/yamba/daemon
@@ -76,9 +76,9 @@ RUN ~/.cargo/bin/cargo build
 WORKDIR /opt/yamba
 
 # copy entrypoint
-COPY ./entrypoint.sh /entrypoint.sh
-RUN chmod 755 /entrypoint.sh
+COPY ./entrypoint.sh ./entrypoint.sh
+RUN chmod 755 ./entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["./entrypoint.sh"]
 #CMD ["/opt/yamba/daemon/target/debug/yamba-backend"]
 CMD ["/opt/yamba/daemon/target/debug/yamba-backend", "test-ts","-h","ek.proctet.net","--cid","5368","--clear-instances"]
