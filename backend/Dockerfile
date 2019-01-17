@@ -59,7 +59,7 @@ RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/yamba_backend*
 # build ts3plugin dependencies
 WORKDIR /opt/yamba/ts3plugin
 COPY ./ts3plugin/Cargo.* ./
-RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/yamba_plugin*
+RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/libts3plugin*
 
 FROM dependencies as application
 
