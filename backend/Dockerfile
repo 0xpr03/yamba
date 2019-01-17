@@ -66,7 +66,7 @@ FROM dependencies as application
 # build ts3plugin
 WORKDIR /opt/yamba/ts3plugin
 COPY ./ts3plugin ./
-RUN ~/.cargo/bin/cargo build
+RUN ~/.cargo/bin/cargo clean && ~/.cargo/bin/cargo build
 
 # build daemon
 WORKDIR /opt/yamba/daemon
