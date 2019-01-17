@@ -52,12 +52,12 @@ RUN USER=root ~/.cargo/bin/cargo new --bin daemon
 # build daemon dependencies
 WORKDIR /opt/yamba/daemon
 COPY ./daemon/Cargo.toml ./daemon/Cargo.lock ./
-RUN ~/.cargo/bin/cargo build --release && rm ./src/*.rs ./target/release/deps/yamba_backend*
+RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/yamba_backend*
 
 # build ts3plugin dependencies
 WORKDIR /opt/yamba/ts3plugin
 COPY ./ts3plugin/Cargo.toml ./ts3plugin/Cargo.lock ./
-RUN ~/.cargo/bin/cargo build --release && rm ./src/*.rs ./target/release/deps/ts3plugin*
+RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/ts3plugin*
 
 FROM dependencies as application
 
