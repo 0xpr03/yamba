@@ -175,7 +175,7 @@ impl YTRequest for PlaylistReq {
         let response = match songs {
             Ok(s) => Ok(PlaylistAnswer {
                 request_id: self.request_id,
-                song_ids: s.into_iter().map(|song| song.source).collect(),
+                song_ids: s.into_iter().map(|song| song.id).collect(),
                 error_code: CallbackErrorType::NoError,
             }),
             Err(e) => Err(CallbackError {
