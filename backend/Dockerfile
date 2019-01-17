@@ -39,6 +39,8 @@ RUN apt-get update -q && apt-get install -qqy \
     # cleanup
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/* \
+    # fixup: python3 -> python softlink
+    && ln -s $(which python3) /usr/local/bin/python \
     # install rust
     && curl -sf -L https://static.rust-lang.org/rustup.sh | sh -s -- -y
 
@@ -47,28 +49,28 @@ FROM toolchain as dependencies
 # create dummy projects
 WORKDIR /opt/yamba
 RUN USER=root ~/.cargo/bin/cargo new --lib --vcs none ts3plugin
-RUN USER=root ~/.cargo/bin/cargo new --bin daemon
+RUN USER=root ~/.cargo/bin/cargo new --bin --vcs none daemon
 
 # build daemon dependencies
 WORKDIR /opt/yamba/daemon
-COPY ./daemon/Cargo.toml ./daemon/Cargo.lock ./
+COPY ./daemon/Cargo.* ./
 RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/yamba_backend*
 
 # build ts3plugin dependencies
 WORKDIR /opt/yamba/ts3plugin
-COPY ./ts3plugin/Cargo.toml ./ts3plugin/Cargo.lock ./
+COPY ./ts3plugin/Cargo.* ./
 RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/ts3plugin*
 
 FROM dependencies as application
 
 # build ts3plugin
 WORKDIR /opt/yamba/ts3plugin
-COPY ./ts3plugin/ ./
+COPY ./ts3plugin ./
 RUN ~/.cargo/bin/cargo build
 
 # build daemon
 WORKDIR /opt/yamba/daemon
-COPY ./daemon/ ./
+COPY ./daemon ./
 RUN ~/.cargo/bin/cargo build
 
 WORKDIR /opt/yamba
@@ -77,9 +79,6 @@ WORKDIR /opt/yamba
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
 
-# fixup: python3 -> python softlink
-RUN ln -s $(which python3) /usr/local/bin/python
-
 ENTRYPOINT ["/entrypoint.sh"]
 #CMD ["/opt/yamba/daemon/target/debug/yamba-backend"]
-CMD ["daemon/target/debug/yamba-backend", "test-ts","-h","ek.proctet.net","--cid","5368","--clear-instances"]
+CMD ["/opt/yamba/daemon/target/debug/yamba-backend", "test-ts","-h","ek.proctet.net","--cid","5368","--clear-instances"]
