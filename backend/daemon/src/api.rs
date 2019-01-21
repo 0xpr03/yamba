@@ -32,7 +32,7 @@ use tokio::runtime;
 use std::sync::Arc;
 
 use daemon::{self, BoxFut};
-use ytdl_worker::{RSongs, Request as YTRequest, YTSender};
+use ytdl_worker::{RSongs, YTRequest, YTSender};
 use SETTINGS;
 use USERAGENT;
 
@@ -163,8 +163,8 @@ struct PlaylistReq {
 }
 
 impl YTRequest for PlaylistReq {
-    fn is_playlist(&self) -> bool {
-        true
+    fn is_force_track(&self) -> bool {
+        false
     }
 
     fn url(&self) -> &str {
@@ -214,10 +214,13 @@ fn new_playlist(
     *response.body_mut() = serde_json::to_string(&json!({ "request_id": &request_id }))
         .unwrap()
         .into();
-    channel.try_send(Box::new(PlaylistReq {
-        url: playlist.url,
-        request_id,
-    }))?;
+    channel.try_send(
+        PlaylistReq {
+            url: playlist.url,
+            request_id,
+        }
+        .wrap(),
+    )?;
     Ok(())
 }
 
