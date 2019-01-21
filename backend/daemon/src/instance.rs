@@ -19,7 +19,9 @@ use arraydeque::{ArrayDeque, Wrapping};
 use failure::Fallible;
 use mysql::Pool;
 
-use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::TrySendError;
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::Instant;
 
@@ -31,19 +33,22 @@ use models::{InstanceStorage, QueueID, SongMin};
 use playback::Player;
 use ts::TSInstance;
 use ytdl::YtDL;
-use ytdl_worker::YTSender;
+use ytdl_worker::{RSongs, YTRequest, YTSender};
 
 /// module containing a single instance
 
 const MAX_BACK_TITLES: usize = 30;
 
-#[derive(Fail, Debug)]
-enum InstanceErr {
+#[derive(Fail, Debug, PartialEq)]
+pub enum InstanceErr {
     #[fail(display = "No Audio track for URL {}", _0)]
     NoAudioTrack(String),
-    #[fail(display = "Unused {}", _0)]
-    #[allow(dead_code)]
-    SomeErr(String),
+    #[fail(display = "No YTDL result for URL {}", _0)]
+    InvalidSource(String),
+    #[fail(display = "Too many queue requests for instance!")]
+    QueueOverload,
+    #[fail(display = "Internal error {}", _0)]
+    InternalError(String),
 }
 
 pub type ID = Arc<i32>;
@@ -88,6 +93,56 @@ impl Drop for Instance {
                     Err(e) => error!("Unable to store instance {}", e),
                 }
             }
+        }
+    }
+}
+
+struct Enqueue {
+    url: String,
+    instance: Instance,
+}
+
+impl Enqueue {
+    fn callback_inner(&mut self, songs_r: RSongs) -> Fallible<()> {
+        let songs = songs_r?;
+
+        if songs.len() == 0 {
+            return Err(InstanceErr::InvalidSource(self.url.clone()).into());
+        }
+
+        let _ = songs
+            .iter()
+            .map(|s| db::add_song_to_queue(&self.instance.pool, &self.instance.id, &s.id))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let r_guard = self
+            .instance
+            .current_song
+            .read()
+            .expect("Can't lock current-song");
+
+        let no_song = r_guard.is_none();
+        drop(r_guard); // required for next step
+        if no_song {
+            self.instance.play_next_track()?;
+        }
+        Ok(())
+    }
+}
+
+impl YTRequest for Enqueue {
+    fn is_force_track(&self) -> bool {
+        false
+    }
+
+    fn url(&self) -> &str {
+        &self.url
+    }
+
+    fn callback(&mut self, songs_r: RSongs) {
+        match self.callback_inner(songs_r) {
+            Ok(v) => (),
+            Err(e) => warn!("Enqueue failed: {}", e),
         }
     }
 }
@@ -254,19 +309,23 @@ impl Instance {
     /// Inner function, blocking
     /// Resolves the playback URI
     fn play_track_inner(inst: Instance, source: String, song_id: SongID) -> Fallible<()> {
-        let audio_url: String;
-        if let Some(v) = inst.cache.get(&song_id) {
-            audio_url = v;
+        let audio_url: String = if let Some(v) = inst.cache.get(&song_id) {
+            v
         } else {
             debug!("No cache entry for {}", song_id);
-            let track = inst.ytdl.get_url_info(source.as_str())?;
+            let track = inst.ytdl.get_url_info(source.as_str(), true)?;
+            let track = match track.get(0) {
+                Some(t) => t,
+                None => return Err(InstanceErr::InvalidSource(source).into()),
+            };
 
-            audio_url = match track.best_audio_format() {
+            let url_temp = match track.best_audio_format() {
                 Some(v) => v.url.clone(),
                 None => return Err(InstanceErr::NoAudioTrack(source).into()),
             };
-            inst.cache.upsert(song_id, audio_url.clone());
-        }
+            inst.cache.upsert(song_id, url_temp.clone());
+            url_temp
+        };
         inst.stop_flag.store(false, Ordering::Relaxed);
         inst.player.set_uri(audio_url.as_str());
 
@@ -274,17 +333,22 @@ impl Instance {
     }
 
     /// Enqueue track
-    pub fn enqueue_by_url(&self, url: String) {
-        let instance = self.clone();
-        thread::spawn(
-            move || match Instance::enqueue_by_url_inner(url, instance) {
-                Err(e) => warn!("Couldn't enqueue song: {}\n{}", e, e.backtrace()),
-                Ok(_) => (),
-            },
-        );
+    /// Returns error when too many tracks are enqueued
+    pub fn enqueue_by_url(&self, url: String) -> Fallible<()> {
+        match self.ytdl_tx.try_send(
+            Enqueue {
+                url: url,
+                instance: self.clone(),
+            }
+            .wrap(),
+        ) {
+            Ok(_) => Ok(()),
+            Err(TrySendError::Full(_)) => Err(InstanceErr::QueueOverload.into()),
+            Err(e) => Err(InstanceErr::InternalError(format!("{}", e)).into()),
+        }
     }
 
-    /// Inner function, blocking
+    /*/// Inner function, blocking
     fn enqueue_by_url_inner(url: String, inst: Instance) -> Fallible<()> {
         let song_entry = db::get_track_by_url(&url, &inst.pool)?;
 
@@ -332,7 +396,7 @@ impl Instance {
         }
 
         Ok(())
-    }
+    }*/
 }
 
 /// Instance type for different VoIP systems

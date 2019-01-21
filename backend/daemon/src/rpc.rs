@@ -29,10 +29,13 @@ use hashbrown::HashMap;
 use std::sync::{RwLock, RwLockReadGuard};
 
 use daemon::{self, BoxFut, Instances};
-use instance::{Instance, InstanceType};
+use instance::{Instance, InstanceErr, InstanceType};
 use SETTINGS;
 
 /// RPC server for client callbacks
+
+const ERR_OVERLOAD: &'static str = "Too many requests currently pending";
+const ERR_OVERLOAD_CODE: i64 = 429;
 
 #[derive(Fail, Debug)]
 pub enum RPCErr {
@@ -166,10 +169,24 @@ fn handle_enqueue(
         Err(e) => return e,
     };
     match parse_string(&req_id, 3, &params) {
-        Ok(url) => {
-            instance.enqueue_by_url(url.clone());
-            JsonRpc::success(req_id, &json!((true, "test", true)))
-        }
+        Ok(url) => match instance.enqueue_by_url(url.clone()) {
+            Ok(_) => JsonRpc::success(req_id, &json!((true, "test", true))),
+            Err(e) => {
+                if e.downcast_ref() == Some(&InstanceErr::QueueOverload) {
+                    JsonRpc::error(
+                        req_id,
+                        Error {
+                            code: ERR_OVERLOAD_CODE,
+                            message: ERR_OVERLOAD.to_string(),
+                            data: None,
+                        },
+                    )
+                } else {
+                    warn!("Error on enqueue: {}", e);
+                    JsonRpc::error(req_id, Error::internal_error())
+                }
+            }
+        },
         Err(e) => e,
     }
 }
