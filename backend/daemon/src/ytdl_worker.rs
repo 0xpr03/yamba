@@ -119,15 +119,25 @@ fn scheduler_retrieve(
     cache: SongCache,
     ytdl: &YtDL,
     pool: &Pool,
-    playlist: bool,
+    force_track: bool,
     url: &str,
 ) -> RSongs {
-    let tracks = if playlist {
-        ytdl.get_playlist_info(url)?
-    } else {
-        vec![ytdl.get_url_info(url)?]
-    };
-    let tracks = db::insert_tracks(Some(cache), tracks, &pool)?;
+    // check DB & cache
+    // also works with playlists as playlists are not expected to
+    // be a source URL entry in the database
+    let tracks = db::get_track_by_url(url, pool)?.and_then(|t| {
+        if cache.get(&t.id).is_some() {
+            Some(vec![t])
+        } else {
+            None
+        }
+    });
 
-    Ok(tracks)
+    Ok(match tracks {
+        None => {
+            let tracks = ytdl.get_url_info(url, force_track)?;
+            db::insert_tracks(Some(cache), tracks, &pool)?
+        }
+        Some(v) => v,
+    })
 }
