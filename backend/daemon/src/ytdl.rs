@@ -242,29 +242,16 @@ impl YtDL {
         Ok(YtDL { base: path })
     }
 
-    /// Get url info
-    pub fn get_url_info(&self, url: &str) -> Fallible<Track> {
-        let _guard = LOCK.read().unwrap();
-        let result = self
-            .cmd_base()
-            .arg("-j")
-            .arg("--no-playlist")
-            .arg(url)
-            .output()?;
-        let stderr = String::from_utf8_lossy(&result.stderr);
-        let stdout = String::from_utf8_lossy(&result.stdout);
-        debug!("stderr: {}", stderr);
-        println!("stdout: {}", stdout);
-        Ok(serde_json::from_str(&stdout)?)
-    }
-
     /// Get playlist info
-    pub fn get_playlist_info(&self, url: &str) -> Fallible<Vec<Track>> {
+    /// If url is no track, then only one track is returned
+    pub fn get_url_info(&self, url: &str, force_track: bool) -> Fallible<Vec<Track>> {
         let _guard = LOCK.read().unwrap();
-        let mut child = self
-            .cmd_base()
-            .arg("-j")
-            .arg("--yes-playlist")
+        let mut child = self.cmd_base();
+        child.arg("-j");
+        if force_track {
+            child.arg("--no-playlist");
+        }
+        let mut child = child
             .arg(url)
             .stdin(Stdio::null())
             .stderr(Stdio::piped())
@@ -500,8 +487,11 @@ mod test {
     #[test]
     fn test_yt_info() {
         let output = DOWNLOADER
-            .get_url_info("https://www.youtube.com/watch?v=Es44QTJmuZ0")
+            .get_url_info("https://www.youtube.com/watch?v=Es44QTJmuZ0", false)
             .unwrap();
+
+        let output = output[0];
+
         assert_eq!(Some(259.0), output.duration);
         assert_eq!(
             "HD SMPTE Color Bars & Tones 1920x1080 Test Pattern Jazz",
@@ -538,14 +528,23 @@ mod test {
     #[test]
     fn test_stream_info() {
         let output = DOWNLOADER
-            .get_url_info("https://www.youtube.com/watch?v=8XjDmVzqVUc")
+            .get_url_info("https://www.youtube.com/watch?v=8XjDmVzqVUc", false)
             .expect("can't get yt stream");
+
+        let output = output[0];
+
         assert_eq!(Some(0.0), output.duration, "failed for yt stream duration");
         assert_eq!(Some("m3u8".into()), output.protocol);
 
         let output = DOWNLOADER
-            .get_url_info("http://yp.shoutcast.com/sbin/tunein-station.m3u?id=1796249")
+            .get_url_info(
+                "http://yp.shoutcast.com/sbin/tunein-station.m3u?id=1796249",
+                false,
+            )
             .expect("can't get sc stream");
+
+        let output = output[0];
+
         assert_eq!(
             None, output.duration,
             "failed for shoutcast stream duration"
@@ -558,15 +557,19 @@ mod test {
         let output = DOWNLOADER
             .get_url_info(
                 "https://soundcloud.com/djsusumu/alan-walker-faded-susumu-melbourne-bounce-edit",
+                false,
             )
             .unwrap();
+
+        let output = output[0];
+
         assert_eq!(Some(144.0), output.duration);
         assert_eq!(Some("https".into()), output.protocol);
     }
 
     #[test]
     fn test_yt_playlist_info() {
-        let output = DOWNLOADER.get_playlist_info("https://www.youtube.com/watch?v=kYdrd4Kspxg&list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6&index=2&t=0s").unwrap();
+        let output = DOWNLOADER.get_url_info("https://www.youtube.com/watch?v=kYdrd4Kspxg&list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6&index=2&t=0s",false).unwrap();
         println!("{:?}", output);
         assert_eq!(8, output.len());
     }
