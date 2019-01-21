@@ -36,16 +36,26 @@ use SETTINGS;
 
 /// Worker for ytdl tasks
 
-pub type R = (YtRequest, RSongs);
-pub type YtRequest = Box<dyn Request + 'static + Send + Sync>;
+pub type R = (YTReqWrapped, RSongs);
+pub type YTReqWrapped = Box<dyn YTRequest + 'static + Send + Sync>;
 pub type RSongs = Fallible<Vec<SongMin>>;
-pub type Controller = scheduler::Controller<ID, YtRequest, R>;
-pub type YTSender = scheduler::Sender<YtRequest>;
+pub type Controller = scheduler::Controller<ID, YTReqWrapped, R>;
+pub type YTSender = scheduler::Sender<YTReqWrapped>;
 
-pub trait Request {
-    fn is_playlist(&self) -> bool;
+pub trait YTRequest {
+    /// Force track over of playlist if possible
+    fn is_force_track(&self) -> bool;
+    /// Url to resolve
     fn url(&self) -> &str;
+    /// Callback, called after resolving of requested url with return value
     fn callback(&mut self, RSongs);
+    /// Turn YTRequest into wrapped to send to scheduler
+    fn wrap(self) -> YTReqWrapped
+    where
+        Self: std::marker::Sized + Send + Sync + 'static,
+    {
+        Box::new(self)
+    }
 }
 
 /// Update scheduler for ytdl
@@ -73,11 +83,16 @@ pub fn crate_ytdl_scheduler(
 ) -> Controller {
     let (controller, scheduler) = scheduler::Scheduler::new(
         SETTINGS.ytdl.workers as usize,
-        move |req: YtRequest| {
+        move |req: YTReqWrapped| {
             let ytdl_c = ytdl.clone();
             let start = Instant::now();
-            let result =
-                scheduler_retrieve(cache.clone(), &ytdl_c, &pool, req.is_playlist(), req.url());
+            let result = scheduler_retrieve(
+                cache.clone(),
+                &ytdl_c,
+                &pool,
+                req.is_force_track(),
+                req.url(),
+            );
             let end = start.elapsed();
             debug!(
                 "Request {} took {}{:03}ms to process",
