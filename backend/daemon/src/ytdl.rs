@@ -488,7 +488,7 @@ mod test {
             .get_url_info("https://www.youtube.com/watch?v=Es44QTJmuZ0")
             .unwrap();
 
-        let output = output[0];
+        let output = &output[0];
 
         assert_eq!(Some(259.0), output.duration);
         assert_eq!(
@@ -529,7 +529,7 @@ mod test {
             .get_url_info("https://www.youtube.com/watch?v=8XjDmVzqVUc", false)
             .expect("can't get yt stream");
 
-        let output = output[0];
+        let output = &output[0];
 
         assert_eq!(Some(0.0), output.duration, "failed for yt stream duration");
         assert_eq!(Some("m3u8".into()), output.protocol);
@@ -538,7 +538,7 @@ mod test {
             .get_url_info("http://yp.shoutcast.com/sbin/tunein-station.m3u?id=1796249")
             .expect("can't get sc stream");
 
-        let output = output[0];
+        let output = &output[0];
 
         assert_eq!(
             None, output.duration,
@@ -555,7 +555,7 @@ mod test {
             )
             .unwrap();
 
-        let output = output[0];
+        let output = &output[0];
 
         assert_eq!(Some(144.0), output.duration);
         assert_eq!(Some("https".into()), output.protocol);
