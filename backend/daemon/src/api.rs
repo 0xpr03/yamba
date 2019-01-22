@@ -163,10 +163,6 @@ struct PlaylistReq {
 }
 
 impl YTRequest for PlaylistReq {
-    fn is_force_track(&self) -> bool {
-        false
-    }
-
     fn url(&self) -> &str {
         &self.url
     }

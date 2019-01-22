@@ -43,8 +43,6 @@ pub type Controller = scheduler::Controller<ID, YTReqWrapped, R>;
 pub type YTSender = scheduler::Sender<YTReqWrapped>;
 
 pub trait YTRequest {
-    /// Force track over of playlist if possible
-    fn is_force_track(&self) -> bool;
     /// Url to resolve
     fn url(&self) -> &str;
     /// Callback, called after resolving of requested url with return value
@@ -86,13 +84,7 @@ pub fn crate_ytdl_scheduler(
         move |req: YTReqWrapped| {
             let ytdl_c = ytdl.clone();
             let start = Instant::now();
-            let result = scheduler_retrieve(
-                cache.clone(),
-                &ytdl_c,
-                &pool,
-                req.is_force_track(),
-                req.url(),
-            );
+            let result = scheduler_retrieve(cache.clone(), &ytdl_c, &pool, req.url());
             let end = start.elapsed();
             debug!(
                 "Request {} took {}{:03}ms to process",
@@ -115,13 +107,7 @@ pub fn crate_ytdl_scheduler(
 /// Retrieve function for scheduler
 /// query ytdl, insert into db & update cache
 /// returns all song IDs
-fn scheduler_retrieve(
-    cache: SongCache,
-    ytdl: &YtDL,
-    pool: &Pool,
-    force_track: bool,
-    url: &str,
-) -> RSongs {
+fn scheduler_retrieve(cache: SongCache, ytdl: &YtDL, pool: &Pool, url: &str) -> RSongs {
     // check DB & cache
     // also works with playlists as playlists are not expected to
     // be a source URL entry in the database
@@ -135,7 +121,7 @@ fn scheduler_retrieve(
 
     Ok(match tracks {
         None => {
-            let tracks = ytdl.get_url_info(url, force_track)?;
+            let tracks = ytdl.get_url_info(url)?;
             db::insert_tracks(Some(cache), tracks, &pool)?
         }
         Some(v) => v,

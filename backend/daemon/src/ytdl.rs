@@ -244,14 +244,12 @@ impl YtDL {
 
     /// Get playlist info
     /// If url is no track, then only one track is returned
-    pub fn get_url_info(&self, url: &str, force_track: bool) -> Fallible<Vec<Track>> {
+    pub fn get_url_info(&self, url: &str) -> Fallible<Vec<Track>> {
         let _guard = LOCK.read().unwrap();
-        let mut child = self.cmd_base();
-        child.arg("-j");
-        if force_track {
-            child.arg("--no-playlist");
-        }
-        let mut child = child
+        let mut child = self
+            .cmd_base()
+            .arg("-j")
+            .arg("--no-playlist")
             .arg(url)
             .stdin(Stdio::null())
             .stderr(Stdio::piped())
@@ -487,7 +485,7 @@ mod test {
     #[test]
     fn test_yt_info() {
         let output = DOWNLOADER
-            .get_url_info("https://www.youtube.com/watch?v=Es44QTJmuZ0", false)
+            .get_url_info("https://www.youtube.com/watch?v=Es44QTJmuZ0")
             .unwrap();
 
         let output = output[0];
@@ -537,10 +535,7 @@ mod test {
         assert_eq!(Some("m3u8".into()), output.protocol);
 
         let output = DOWNLOADER
-            .get_url_info(
-                "http://yp.shoutcast.com/sbin/tunein-station.m3u?id=1796249",
-                false,
-            )
+            .get_url_info("http://yp.shoutcast.com/sbin/tunein-station.m3u?id=1796249")
             .expect("can't get sc stream");
 
         let output = output[0];
@@ -557,7 +552,6 @@ mod test {
         let output = DOWNLOADER
             .get_url_info(
                 "https://soundcloud.com/djsusumu/alan-walker-faded-susumu-melbourne-bounce-edit",
-                false,
             )
             .unwrap();
 

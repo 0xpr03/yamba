@@ -131,10 +131,6 @@ impl Enqueue {
 }
 
 impl YTRequest for Enqueue {
-    fn is_force_track(&self) -> bool {
-        false
-    }
-
     fn url(&self) -> &str {
         &self.url
     }
@@ -313,7 +309,7 @@ impl Instance {
             v
         } else {
             debug!("No cache entry for {}", song_id);
-            let track = inst.ytdl.get_url_info(source.as_str(), true)?;
+            let track = inst.ytdl.get_url_info(source.as_str())?;
             let track = match track.get(0) {
                 Some(t) => t,
                 None => return Err(InstanceErr::InvalidSource(source).into()),
