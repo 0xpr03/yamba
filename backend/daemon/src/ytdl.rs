@@ -476,7 +476,7 @@ mod test {
         // simplify downloader, perform startup_test just once, this also tests it on the fly
         static ref DOWNLOADER: Arc<YtDL> = {
             let downloader = YtDL::new().unwrap();
-            // assert!(downloader.startup_test());
+            assert!(downloader.startup_test());
             Arc::new(downloader)
         };
     }
