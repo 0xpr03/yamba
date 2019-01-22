@@ -523,17 +523,23 @@ mod test {
         }
     }
 
+    // yt streams aren't permanent..
+    // thus we can't permanently test against this
     #[test]
-    fn test_stream_info() {
+    #[ignore]
+    fn test_stream_youtube() {
         let output = DOWNLOADER
-            .get_url_info("https://www.youtube.com/watch?v=8XjDmVzqVUc", false)
+            .get_url_info("https://www.youtube.com/watch?v=oI3GdbsbDxk")
             .expect("can't get yt stream");
 
         let output = &output[0];
 
         assert_eq!(Some(0.0), output.duration, "failed for yt stream duration");
         assert_eq!(Some("m3u8".into()), output.protocol);
+    }
 
+    #[test]
+    fn test_stream_info() {
         let output = DOWNLOADER
             .get_url_info("http://yp.shoutcast.com/sbin/tunein-station.m3u?id=1796249")
             .expect("can't get sc stream");
@@ -562,8 +568,19 @@ mod test {
     }
 
     #[test]
-    fn test_yt_playlist_info() {
-        let output = DOWNLOADER.get_url_info("https://www.youtube.com/watch?v=kYdrd4Kspxg&list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6&index=2&t=0s",false).unwrap();
+    fn test_yt_playlist_info_track() {
+        let output = DOWNLOADER.get_url_info("https://www.youtube.com/watch?v=kYdrd4Kspxg&list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6&index=2&t=0s").unwrap();
+        println!("{:?}", output);
+        assert_eq!(1, output.len());
+    }
+
+    #[test]
+    fn test_yt_playlist_info_playlist() {
+        let output = DOWNLOADER
+            .get_url_info(
+                "https://www.youtube.com/playlist?list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6",
+            )
+            .unwrap();
         println!("{:?}", output);
         assert_eq!(8, output.len());
     }
