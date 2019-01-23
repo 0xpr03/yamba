@@ -313,6 +313,7 @@ fn main() -> Fallible<()> {
     Ok(())
 }
 
+/// Check runtime relevant config values
 fn check_runtime() -> Fallible<()> {
     if let Err(e) = rpc::check_config() {
         error!("Invalid config for rpc daemon, aborting: {}", e);
