@@ -341,6 +341,23 @@ impl Instance {
         }
     }
 
+    /// Get next n tracks in queue
+    pub fn get_next_tracks_queue(&self, amount: &i32) -> Fallible<Vec<String>> {
+        db::lookahead_queue_tracks(&self.pool, &self.id, amount).map(|val_ok| {
+            val_ok
+                .iter()
+                .map(|x| {
+                    format!(
+                        "{} - {} {}",
+                        x.name,
+                        x.artist.as_ref().unwrap_or(&String::new()),
+                        format_time(x.length)
+                    )
+                })
+                .collect()
+        })
+    }
+
     /*/// Inner function, blocking
     fn enqueue_by_url_inner(url: String, inst: Instance) -> Fallible<()> {
         let song_entry = db::get_track_by_url(&url, &inst.pool)?;

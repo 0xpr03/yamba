@@ -65,8 +65,8 @@ jsonrpc_client!(
 
     // Return: allowed, message, name
     pub fn playlist_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
-    // n <= 0: return all tracks
     // n > 0: return the next n tracks
+    // n <= 0 isn't allowed
     // Return: allowed, message, tracklist
     pub fn queue_tracks(&mut self, id : i32, invokerName : String, invokerGroups : String, n : i32) -> RpcRequest<(bool, String, Vec<String>)>;
     // Return: allowed, message, success
@@ -106,7 +106,6 @@ lazy_static! {
     pub static ref R_PLAYLIST_GET: Regex = Regex::new(r"^!((playlist)|(plst))").unwrap();
     pub static ref R_PLAYLIST_TRACKS_5: Regex = Regex::new(r"^!t((rx)|(racks))?").unwrap();
     pub static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^!t((rx)|(racks))? (\d*)").unwrap();
-    pub static ref R_QUEUE_TRACKS_ALL: Regex = Regex::new(r"^!t((rx)|(racks))? a(ll)?").unwrap();
     pub static ref R_QUEUE_CLEAR: Regex = Regex::new("^!c(lear)?").unwrap();
     pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck)?( )?p((laylist)|(lst))").unwrap();
     pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!un?l(o?ck)?( )?p((laylist)|(lst))").unwrap();
@@ -134,6 +133,8 @@ const HELP: &str = r#"
 
 Get [b]current track[/b]: [I]!playing[/I]
 [b]Enqueue[/b] <url> : [I]!queue[/I] <url>
+Get [b]next X tracks[/b]: [I]!tracks[/I] <amount>
+Defaults to 5 if amount not provided
 Adds track to playback queue.
 [b]Load playlist[/b] <playlist>: [I]!lpload [/I]<playlist>
 Load playlist with specified name into queue
@@ -556,24 +557,6 @@ impl Plugin for MyTsPlugin {
                                 let name = res.2;
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", name));
-                                }
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_QUEUE_TRACKS_ALL.is_match(&message) {
-                        match client_lock
-                            .queue_tracks(id, invoker_name, invoker_groups, -1)
-                            .call()
-                        {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let tracks = res.2;
-                                if rpc_allowed {
-                                    print_tracks(connection, tracks);
                                 }
                             }
                             Err(e) => {

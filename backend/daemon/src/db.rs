@@ -231,6 +231,26 @@ pub fn get_next_in_queue(pool: &Pool, instance: &ID) -> Fallible<Option<(QueueID
     }
 }
 
+/// Lookahead next queue tracks
+/// Used for user preview
+pub fn lookahead_queue_tracks(pool: &Pool, instance: &ID, amount: &i32) -> Fallible<Vec<SongMin>> {
+    let result = pool.prep_exec(
+        "SELECT `id`,`name`,`source`,`artist`,`length`
+     FROM `queues` q
+    JOIN `titles` t ON t.`id` = q.`title_id`
+    WHERE q.`instance_id` = ?
+    ORDER BY q.position
+    LIMIT ?",
+        (**instance, amount),
+    )?;
+
+    let result = result
+        .map(|res| res.map(|row| parse_track_from_row(row))?)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(result)
+}
+
 /// Insert single track for playback
 pub fn insert_track(mut track: Track, pool: &Pool) -> Fallible<SongMin> {
     let id = calculate_id(&track);

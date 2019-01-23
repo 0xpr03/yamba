@@ -61,6 +61,7 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
                         "track_get" => handle_playback_info(req_id, instances, instance_id),
                         "track_previous" => handle_previous(req_id, instances, instance_id),
                         "queue_clear" => handle_queue_clear(req_id, instances, instance_id),
+                        "queue_tracks" => handle_queue_info(req_id, params, instances, instance_id),
                         _ => {
                             trace!("Unknown rpc request: {:?}", rpc);
                             JsonRpc::error(req_id, Error::method_not_found())
@@ -82,6 +83,35 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
         //trace!("Sending response for rpc");
         Response::new(body.into())
     }))
+}
+
+/// Handle queue info
+fn handle_queue_info(
+    req_id: Id,
+    params: Vec<Value>,
+    instances: Instances,
+    instance_id: i32,
+) -> JsonRpc {
+    let instance = match get_instance_by_id(&req_id, &*instances, &instance_id) {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    match parse_i32(&req_id, 3, &params) {
+        Ok(amount) => {
+            if amount <= 0 || amount > 30 {
+                warn!("Invalid amount of queue lookahead! {}", amount);
+                return JsonRpc::error(req_id, Error::invalid_params());
+            }
+            match instance.get_next_tracks_queue(&amount) {
+                Ok(tracks) => JsonRpc::success(req_id, &json!((true, "test", tracks))),
+                Err(e) => {
+                    warn!("Error on queue lookahead: {}", e);
+                    JsonRpc::error(req_id, Error::internal_error())
+                }
+            }
+        }
+        Err(e) => e,
+    }
 }
 
 /// handle track_get
