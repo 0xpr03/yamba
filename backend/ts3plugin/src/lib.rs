@@ -147,18 +147,19 @@ Add a playlist (yt..) to playback queue.
 [b]Stop[/b] playback: [I]!stop[/I]
 "#;
 
-pub fn print_tracks(connection: &ts3plugin::Connection, mut tracks: Vec<String>) {
-    let mut message = String::from("");
-    while let Some(track) = tracks.pop() {
+/// Print tracks for queue lookahead
+pub fn print_tracks(connection: &ts3plugin::Connection, tracks: Vec<String>) {
+    let mut message = String::from("Upcoming tracks:\n");
+    tracks.iter().for_each(|track| {
         if message.len() + track.len() + 1 >= 1024 {
-            let _ = connection.send_message(format!("{}", message));
-            message = String::from(format!("{}\n", track));
-        } else {
-            message = String::from(format!("{}{}\n", message, track));
+            let _ = connection.send_message(message.as_str());
+            message = String::from("Upcoming tracks:\n");
         }
-    }
+        message.push_str(track);
+        message.push_str("\n");
+    });
     if message.len() > 0 {
-        let _ = connection.send_message(format!("{}", message));
+        let _ = connection.send_message(message.as_str());
     }
 }
 
