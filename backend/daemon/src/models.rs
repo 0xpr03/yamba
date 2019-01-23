@@ -30,6 +30,7 @@ pub struct Song {
     /// URL (not youtube-dl Format URL)
     pub source: String,
     pub artist: Option<String>,
+    /// Length in seconds
     pub length: Option<u32>,
     pub downloaded: bool,
     pub last_used: NaiveDateTime,
@@ -57,6 +58,7 @@ pub struct SongMin {
     /// URL (not youtube-dl Format URL)
     pub source: String,
     pub artist: Option<String>,
+    /// Length in seconds
     pub length: Option<u32>,
 }
 
