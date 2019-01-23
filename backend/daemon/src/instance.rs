@@ -360,56 +360,6 @@ impl Instance {
                 .collect()
         })
     }
-
-    /*/// Inner function, blocking
-    fn enqueue_by_url_inner(url: String, inst: Instance) -> Fallible<()> {
-        let song_entry = db::get_track_by_url(&url, &inst.pool)?;
-
-        let (audio_url, song) = match song_entry {
-            Some(song) => match inst.cache.get(&song.id) {
-                Some(url) => (url, song),
-                None => {
-                    let audio_url = match inst.ytdl.get_url_info(&url)?.best_audio_format() {
-                        Some(v) => v.url.clone(),
-                        None => return Err(InstanceErr::NoAudioTrack(url).into()),
-                    };
-                    inst.cache.upsert(song.id.clone(), audio_url.clone());
-                    (audio_url, song)
-                }
-            },
-            None => {
-                let track = inst.ytdl.get_url_info(&url)?;
-                let audio_url = match track.best_audio_format() {
-                    Some(v) => v.url.clone(),
-                    None => return Err(InstanceErr::NoAudioTrack(url).into()),
-                };
-                let song = db::insert_track(track, &inst.pool)?;
-                inst.cache.upsert(song.id.clone(), audio_url.clone());
-                (audio_url, song)
-            }
-        };
-
-        let queue_id = db::add_song_to_queue(&inst.pool, &inst.id, &song.id)?;
-
-        let mut w_guard = inst.current_song.write().expect("Can't lock current-song");
-
-        if w_guard.is_none() {
-            debug!(
-                "No current song, starting playback for {} qid {}",
-                song.id, queue_id
-            );
-            *w_guard = Some(CurrentSong {
-                song: song,
-                queue_id,
-            });
-
-            drop(w_guard);
-
-            inst.player.set_uri(&audio_url);
-        }
-
-        Ok(())
-    }*/
 }
 
 /// Format time by
