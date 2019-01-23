@@ -348,9 +348,12 @@ impl Instance {
                 .iter()
                 .map(|x| {
                     format!(
-                        "{} - {} {}",
+                        "{}{} {}",
                         x.name,
-                        x.artist.as_ref().unwrap_or(&String::new()),
+                        x.artist
+                            .as_ref()
+                            .map(|art| format!(" - {}", art))
+                            .unwrap_or(String::new()),
                         format_time(x.length)
                     )
                 })
