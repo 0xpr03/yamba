@@ -219,10 +219,7 @@ impl Instance {
         match song_guard.as_ref() {
             Some(cur_song) => {
                 let position = self.player.get_position();
-                let length = match cur_song.song.length {
-                    Some(v) => format!("{:02}:{:02}", v / 60, v % 60),
-                    None => String::from("--:--"),
-                };
+                let length = format_time(cur_song.song.length);
                 let artist = match cur_song.song.artist.as_ref() {
                     Some(v) => format!(" - {}", v),
                     None => String::new(),
@@ -393,6 +390,15 @@ impl Instance {
 
         Ok(())
     }*/
+}
+
+/// Format time by
+#[inline(always)]
+fn format_time(length: Option<u32>) -> String {
+    match length {
+        Some(v) => format!("{:02}:{:02}", v / 60, v % 60),
+        None => String::from("--:--"),
+    }
 }
 
 /// Instance type for different VoIP systems
