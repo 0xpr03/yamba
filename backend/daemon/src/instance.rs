@@ -20,7 +20,6 @@ use failure::Fallible;
 use mysql::Pool;
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::TrySendError;
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::Instant;
@@ -33,7 +32,7 @@ use models::{InstanceStorage, QueueID, SongMin};
 use playback::Player;
 use ts::TSInstance;
 use ytdl::YtDL;
-use ytdl_worker::{RSongs, YTRequest, YTSender};
+use ytdl_worker::YTSender;
 
 /// module containing a single instance
 
@@ -45,10 +44,6 @@ pub enum InstanceErr {
     NoAudioTrack(String),
     #[fail(display = "No YTDL result for URL {}", _0)]
     InvalidSource(String),
-    #[fail(display = "Too many queue requests for instance!")]
-    QueueOverload,
-    #[fail(display = "Internal error {}", _0)]
-    InternalError(String),
 }
 
 pub type ID = Arc<i32>;
@@ -93,52 +88,6 @@ impl Drop for Instance {
                     Err(e) => error!("Unable to store instance {}", e),
                 }
             }
-        }
-    }
-}
-
-struct Enqueue {
-    url: String,
-    instance: Instance,
-}
-
-impl Enqueue {
-    fn callback_inner(&mut self, songs_r: RSongs) -> Fallible<()> {
-        let songs = songs_r?;
-
-        if songs.len() == 0 {
-            return Err(InstanceErr::InvalidSource(self.url.clone()).into());
-        }
-
-        let _ = songs
-            .iter()
-            .map(|s| db::add_song_to_queue(&self.instance.pool, &self.instance.id, &s.id))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let r_guard = self
-            .instance
-            .current_song
-            .read()
-            .expect("Can't lock current-song");
-
-        let no_song = r_guard.is_none();
-        drop(r_guard); // required for next step
-        if no_song {
-            self.instance.play_next_track()?;
-        }
-        Ok(())
-    }
-}
-
-impl YTRequest for Enqueue {
-    fn url(&self) -> &str {
-        &self.url
-    }
-
-    fn callback(&mut self, songs_r: RSongs) {
-        match self.callback_inner(songs_r) {
-            Ok(v) => (),
-            Err(e) => warn!("Enqueue failed: {}", e),
         }
     }
 }
@@ -325,20 +274,25 @@ impl Instance {
         Ok(())
     }
 
-    /// Enqueue track
-    /// Returns error when too many tracks are enqueued
-    pub fn enqueue_by_url(&self, url: String) -> Fallible<()> {
-        match self.ytdl_tx.try_send(
-            Enqueue {
-                url: url,
-                instance: self.clone(),
-            }
-            .wrap(),
-        ) {
-            Ok(_) => Ok(()),
-            Err(TrySendError::Full(_)) => Err(InstanceErr::QueueOverload.into()),
-            Err(e) => Err(InstanceErr::InternalError(format!("{}", e)).into()),
+    /// Enqueue a set of SongMin
+    pub fn enqueue_songs(&self, songs: Vec<SongMin>, url: &str) -> Fallible<()> {
+        if songs.len() == 0 {
+            return Err(InstanceErr::InvalidSource(url.to_string()).into());
         }
+
+        let _ = songs
+            .iter()
+            .map(|s| db::add_song_to_queue(&self.pool, &self.id, &s.id))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let r_guard = self.current_song.read().expect("Can't lock current-song");
+
+        let no_song = r_guard.is_none();
+        drop(r_guard); // required for next step
+        if no_song {
+            self.play_next_track()?;
+        }
+        Ok(())
     }
 
     /// Get next n tracks in queue

@@ -26,10 +26,12 @@ use serde_json::{self, to_value, Value};
 use tokio::runtime;
 
 use hashbrown::HashMap;
+use std::sync::mpsc::TrySendError;
 use std::sync::{RwLock, RwLockReadGuard};
 
 use daemon::{self, BoxFut, Instances};
-use instance::{Instance, InstanceErr, InstanceType};
+use instance::{Instance, InstanceType};
+use ytdl_worker::{RSongs, YTRequest};
 use SETTINGS;
 
 /// RPC server for client callbacks
@@ -187,6 +189,31 @@ fn handle_stop(req_id: Id, instances: Instances, instance_id: i32) -> JsonRpc {
     JsonRpc::success(req_id, &json!((true, "test", true)))
 }
 
+// enqueue operation
+struct Enqueue {
+    instance: Instance,
+    url: String,
+}
+
+impl YTRequest for Enqueue {
+    fn url(&self) -> &str {
+        self.url.as_str()
+    }
+
+    fn callback(&mut self, songs_r: RSongs) {
+        match songs_r {
+            Ok(v) => {
+                if let Err(e) = self.instance.enqueue_songs(v, &self.url) {
+                    warn!("Couldn't enqueue songs: {}", e);
+                }
+            }
+            Err(e) => {
+                warn!("Error on resolving url: {}", e);
+            }
+        }
+    }
+}
+
 /// Handle enqueue
 fn handle_enqueue(
     req_id: Id,
@@ -198,25 +225,33 @@ fn handle_enqueue(
         Ok(v) => v,
         Err(e) => return e,
     };
-    match parse_string(&req_id, 3, &params) {
-        Ok(url) => match instance.enqueue_by_url(url.clone()) {
-            Ok(_) => JsonRpc::success(req_id, &json!((true, "test", true))),
-            Err(e) => {
-                if e.downcast_ref() == Some(&InstanceErr::QueueOverload) {
-                    JsonRpc::error(
-                        req_id,
-                        Error {
-                            code: ERR_OVERLOAD_CODE,
-                            message: ERR_OVERLOAD.to_string(),
-                            data: None,
-                        },
-                    )
-                } else {
-                    warn!("Error on enqueue: {}", e);
-                    JsonRpc::error(req_id, Error::internal_error())
-                }
+
+    let result = parse_string(&req_id, 3, &params).map(|url| {
+        match instance.ytdl_tx.try_send(
+            Enqueue {
+                url: url.clone(),
+                instance: instance.clone(),
             }
-        },
+            .wrap(),
+        ) {
+            Ok(_) => JsonRpc::success(req_id, &json!((true, "test", true))),
+            Err(TrySendError::Full(_)) => JsonRpc::error(
+                req_id,
+                Error {
+                    code: ERR_OVERLOAD_CODE,
+                    message: ERR_OVERLOAD.to_string(),
+                    data: None,
+                },
+            ),
+            Err(e) => {
+                warn!("Error on enqueue: {}", e);
+                JsonRpc::error(req_id, Error::internal_error())
+            }
+        }
+    });
+
+    match result {
+        Ok(v) => v,
         Err(e) => e,
     }
 }
