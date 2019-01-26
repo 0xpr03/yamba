@@ -46,7 +46,7 @@ pub enum InstanceErr {
     InvalidSource(String),
 }
 
-pub type ID = Arc<i32>;
+pub type ID = i32;
 /// Cache for resolved media URIs
 pub type SongCache = Cache<SongID, String>;
 #[allow(non_camel_case_types)]

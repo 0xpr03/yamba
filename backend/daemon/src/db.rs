@@ -158,10 +158,7 @@ pub fn clear_instances(pool: &Pool) -> Fallible<()> {
 
 /// Clear queue for instance
 pub fn clear_queue(pool: &Pool, instance: &ID) -> Fallible<()> {
-    pool.prep_exec(
-        "DELETE FROM `queues` WHERE `instance_id` = ?",
-        (**instance,),
-    )?;
+    pool.prep_exec("DELETE FROM `queues` WHERE `instance_id` = ?", (*instance,))?;
     Ok(())
 }
 
@@ -171,7 +168,7 @@ pub fn add_song_to_queue(pool: &Pool, instance: &ID, id: &SongID) -> Fallible<Qu
     let result = pool.prep_exec(
         "INSERT INTO `queues` (`instance_id`,`title_id`)
     VALUES (?,?)",
-        (**instance, id),
+        (*instance, id),
     )?;
 
     Ok(result.last_insert_id() as QueueID)
@@ -187,7 +184,7 @@ pub fn add_previous_song_to_queue(
     let result = pool.prep_exec(
         "INSERT INTO `queues` (`instance_id`,`title_id`,`position`)
     VALUES (?,?,?)",
-        (**instance, id, queue_id),
+        (*instance, id, queue_id),
     )?;
     if result.affected_rows() != 1 {
         warn!(
@@ -217,7 +214,7 @@ pub fn remove_from_queue(pool: &Pool, id: &QueueID) -> Fallible<()> {
 pub fn get_next_in_queue(pool: &Pool, instance: &ID) -> Fallible<Option<(QueueID, SongMin)>> {
     let mut result = pool.prep_exec(
         "SELECT MIN(`position`) FROM `queues` WHERE `instance_id` = ?",
-        (**instance,),
+        (*instance,),
     )?;
 
     if let Some(row) = result.next() {
@@ -241,7 +238,7 @@ pub fn lookahead_queue_tracks(pool: &Pool, instance: &ID, amount: &i32) -> Falli
     WHERE q.`instance_id` = ?
     ORDER BY q.position
     LIMIT ?",
-        (**instance, amount),
+        (*instance, amount),
     )?;
 
     let result = result

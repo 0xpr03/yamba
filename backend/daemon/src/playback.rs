@@ -95,10 +95,8 @@ pub type PlaybackSender = Sender<PlayerEvent>;
 
 impl Player {
     /// Create new Player with given instance
-    pub fn new<T: Into<ID>>(events: PlaybackSender, id: T, volume: f64) -> Fallible<Player> {
+    pub fn new(events: PlaybackSender, id: ID, volume: f64) -> Fallible<Player> {
         debug!("player init");
-
-        let id = id.into(); // share it across all events
 
         let dispatcher = gst_player::PlayerGMainContextSignalDispatcher::new(None);
         let player = gst_player::Player::new(
@@ -110,7 +108,7 @@ impl Player {
         let mut config = player.get_config();
         config.set_position_update_interval(250);
 
-        let name = Player::get_name_by_id(&*id);
+        let name = Player::get_name_by_id(&id);
 
         config.set_name(&name);
         config.set_position_update_interval(250);
@@ -395,14 +393,12 @@ mod tests {
     use futures::sync::mpsc;
     use futures::Stream;
     use gst;
-    use std::sync::Arc;
     use std::thread;
     use std::time::Duration;
     use tokio::runtime::Runtime;
 
     lazy_static! {
-        // simplify downloader, perform startup_test just once, this also tests it on the fly
-        static ref TEST_ID: Arc<i32> = Arc::new(-1);
+        static ref TEST_ID: i32 = -1;
     }
 
     #[test]

@@ -142,7 +142,7 @@ pub fn start_runtime() -> Fallible<()> {
         ytdl_worker::crate_yt_updater(&mut rt, ytdl.clone());
 
         // let api run on i32::max, as no instance will reach this
-        let id_api = Arc::new(i32::MAX);
+        let id_api = i32::MAX;
         api::create_api_server(&mut rt, controller.channel(id_api.clone(), 32))
             .map_err(|e| DaemonErr::APICreationError(e))?;
         playback::create_playback_server(&mut rt, player_rx, instances.clone())?;
@@ -265,7 +265,7 @@ fn create_ts_instance(
     data: TSSettings,
     storage: InstanceStorage,
 ) -> Fallible<Instance> {
-    let id = Arc::new(data.id);
+    let id = data.id;
 
     let player = Player::new(base.player_send.clone(), id.clone(), storage.volume)?;
     let sink = NullSink::new(
