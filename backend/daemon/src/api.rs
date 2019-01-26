@@ -74,9 +74,9 @@ pub enum APIErr {
     BindError(#[cause] hyper::error::Error),
 }
 
-/// Playlist API call struct
+/// URL Resolve API call struct
 #[derive(Serialize, Deserialize, Debug)]
-pub struct NewPlaylist {
+pub struct UrlResolve {
     pub url: String,
 }
 
@@ -110,7 +110,7 @@ fn api(req: Request<Body>, counter: Arc<Atomic<u32>>, channel: YTSender) -> BoxF
                 *response.status_mut() = StatusCode::IM_A_TEAPOT;
             }
             (Method::POST, "/new/titles") => {
-                response = handle_request(counter, &b, new_playlist, channel);
+                response = handle_request(counter, &b, resolve_url, channel);
             }
             (_, v) => {
                 info!("Unknown API request {}", v);
@@ -198,21 +198,21 @@ impl YTRequest for PlaylistReq {
     }
 }
 
-/// Handle playlist request
-fn new_playlist(
-    playlist: NewPlaylist,
+/// Handle url resolve request
+fn resolve_url(
+    data: UrlResolve,
     response: &mut Response<Body>,
     request_id: RequestID,
     channel: YTSender,
 ) -> Fallible<()> {
-    info!("URL: {}", playlist.url);
+    info!("URL: {}", data.url);
     *response.status_mut() = StatusCode::ACCEPTED;
     *response.body_mut() = serde_json::to_string(&json!({ "request_id": &request_id }))
         .unwrap()
         .into();
     channel.try_send(
         PlaylistReq {
-            url: playlist.url,
+            url: data.url,
             request_id,
         }
         .wrap(),
@@ -233,7 +233,7 @@ pub fn create_api_server(runtime: &mut runtime::Runtime, channel: YTSender) -> F
 
     debug!(
         "{}",
-        serde_json::to_string(&NewPlaylist { url: "asd".into() }).unwrap()
+        serde_json::to_string(&UrlResolve { url: "asd".into() }).unwrap()
     );
 
     if Atomic::<u32>::is_lock_free() {
