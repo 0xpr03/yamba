@@ -279,9 +279,14 @@ impl YtDL {
         child.wait()?;
 
         match stderr_worker_handle.join() {
-            Ok(Ok(v)) => {
-                if v.len() > 0 {
-                    return Err(YtDLErr::ResponseError(format!("stderr: {}", v)).into());
+            Ok(Ok(stderr)) => {
+                // don't abort if some tracks fail (playlist..)
+                if stderr.len() > 0 {
+                    if tracks.len() == 0 {
+                        return Err(YtDLErr::ResponseError(format!("stderr: {}", stderr)).into());
+                    } else {
+                        warn!("Stderr from ytdl: {}", stderr);
+                    }
                 }
             }
             Ok(Err(e)) => return Err(e),
