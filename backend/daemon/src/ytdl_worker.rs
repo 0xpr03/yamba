@@ -29,6 +29,7 @@ use std::time::{Duration, Instant};
 
 use ytdl::YtDL;
 
+use daemon::Instances;
 use db;
 use instance::{SongCache, ID};
 use models::SongMin;
@@ -46,7 +47,8 @@ pub trait YTRequest {
     /// Url to resolve
     fn url(&self) -> &str;
     /// Callback, called after resolving of requested url with return value
-    fn callback(&mut self, RSongs);
+    /// instance calls should be done via the instance map passed
+    fn callback(&mut self, RSongs, Instances);
     /// Turn YTRequest into wrapped to send to scheduler
     fn wrap(self) -> YTReqWrapped
     where
@@ -78,6 +80,7 @@ pub fn crate_ytdl_scheduler(
     ytdl: Arc<YtDL>,
     pool: Pool,
     cache: SongCache,
+    instances: Instances,
 ) -> Controller {
     let (controller, scheduler) = scheduler::Scheduler::new(
         SETTINGS.ytdl.workers as usize,
@@ -94,8 +97,9 @@ pub fn crate_ytdl_scheduler(
             );
             (req, result)
         },
-        Some(|(mut req, tracks): R| {
-            req.callback(tracks);
+        Some(move |(mut req, tracks): R| {
+            let instances_c = instances.clone();
+            req.callback(tracks, instances_c);
         }),
         false,
     );

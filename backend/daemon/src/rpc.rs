@@ -30,7 +30,7 @@ use std::sync::mpsc::TrySendError;
 use std::sync::{RwLock, RwLockReadGuard};
 
 use daemon::{self, BoxFut, Instances};
-use instance::{Instance, InstanceType};
+use instance::{Instance, InstanceType, ID};
 use ytdl_worker::{RSongs, YTRequest};
 use SETTINGS;
 
@@ -191,7 +191,7 @@ fn handle_stop(req_id: Id, instances: Instances, instance_id: i32) -> JsonRpc {
 
 // enqueue operation
 struct Enqueue {
-    instance: Instance,
+    instance_id: ID,
     url: String,
 }
 
@@ -200,16 +200,21 @@ impl YTRequest for Enqueue {
         self.url.as_str()
     }
 
-    fn callback(&mut self, songs_r: RSongs) {
-        match songs_r {
-            Ok(v) => {
-                if let Err(e) = self.instance.enqueue_songs(v, &self.url) {
-                    warn!("Couldn't enqueue songs: {}", e);
+    fn callback(&mut self, songs_r: RSongs, instances: Instances) {
+        let instances = instances.read().expect("Can't read instance!");
+        if let Some(instance) = instances.get(&self.instance_id) {
+            match songs_r {
+                Ok(v) => {
+                    if let Err(e) = instance.enqueue_songs(v, &self.url) {
+                        warn!("Couldn't enqueue songs: {}", e);
+                    }
+                }
+                Err(e) => {
+                    warn!("Error on resolving url: {}", e);
                 }
             }
-            Err(e) => {
-                warn!("Error on resolving url: {}", e);
-            }
+        } else {
+            debug!("Instance {} not found, ignoring job.. ", self.instance_id);
         }
     }
 }
@@ -230,7 +235,7 @@ fn handle_enqueue(
         match instance.ytdl_tx.try_send(
             Enqueue {
                 url: url.clone(),
-                instance: instance.clone(),
+                instance_id: instance.id.clone(),
             }
             .wrap(),
         ) {

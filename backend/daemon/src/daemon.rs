@@ -133,6 +133,7 @@ pub fn start_runtime() -> Fallible<()> {
             ytdl.clone(),
             pool.clone(),
             cache.clone(),
+            instances.clone(),
         ));
 
         rpc::create_rpc_server(&mut rt, instances.clone())

@@ -31,7 +31,7 @@ use tokio::runtime;
 
 use std::sync::Arc;
 
-use daemon::{self, BoxFut};
+use daemon::{self, BoxFut, Instances};
 use ytdl_worker::{RSongs, YTRequest, YTSender};
 use SETTINGS;
 use USERAGENT;
@@ -167,7 +167,7 @@ impl YTRequest for PlaylistReq {
         &self.url
     }
 
-    fn callback(&mut self, songs: RSongs) {
+    fn callback(&mut self, songs: RSongs, _: Instances) {
         let response = match songs {
             Ok(s) => Ok(PlaylistAnswer {
                 request_id: self.request_id,
