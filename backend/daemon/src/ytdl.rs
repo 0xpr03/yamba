@@ -276,6 +276,8 @@ impl YtDL {
             .map(|res| Ok(serde_json::from_str(&(res?))?))
             .collect::<Fallible<Vec<Track>>>()?;
 
+        child.wait()?;
+
         match stderr_worker_handle.join() {
             Ok(Ok(v)) => {
                 if v.len() > 0 {
