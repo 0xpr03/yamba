@@ -251,35 +251,6 @@ pub fn lookahead_queue_tracks(pool: &Pool, instance: &ID, amount: &i32) -> Falli
     Ok(result)
 }
 
-/// Insert single track for playback
-pub fn insert_track(mut track: Track, pool: &Pool) -> Fallible<SongMin> {
-    let id = calculate_id(&track);
-    let artist = track.take_artist();
-    pool.prep_exec(
-        "INSERT INTO `titles` 
-            (`id`,`name`,`source`,`downloaded`, `artist`, `length`) 
-            VALUES (?,?,?,?,?,?)
-            ON DUPLICATE KEY
-            UPDATE name=VALUES(name), length=VALUES(length)",
-        (
-            &id,
-            &track.title,
-            &track.webpage_url,
-            0,
-            &artist,
-            track.duration,
-        ),
-    )?;
-    let duration = track.duration_as_u32();
-    Ok(SongMin {
-        id,
-        name: track.title,
-        source: track.webpage_url,
-        artist: artist,
-        length: duration,
-    })
-}
-
 /// Save a set of tracks into the DB and return their SongMin representation
 /// Also upserts cache entries due to loss of their format in SongMin,
 /// if cache is set
