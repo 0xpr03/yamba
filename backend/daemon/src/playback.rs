@@ -319,6 +319,11 @@ impl Player {
         *self.state.read().expect("Can't read player state") == PlaybackState::Paused
     }
 
+    /// Whether player is currently playing
+    pub fn is_playing(&self) -> bool {
+        *self.state.read().expect("Can't read player state") == PlaybackState::Playing
+    }
+
     /// Set pulse device for player
     pub fn set_pulse_device(&self, device: &str) -> Fallible<()> {
         self.pulsesink

@@ -143,8 +143,12 @@ pub fn start_runtime() -> Fallible<()> {
 
         // let api run on i32::max, as no instance will reach this
         let id_api = i32::MAX;
-        api::create_api_server(&mut rt, controller.channel(id_api.clone(), 32))
-            .map_err(|e| DaemonErr::APICreationError(e))?;
+        api::create_api_server(
+            &mut rt,
+            controller.channel(id_api.clone(), 32),
+            instances.clone(),
+        )
+        .map_err(|e| DaemonErr::APICreationError(e))?;
         playback::create_playback_server(&mut rt, player_rx, instances.clone())?;
 
         info!("Loading instances..");

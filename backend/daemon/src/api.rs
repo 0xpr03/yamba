@@ -32,6 +32,7 @@ use tokio::runtime;
 use std::sync::Arc;
 
 use daemon::{self, BoxFut, Instances};
+use instance::ID;
 use ytdl_worker::{RSongs, YTRequest, YTSender};
 use SETTINGS;
 use USERAGENT;
@@ -80,6 +81,12 @@ pub struct UrlResolve {
     pub url: String,
 }
 
+/// Playback change call data struct
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PlaybackData {
+    pub instance_id: ID,
+}
+
 /// Playlist API callback structure
 #[derive(Debug, Serialize)]
 pub struct PlaylistAnswer {
@@ -98,7 +105,12 @@ pub struct CallbackError {
 
 //const COUNTER: Arc<Atomic<u32>> = Arc::new(Atomic::new(0));
 /// API main handler for requests
-fn api(req: Request<Body>, counter: Arc<Atomic<u32>>, channel: YTSender) -> BoxFut {
+fn api(
+    req: Request<Body>,
+    counter: Arc<Atomic<u32>>,
+    channel: YTSender,
+    instances: Instances,
+) -> BoxFut {
     let mut response: Response<Body> = Response::new(Body::empty());
     let (parts, body) = req.into_parts();
     Box::new(body.concat2().map(move |b| {
@@ -110,7 +122,13 @@ fn api(req: Request<Body>, counter: Arc<Atomic<u32>>, channel: YTSender) -> BoxF
                 *response.status_mut() = StatusCode::IM_A_TEAPOT;
             }
             (Method::POST, "/new/titles") => {
-                response = handle_request(counter, &b, resolve_url, channel);
+                response = handle_request(counter, &b, resolve_url, channel, instances);
+            }
+            (Method::POST, "/playback/pause") => {
+                response = handle_request(counter, &b, pause_playback, channel, instances);
+            }
+            (Method::POST, "/playback/resume") => {
+                response = handle_request(counter, &b, resume_playback, channel, instances);
             }
             (_, v) => {
                 info!("Unknown API request {}", v);
@@ -128,9 +146,10 @@ fn handle_request<'a, T, F>(
     data: &'a [u8],
     mut handler: F,
     channel: YTSender,
+    instances: Instances,
 ) -> Response<Body>
 where
-    F: FnMut(T, &mut Response<Body>, u32, YTSender) -> Fallible<()>,
+    F: FnMut(T, &mut Response<Body>, u32, YTSender, Instances) -> Fallible<()>,
     T: Deserialize<'a>,
 {
     let mut response = Response::new(Body::empty());
@@ -138,7 +157,7 @@ where
         Ok(v) => {
             debug!("Parsed request");
             let req_id = req_counter.fetch_add(1, Ordering::AcqRel);
-            let mut result = handler(v, &mut response, req_id, channel);
+            let mut result = handler(v, &mut response, req_id, channel, instances);
             if result.is_ok() {
                 trace!("Processed api call");
                 *response.status_mut() = StatusCode::ACCEPTED;
@@ -198,12 +217,61 @@ impl YTRequest for PlaylistReq {
     }
 }
 
+/// Handle pause request
+fn resume_playback(
+    data: PlaybackData,
+    response: &mut Response<Body>,
+    _: RequestID,
+    _: YTSender,
+    instances: Instances,
+) -> Fallible<()> {
+    let instances = instances.read().expect("Can't read instance!");
+    if instances.get(&data.instance_id).map_or(false, |instance| {
+        let paused = instance.player.is_paused();
+        if paused {
+            instance.player.play();
+        }
+        paused
+    }) {
+        *response.status_mut() = StatusCode::ACCEPTED;
+    } else {
+        *response.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
+    }
+
+    Ok(())
+}
+
+/// Handle pause request
+fn pause_playback(
+    data: PlaybackData,
+    response: &mut Response<Body>,
+    _: RequestID,
+    _: YTSender,
+    instances: Instances,
+) -> Fallible<()> {
+    let instances = instances.read().expect("Can't read instance!");
+    if instances.get(&data.instance_id).map_or(false, |instance| {
+        let playing = instance.player.is_playing();
+        if playing {
+            instance.player.pause();
+        }
+        playing
+    }) {
+        *response.status_mut() = StatusCode::ACCEPTED;
+    } else {
+        *response.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
+    }
+
+    Ok(())
+}
+
 /// Handle url resolve request
 fn resolve_url(
     data: UrlResolve,
     response: &mut Response<Body>,
     request_id: RequestID,
     channel: YTSender,
+    _: Instances,
 ) -> Fallible<()> {
     info!("URL: {}", data.url);
     *response.status_mut() = StatusCode::ACCEPTED;
@@ -227,7 +295,11 @@ pub fn check_config() -> Fallible<()> {
 }
 
 /// Create api server, bind it & attach to runtime
-pub fn create_api_server(runtime: &mut runtime::Runtime, channel: YTSender) -> Fallible<()> {
+pub fn create_api_server(
+    runtime: &mut runtime::Runtime,
+    channel: YTSender,
+    instances: Instances,
+) -> Fallible<()> {
     let addr =
         daemon::parse_socket_address(&SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port)?;
 
@@ -249,7 +321,10 @@ pub fn create_api_server(runtime: &mut runtime::Runtime, channel: YTSender) -> F
         .serve(move || {
             let counter = counter.clone();
             let channel = channel.clone();
-            service_fn(move |req: Request<Body>| api(req, counter.clone(), channel.clone()))
+            let instances = instances.clone();
+            service_fn(move |req: Request<Body>| {
+                api(req, counter.clone(), channel.clone(), instances.clone())
+            })
         })
         .map_err(|e| error!("server error: {}", e));
 
