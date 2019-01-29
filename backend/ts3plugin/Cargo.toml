@@ -7,6 +7,12 @@ authors = ["Aron Heinecke <aron.heinecke@t-online.de>","Oliver Habersetzer <oliv
 name = "yamba_plugin"
 crate-type = ["dylib"]
 
+[features]
+
+# ads !halt command to process::exit for logging
+# requires daemon build with massif feature flag
+massif = []
+
 [dependencies]
 lazy_static = "1.1"
 jsonrpc-client-core = "0.5.0"

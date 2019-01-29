@@ -6,6 +6,12 @@ authors = ["Aron Heinecke <aron.heinecke@t-online.de>"]
 [profile.release]
 lto = "fat"
 
+[features]
+default = []
+# valgrind massif support
+# ads !halt rpc to allow stop of dameon via process::exit
+massif = []
+
 [dependencies]
 failure = "0.1"
 failure_derive = "0.1"

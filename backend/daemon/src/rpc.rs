@@ -26,6 +26,7 @@ use serde_json::{self, to_value, Value};
 use tokio::runtime;
 
 use hashbrown::HashMap;
+use std::process;
 use std::sync::mpsc::TrySendError;
 use std::sync::{RwLock, RwLockReadGuard};
 
@@ -64,6 +65,8 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
                         "track_previous" => handle_previous(req_id, instances, instance_id),
                         "queue_clear" => handle_queue_clear(req_id, instances, instance_id),
                         "queue_tracks" => handle_queue_info(req_id, params, instances, instance_id),
+                        #[cfg(massif)]
+                        "halt" => handle_halt(req_id, instances, instance_id),
                         _ => {
                             trace!("Unknown rpc request: {:?}", rpc);
                             JsonRpc::error(req_id, Error::method_not_found())
@@ -85,6 +88,12 @@ fn rpc(req: Request<Body>, instances: Instances) -> BoxFut {
         //trace!("Sending response for rpc");
         Response::new(body.into())
     }))
+}
+
+/// handle halt
+#[cfg(massif)]
+fn handle_halt(_: Id, _: Instances, _: i32) -> JsonRpc {
+    process::exit(1);
 }
 
 /// Handle queue info

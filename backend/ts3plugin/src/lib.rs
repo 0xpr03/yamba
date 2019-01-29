@@ -77,6 +77,9 @@ jsonrpc_client!(
     pub fn playlist_queue(&mut self, id : i32, invokerName : String, invokerGroups : String, url : String) -> RpcRequest<(bool, String, bool)>;
     // Return: allowed, message, success
     pub fn playlist_load(&mut self, id : i32, invokerName : String, invokerGroups : String, playlist_name : String) -> RpcRequest<(bool, String, bool)>;
+
+    // debug, halt bot
+    pub fn halt(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
 });
 
 lazy_static! {
@@ -92,7 +95,7 @@ lazy_static! {
     pub static ref R_IGNORE: Regex =
         Regex::new(r"^((Sorry, I didn't get that... Have you tried !help yet)|(RPC call failed)|(n not parseable))")
             .unwrap();
-    pub static ref R_HELP: Regex = Regex::new(r"^((\?)|(!h(e?lp)?))").unwrap();
+    pub static ref R_HELP: Regex = Regex::new(r"^((\?)|(!help))").unwrap();
     pub static ref R_VOL_LOCK: Regex = Regex::new(r"^(!l(o?ck)?( )?v(ol(ume)?)?)").unwrap();
     pub static ref R_VOL_UNLOCK: Regex = Regex::new(r"^(!un?l(o?ck)?( )?v(ol(ume)?)?)").unwrap();
     pub static ref R_VOL_SET: Regex = Regex::new(r"^(!v(ol(ume)?)? (\d*))").unwrap();
@@ -111,6 +114,7 @@ lazy_static! {
     pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!un?l(o?ck)?( )?p((laylist)|(lst))").unwrap();
     pub static ref R_ENQUEUE: Regex = Regex::new(r"^!q(ueue)? ([^ ]+)").unwrap();
     pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^!pl(oa)?d (.+)").unwrap();
+    pub static ref R_HALT: Regex = Regex::new(r"^!halt").unwrap();
 }
 
 #[derive(Debug)]
@@ -700,6 +704,26 @@ impl Plugin for MyTsPlugin {
                             }
                         }
                     } else {
+                        #[cfg(massif)]
+                        {
+                            if R_HALT.is_match(&message) {
+                                match client_lock.halt(id, invoker_name, invoker_groups).call() {
+                                    Ok(res) => {
+                                        rpc_allowed = res.0;
+                                        rpc_message = res.1;
+                                        let success = if res.2 { "Ok" } else { "Failure" };
+                                        if rpc_allowed {
+                                            let _ = connection.send_message(format!("{}", success));
+                                        }
+                                    }
+                                    Err(e) => {
+                                        is_rpc_error = true;
+                                        rpc_error = e;
+                                    }
+                                }
+                            }
+                        }
+
                         if match target {
                             MessageReceiver::Connection(_) => true,
                             _ => false,
