@@ -26,6 +26,7 @@ use serde_json::{self, to_value, Value};
 use tokio::runtime;
 
 use hashbrown::HashMap;
+#[cfg(massif)]
 use std::process;
 use std::sync::mpsc::TrySendError;
 use std::sync::{RwLock, RwLockReadGuard};
