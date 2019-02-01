@@ -62,11 +62,11 @@ pub struct CurrentSong {
 /// Base for each instance
 pub struct Instance {
     pub id: ID,
-    pub voip: Arc<InstanceType>,
-    pub store: Arc<RwLock<InstanceStorage>>,
-    pub playback_history: Arc<Mutex<ArrayDeque<[CurrentSong; MAX_BACK_TITLES], Wrapping>>>,
-    pub player: Arc<Player>,
-    pub stop_flag: Arc<AtomicBool>,
+    pub voip: InstanceType,
+    pub store: RwLock<InstanceStorage>,
+    pub playback_history: Mutex<ArrayDeque<[CurrentSong; MAX_BACK_TITLES], Wrapping>>,
+    pub player: Player,
+    pub stop_flag: AtomicBool,
     pub pool: Pool,
     pub ytdl: Arc<YtDL>,
     pub current_song: CURRENT_SONG,
@@ -78,16 +78,14 @@ pub struct Instance {
 impl Drop for Instance {
     fn drop(&mut self) {
         // don't store on clone drop
-        if Arc::strong_count(&self.voip) <= 1 {
-            println!("Storing instance {}", self.id);
-            self.player.pause();
-            if let Ok(mut lock) = self.store.write() {
-                lock.volume = self.player.get_volume();
+        println!("Storing instance {}", self.id);
+        self.player.pause();
+        if let Ok(mut lock) = self.store.write() {
+            lock.volume = self.player.get_volume();
 
-                match db::upsert_instance_storage(&*lock, &self.pool) {
-                    Ok(_) => (),
-                    Err(e) => error!("Unable to store instance {}", e),
-                }
+            match db::upsert_instance_storage(&*lock, &self.pool) {
+                Ok(_) => (),
+                Err(e) => error!("Unable to store instance {}", e),
             }
         }
     }

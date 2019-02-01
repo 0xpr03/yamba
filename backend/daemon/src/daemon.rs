@@ -283,20 +283,20 @@ fn create_ts_instance(
 
     player.set_pulse_device(sink.get_sink_name())?;
     Ok(Instance {
-        voip: Arc::new(InstanceType::Teamspeak(Teamspeak {
+        voip: InstanceType::Teamspeak(Teamspeak {
             ts: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
             sink,
             mute_sink: base.default_sink.clone(),
             updated: RwLock::new(Instant::now()),
-        })),
-        player: Arc::new(player),
+        }),
+        player: player,
         ytdl_tx: base
             .controller
             .channel(id.clone(), SETTINGS.ytdl.instance_backlog_max as usize),
         id: id,
-        playback_history: Arc::new(Mutex::new(ArrayDeque::new())),
-        stop_flag: Arc::new(AtomicBool::new(false)),
-        store: Arc::new(RwLock::new(storage)),
+        playback_history: Mutex::new(ArrayDeque::new()),
+        stop_flag: AtomicBool::new(false),
+        store: RwLock::new(storage),
         pool: base.pool.clone(),
         ytdl: base.ytdl.clone(),
         cache: base.cache.clone(),
