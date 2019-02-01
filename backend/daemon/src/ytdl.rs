@@ -222,9 +222,10 @@ pub struct Version {
     sha256: String,
 }
 
+#[derive(Clone)]
 pub struct YtDL {
     // base dir from which ytdl is called
-    base: PathBuf,
+    base: Arc<PathBuf>,
 }
 
 impl YtDL {
@@ -239,7 +240,9 @@ impl YtDL {
             path = path_w.join(&SETTINGS.ytdl.dir);
         }
         DirBuilder::new().recursive(true).create(&path)?;
-        Ok(YtDL { base: path })
+        Ok(YtDL {
+            base: Arc::new(path),
+        })
     }
 
     /// Get playlist info
@@ -346,7 +349,7 @@ impl YtDL {
     /// create command base
     fn cmd_base(&self) -> Command {
         let mut cmd = Command::new(self.get_exec_path());
-        cmd.current_dir(&self.base);
+        cmd.current_dir(self.base.as_path());
         cmd.arg("--no-warnings"); // no warnings
         cmd.arg("-i"); // no abort on errors for url (single tracks in playlist)
         cmd

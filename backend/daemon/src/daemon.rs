@@ -31,7 +31,7 @@ use std::i32;
 use std::net::SocketAddr;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
-use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Mutex, RwLock};
+use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Mutex, RwLock, Weak};
 use std::thread;
 use std::time::Instant;
 
@@ -53,6 +53,7 @@ use SETTINGS;
 // types used by rpc, api, playback daemons
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 pub type Instances<'a> = Arc<RwLock<HashMap<i32, Instance>>>;
+pub type WInstances = Weak<RwLock<HashMap<i32, Instance>>>;
 
 #[derive(Fail, Debug)]
 pub enum DaemonErr {
@@ -81,6 +82,7 @@ struct InstanceBase<'a> {
     pub ytdl: &'a Arc<YtDL>,
     pub cache: &'a SongCache,
     pub controller: &'a ytdl_worker::Controller,
+    pub w_instances: WInstances,
 }
 
 /// Start runtime
@@ -106,7 +108,7 @@ pub fn start_runtime() -> Fallible<()> {
                 return Err(DaemonErr::InitializationError(
                     "Startup check failed for ytdl engine!".into(),
                 )
-                .into())
+                .into());
             }
         };
 
@@ -162,6 +164,7 @@ pub fn start_runtime() -> Fallible<()> {
             ytdl: &ytdl,
             cache: &cache,
             controller: &controller,
+            w_instances: Arc::downgrade(&instances),
         };
 
         match load_instances(inst_data, &instances) {
@@ -298,6 +301,7 @@ fn create_ts_instance(
         ytdl: base.ytdl.clone(),
         cache: base.cache.clone(),
         current_song: Arc::new(RwLock::new(None)),
+        instances: base.w_instances.clone(),
     })
 }
 

@@ -26,6 +26,7 @@ use std::time::Instant;
 
 use audio::NullSink;
 use cache::Cache;
+use daemon::WInstances;
 use db;
 use models::SongID;
 use models::{InstanceStorage, QueueID, SongMin};
@@ -59,7 +60,6 @@ pub struct CurrentSong {
 }
 
 /// Base for each instance
-#[derive(Clone)]
 pub struct Instance {
     pub id: ID,
     pub voip: Arc<InstanceType>,
@@ -72,6 +72,7 @@ pub struct Instance {
     pub current_song: CURRENT_SONG,
     pub cache: SongCache,
     pub ytdl_tx: YTSender,
+    pub instances: WInstances,
 }
 
 impl Drop for Instance {
@@ -226,11 +227,16 @@ impl Instance {
         if let Some((queue_id, song)) = song_data {
             trace!("Found new song, queue_id: {}", queue_id);
             let source = song.source.clone();
-            let id = song.id.clone();
+            let songid = song.id.clone();
             *c_song_w = Some(CurrentSong { queue_id, song });
-            let inst = self.clone();
+            let instances = self.instances.clone();
+            let cache = self.cache.clone();
+            let id = self.id.clone();
+            let ytdl = self.ytdl.clone();
             thread::spawn(move || {
-                if let Err(e) = Instance::play_track_inner(inst, source, id) {
+                if let Err(e) =
+                    Instance::play_track_inner(instances, cache, id, ytdl, source, songid)
+                {
                     warn!("Error while resolving next track! {}", e);
                 }
             });
@@ -250,12 +256,19 @@ impl Instance {
 
     /// Inner function, blocking
     /// Resolves the playback URI
-    fn play_track_inner(inst: Instance, source: String, song_id: SongID) -> Fallible<()> {
-        let audio_url: String = if let Some(v) = inst.cache.get(&song_id) {
+    fn play_track_inner(
+        instances: WInstances,
+        cache: SongCache,
+        id: ID,
+        ytdl: Arc<YtDL>,
+        source: String,
+        song_id: SongID,
+    ) -> Fallible<()> {
+        let audio_url: String = if let Some(v) = cache.get(&song_id) {
             v
         } else {
             debug!("No cache entry for {}", song_id);
-            let track = inst.ytdl.get_url_info(source.as_str())?;
+            let track = ytdl.get_url_info(source.as_str())?;
             let track = match track.get(0) {
                 Some(t) => t,
                 None => return Err(InstanceErr::InvalidSource(source).into()),
@@ -265,11 +278,21 @@ impl Instance {
                 Some(v) => v.url.clone(),
                 None => return Err(InstanceErr::NoAudioTrack(source).into()),
             };
-            inst.cache.upsert(song_id, url_temp.clone());
+            cache.upsert(song_id, url_temp.clone());
             url_temp
         };
-        inst.stop_flag.store(false, Ordering::Relaxed);
-        inst.player.set_uri(audio_url.as_str());
+
+        let instances = match instances.upgrade() {
+            Some(v) => v,
+            None => return Ok(()),
+        };
+        let lock = instances.read().expect("Can't read instances!");
+        if let Some(inst) = lock.get(&id) {
+            inst.stop_flag.store(false, Ordering::Relaxed);
+            inst.player.set_uri(audio_url.as_str());
+        } else {
+            warn!("Instance gone, ignoring playback resolver..");
+        }
 
         Ok(())
     }
