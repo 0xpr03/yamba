@@ -44,7 +44,6 @@ pub enum ConfigErr {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigRoot {
     pub main: ConfigMain,
-    pub db: ConfigDB,
     pub ytdl: ConfigYtDL,
     pub ts: ConfigTS,
 }
@@ -68,17 +67,6 @@ pub struct ConfigMain {
     pub api_callback_port: u16,
     pub api_callback_ip: String,
     pub cache_lifetime_secs: u64,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ConfigDB {
-    pub host: String,
-    pub port: u16,
-    pub user: String,
-    pub use_password: bool,
-    pub password: String,
-    pub db: String,
-    pub retry_time: u16,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -183,7 +171,7 @@ mod tests {
     fn test_deserialization() {
         let settings = init_settings().unwrap();
         assert_eq!("ytdl", settings.ytdl.dir);
-        assert_eq!(false, settings.db.use_password);
+        assert_eq!(true, settings.ts.clear_config);
         println!("{:?}", settings);
     }
 }

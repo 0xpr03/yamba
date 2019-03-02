@@ -67,12 +67,6 @@ pub struct SongMin {
 pub struct InstanceStorage {
     pub id: i32,
     pub volume: f64,
-    pub index: Option<QueueID>,
-    pub position: Option<f64>,
-    pub random: bool,
-    pub repeat: bool,
-    pub queue_lock: bool,
-    pub volume_lock: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -91,14 +85,12 @@ pub enum DBInstanceType {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct TSSettings {
-    pub id: i32,
     pub host: String,
     pub port: Option<u16>,
     pub identity: String,
     pub cid: Option<i32>,
     pub name: String,
     pub password: Option<String>,
-    pub autostart: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

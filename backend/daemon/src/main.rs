@@ -31,11 +31,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate futures;
-extern crate hyper;
-extern crate jsonrpc_lite;
 #[macro_use]
 extern crate serde_json;
-extern crate arraydeque;
 extern crate atomic;
 extern crate chrono;
 extern crate concurrent_hashmap;
@@ -49,7 +46,6 @@ extern crate libpulse_glib_binding as pglib;
 extern crate libpulse_sys as pulse_sys;
 extern crate metrohash;
 extern crate mpmc_scheduler;
-extern crate mysql;
 extern crate owning_ref;
 extern crate rusqlite;
 extern crate serde_urlencoded;
@@ -68,12 +64,10 @@ mod audio;
 mod cache;
 mod config;
 mod daemon;
-mod db;
 mod http;
 mod instance;
 mod models;
 mod playback;
-mod rpc;
 mod ts;
 mod ytdl;
 mod ytdl_worker;
@@ -277,27 +271,15 @@ fn main() -> Fallible<()> {
             let addr = sub_m.value_of("host").unwrap();
             let port = sub_m.value_of("port").map(|v| v.parse::<u16>().unwrap());
             let cid = sub_m.value_of("cid").map(|v| v.parse::<i32>().unwrap());
-            let clear_instances = sub_m.is_present("clear-instances");
 
             let settings = models::TSSettings {
-                id: 1,
                 host: addr.to_string(),
                 port,
                 identity: "".to_string(),
                 cid,
                 name: "YAMBA_Test_Instance".to_string(),
                 password: None,
-                autostart: true,
             };
-
-            let pool = db::init_pool_timeout()?;
-
-            if clear_instances {
-                info!("Clearing previous instances!");
-                db::clear_instances(&pool)?;
-            }
-
-            db::upsert_ts_instance(&settings, &pool)?;
 
             check_runtime()?;
             daemon::start_runtime()?;
@@ -315,14 +297,7 @@ fn main() -> Fallible<()> {
 
 /// Check runtime relevant config values
 fn check_runtime() -> Fallible<()> {
-    if let Err(e) = rpc::check_config() {
-        error!("Invalid config for rpc daemon, aborting: {}", e);
-        return Err(e);
-    }
-
-    if let Err(e) = api::check_config() {
-        error!("Invalid config for api daemon, aborting: {}", e);
-    }
+    //TODO
     Ok(())
 }
 

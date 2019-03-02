@@ -15,9 +15,7 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use arraydeque::{ArrayDeque, Wrapping};
 use failure::Fallible;
-use mysql::Pool;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
@@ -63,15 +61,10 @@ pub struct CurrentSong {
 pub struct Instance {
     pub id: ID,
     pub voip: InstanceType,
-    pub store: RwLock<InstanceStorage>,
-    pub playback_history: Mutex<ArrayDeque<[CurrentSong; MAX_BACK_TITLES], Wrapping>>,
     pub player: Player,
-    pub stop_flag: AtomicBool,
-    pub pool: Pool,
     pub ytdl: Arc<YtDL>,
     pub current_song: CURRENT_SONG,
     pub cache: SongCache,
-    pub ytdl_tx: YTSender,
     pub instances: WInstances,
 }
 
@@ -113,7 +106,6 @@ impl Instance {
 
     /// Stop playback
     pub fn stop_playback(&self) {
-        self.stop_flag.store(true, Ordering::Relaxed);
         let mut lock = self.current_song.write().expect("Can't lock current song!");
         *lock = None;
         // don't store to history, still in queue, no end-of-stream triggered
@@ -146,7 +138,6 @@ impl Instance {
 
     /// Resume playback
     pub fn resume_playback(&self) -> Fallible<()> {
-        self.stop_flag.store(false, Ordering::Relaxed);
         if self
             .current_song
             .read()
@@ -154,8 +145,6 @@ impl Instance {
             .is_some()
         {
             self.player.play();
-        } else {
-            self.play_next_track()?;
         }
         Ok(())
     }
@@ -247,11 +236,6 @@ impl Instance {
         Ok(())
     }
 
-    /// Play next track in queue
-    pub fn play_next_track(&self) -> Fallible<()> {
-        self.play_track(None)
-    }
-
     /// Inner function, blocking
     /// Resolves the playback URI
     fn play_track_inner(
@@ -286,54 +270,12 @@ impl Instance {
         };
         let lock = instances.read().expect("Can't read instances!");
         if let Some(inst) = lock.get(&id) {
-            inst.stop_flag.store(false, Ordering::Relaxed);
             inst.player.set_uri(audio_url.as_str());
         } else {
             warn!("Instance gone, ignoring playback resolver..");
         }
 
         Ok(())
-    }
-
-    /// Enqueue a set of SongMin
-    pub fn enqueue_songs(&self, songs: Vec<SongMin>, url: &str) -> Fallible<()> {
-        if songs.len() == 0 {
-            return Err(InstanceErr::InvalidSource(url.to_string()).into());
-        }
-
-        let _ = songs
-            .iter()
-            .map(|s| db::add_song_to_queue(&self.pool, &self.id, &s.id))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let r_guard = self.current_song.read().expect("Can't lock current-song");
-
-        let no_song = r_guard.is_none();
-        drop(r_guard); // required for next step
-        if no_song {
-            self.play_next_track()?;
-        }
-        Ok(())
-    }
-
-    /// Get next n tracks in queue
-    pub fn get_next_tracks_queue(&self, amount: &i32) -> Fallible<Vec<String>> {
-        db::lookahead_queue_tracks(&self.pool, &self.id, amount).map(|val_ok| {
-            val_ok
-                .iter()
-                .map(|x| {
-                    format!(
-                        "{}{} {}",
-                        x.name,
-                        x.artist
-                            .as_ref()
-                            .map(|art| format!(" - {}", art))
-                            .unwrap_or(String::new()),
-                        format_time(x.length)
-                    )
-                })
-                .collect()
-        })
     }
 }
 

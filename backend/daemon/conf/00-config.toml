@@ -33,17 +33,6 @@ api_callback_port = "82"
 # entry max age for stream cache
 cache_lifetime_secs = 3600
 
-
-[db]
-port = 3306
-user = "yamba"
-use_password = false
-password = "password"
-db = "yamba"
-host = "127.0.0.1"
-# retry db connection on startup, seconds
-retry_time=60
-
 [ytdl]
 # amount of concurrent ytdl workers
 workers = 4

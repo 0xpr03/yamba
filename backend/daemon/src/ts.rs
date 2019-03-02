@@ -78,7 +78,6 @@ impl Drop for TSInstance {
 /// TS Instance, kills itself on drop
 #[derive(Debug)]
 pub struct TSInstance {
-    id: i32,
     process: Child,
 }
 
@@ -162,7 +161,6 @@ impl TSInstance {
         }
 
         Ok(TSInstance {
-            id: settings.id.clone(), // TODO decide for non copy solution
             process: cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?,
         })
     }

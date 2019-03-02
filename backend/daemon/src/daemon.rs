@@ -15,14 +15,11 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use arraydeque::ArrayDeque;
 use failure::{self, Fallible};
 use futures::sync::mpsc;
 use futures::{future, Future, Stream};
 use gst;
 use hashbrown::HashMap;
-use hyper::{self, Body, Response};
-use mysql::Pool;
 use tokio::{self, runtime::Runtime};
 use tokio_signal::unix::{self, Signal};
 
@@ -38,11 +35,9 @@ use std::time::Instant;
 use api;
 use audio::{self, CContext, CMainloop, NullSink};
 use cache::Cache;
-use db;
 use instance::*;
 use models::{DBInstanceType, InstanceStorage, SongID, TSSettings};
 use playback::{self, PlaybackSender, Player, PlayerEvent};
-use rpc;
 use ts::TSInstance;
 use ytdl::YtDL;
 use ytdl_worker;
@@ -99,7 +94,6 @@ pub fn start_runtime() -> Fallible<()> {
         });
         let instances: Instances = Arc::new(RwLock::new(HashMap::new()));
         let ytdl = Arc::new(YtDL::new()?);
-        let pool = db::init_pool_timeout()?;
 
         info!("Performing ytdl startup check..");
         match ytdl.startup_test() {
@@ -143,14 +137,6 @@ pub fn start_runtime() -> Fallible<()> {
 
         ytdl_worker::crate_yt_updater(&mut rt, ytdl.clone());
 
-        // let api run on i32::max, as no instance will reach this
-        let id_api = i32::MAX;
-        api::create_api_server(
-            &mut rt,
-            controller.channel(id_api.clone(), 32),
-            instances.clone(),
-        )
-        .map_err(|e| DaemonErr::APICreationError(e))?;
         playback::create_playback_server(&mut rt, player_rx, instances.clone())?;
 
         info!("Loading instances..");
@@ -210,7 +196,6 @@ pub fn start_runtime() -> Fallible<()> {
         drop(rt);
         drop(instances);
         glib_loop.quit();
-        drop(pool);
         info!("Daemon stopped");
         println!("Daemon stopped");
     }
@@ -290,14 +275,7 @@ fn create_ts_instance(
             updated: RwLock::new(Instant::now()),
         }),
         player: player,
-        ytdl_tx: base
-            .controller
-            .channel(id.clone(), SETTINGS.ytdl.instance_backlog_max as usize),
         id: id,
-        playback_history: Mutex::new(ArrayDeque::new()),
-        stop_flag: AtomicBool::new(false),
-        store: RwLock::new(storage),
-        pool: base.pool.clone(),
         ytdl: base.ytdl.clone(),
         cache: base.cache.clone(),
         current_song: Arc::new(RwLock::new(None)),
