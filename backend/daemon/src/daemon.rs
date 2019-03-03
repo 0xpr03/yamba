@@ -257,7 +257,12 @@ fn create_ts_instance(
     player.set_pulse_device(sink.get_sink_name())?;
     Ok(Instance {
         voip: InstanceType::Teamspeak(Teamspeak {
-            ts: TSInstance::spawn(&data, &id, &SETTINGS.main.rpc_bind_port)?,
+            ts: TSInstance::spawn(
+                &data,
+                &id,
+                &SETTINGS.main.api_internal_bind_ip,
+                &SETTINGS.main.api_internal_bind_port,
+            )?,
             sink,
             mute_sink: base.default_sink.clone(),
             updated: RwLock::new(Instant::now()),

@@ -39,6 +39,7 @@ use jsonrpc_client_http::HttpTransport;
 use regex::*;
 use std::collections::HashMap;
 use std::env;
+use std::net::SocketAddr;
 use std::process;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
@@ -101,9 +102,9 @@ jsonrpc_client!(
 
 lazy_static! {
     static ref PORT: u16 = env::var("CALLBACK_YAMBA")
-        .unwrap_or("1337".to_string())
-        .parse::<u16>()
-        .unwrap_or(1337);
+        .unwrap_or("127.0.0.1:1330".to_string())
+        .parse::<SocketAddr>()
+        .unwrap();
     pub static ref ID: Option<i32> = env::var("ID_YAMBA")
         .unwrap_or("".to_string())
         .parse::<i32>()
@@ -761,7 +762,7 @@ impl Plugin for MyTsPlugin {
 
 fn connected(id: i32) -> Fallible<()> {
     match reqwest::Client::new()
-        .post("http://127.0.0.1:1330/internal/started")
+        .post(&format!("http://{}/internal/started", *CALLBACK_INTERNAL))
         .json(&ConnectedRequest {
             id,
             pid: process::id(),
@@ -783,7 +784,7 @@ fn connected(id: i32) -> Fallible<()> {
 /// run heartbeat command
 fn heartbeat(id: i32) -> Fallible<()> {
     match reqwest::Client::new()
-        .post("http://127.0.0.1:1330/internal/heartbeat")
+        .post(&format!("http://{}/internal/heartbeat", *CALLBACK_INTERNAL))
         .json(&HeartbeatRequest { id })
         .send()
         .and_then(|mut v| v.json::<HeartbeatResponse>())

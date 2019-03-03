@@ -26,10 +26,20 @@ use super::{get_instance_by_id, APIErr};
 use daemon::Instances;
 use instance::InstanceType;
 use models::{DefaultResponse, HeartbeatReq, InstanceStartedReq};
+use SETTINGS;
+
+/// Address parser for internal
+/// Used also for runtime checks
+pub fn parse_addr() -> Fallible<SocketAddr> {
+    super::parse_address(
+        &SETTINGS.main.api_internal_bind_ip,
+        &SETTINGS.main.api_internal_bind_port,
+    )
+}
 
 /// Start api server
 pub fn start_server(runtime: &mut runtime::Runtime, instances: Instances) -> Fallible<()> {
-    let addr: SocketAddr = "127.0.0.1:1330".parse()?;
+    let addr = parse_addr()?;
     let incoming = TcpListener::bind(&addr)
         .map_err(|e| APIErr::BindError(e))?
         .incoming();

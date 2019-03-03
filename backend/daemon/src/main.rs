@@ -171,8 +171,12 @@ fn main() -> Fallible<()> {
         .get_matches();
 
     info!(
-        "RPC Binding: {}:{}",
-        SETTINGS.main.rpc_bind_ip, SETTINGS.main.rpc_bind_port
+        "API Internal Binding: {}:{}",
+        SETTINGS.main.api_internal_bind_ip, SETTINGS.main.api_internal_bind_port
+    );
+    info!(
+        "API Public Binding: {}:{}",
+        SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port
     );
 
     match app.subcommand() {
@@ -299,7 +303,7 @@ fn main() -> Fallible<()> {
 
 /// Check runtime relevant config values
 fn check_runtime() -> Fallible<()> {
-    //TODO
+    api::check_runtime()?;
     Ok(())
 }
 

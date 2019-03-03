@@ -38,7 +38,7 @@ use SETTINGS;
 
 /// TS Instance
 
-const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
+const TS_ENV_CALLBACK_INTERNAL: &'static str = "CALLBACK_YAMBA_INTERNAL";
 const TS_ENV_ID: &'static str = "ID_YAMBA";
 const TS_SETTINGS_FILE: &'static str = "settings.db";
 const TS_PLUGINS_DIR: &'static str = "plugins";
@@ -86,7 +86,12 @@ impl TSInstance {
     /// Create a new instance controller
     /// Created from TSSettings model
     /// rpc port is for callbacks used by the yamba plugin
-    pub fn spawn(settings: &TSSettings, id: &ID, rpc_port: &u16) -> Fallible<TSInstance> {
+    pub fn spawn(
+        settings: &TSSettings,
+        id: &ID,
+        callback_host: &str,
+        callback_port: &u16,
+    ) -> Fallible<TSInstance> {
         let mut params = Vec::new();
         if let Some(v) = settings.port {
             params.push(("port".to_owned(), v.to_string()));
@@ -131,7 +136,10 @@ impl TSInstance {
             .env("KDEDIRS", "")
             .env("TS3_CONFIG_DIR", path_config.to_string_lossy().into_owned())
             .env(TS_ENV_ID, id.to_string())
-            .env(TS_ENV_CALLBACK, rpc_port.to_string())
+            .env(
+                TS_ENV_CALLBACK_INTERNAL,
+                format!("{}:{}", callback_host, callback_port),
+            )
             .args(&["--auto-servernum", "--server-args=-screen 0 640x480x24:32"])
             .arg(path_binary.to_string_lossy().to_mut())
             .args(&SETTINGS.ts.additional_args_binary)

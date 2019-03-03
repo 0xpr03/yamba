@@ -35,17 +35,19 @@ static CALLBACK_TICKET: AtomicUsize = AtomicUsize::new(0);
 
 /// API server
 
+/// Address parser for public
+/// Used also for runtime checks
+pub fn parse_addr() -> Fallible<SocketAddr> {
+    super::parse_address(&SETTINGS.main.api_bind_ip, &SETTINGS.main.api_bind_port)
+}
+
 /// Start api server
 pub fn start_server(
     runtime: &mut runtime::Runtime,
     instances: Instances,
     base: InstanceBase,
 ) -> Fallible<()> {
-    let addr: SocketAddr = format!(
-        "{}:{}",
-        SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port
-    )
-    .parse()?;
+    let addr = parse_addr()?;
     let incoming = TcpListener::bind(&addr)
         .map_err(|e| APIErr::BindError(e))?
         .incoming();

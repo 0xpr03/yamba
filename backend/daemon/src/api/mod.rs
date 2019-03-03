@@ -20,6 +20,7 @@ use hashbrown::HashMap;
 use owning_ref::OwningRef;
 use tokio::runtime;
 
+use std::net::SocketAddr;
 use std::sync::RwLockReadGuard;
 
 // use api;
@@ -46,6 +47,18 @@ pub fn start_server(
     internal::start_server(runtime, instances.clone())?;
     public::start_server(runtime, instances, base)?;
     Ok(())
+}
+
+/// Check api runtime config
+pub fn check_runtime() -> Fallible<()> {
+    public::parse_addr()?;
+    internal::parse_addr()?;
+    Ok(())
+}
+
+/// Unify bind addr parsing
+fn parse_address(host: &str, port: &u16) -> Fallible<SocketAddr> {
+    Ok(format!("{}:{}", host, port).parse()?)
 }
 
 /// Get instance by ID

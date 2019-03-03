@@ -60,8 +60,8 @@ pub struct ConfigTS {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigMain {
     pub user_agent: String,
-    pub rpc_bind_port: u16,
-    pub rpc_bind_ip: String,
+    pub api_internal_bind_port: u16,
+    pub api_internal_bind_ip: String,
     pub api_bind_port: u16,
     pub api_bind_ip: String,
     pub api_callback_port: u16,

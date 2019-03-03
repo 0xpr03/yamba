@@ -22,8 +22,8 @@
 [main]
 user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:55.0) Gecko/20100101 Firefox/55.0"
 # rpc server binding socket
-rpc_bind_port = 1337
-rpc_bind_ip = "127.0.0.1"
+api_internal_bind_port = 1330
+api_internal_bind_ip = "127.0.0.1"
 # api server binding socket
 api_bind_port = 1338
 api_bind_ip = "127.0.0.1"
