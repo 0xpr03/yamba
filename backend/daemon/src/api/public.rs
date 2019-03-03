@@ -24,7 +24,7 @@ use tower_web::*;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use super::{get_instance_by_id, APIErr};
+use super::*;
 use daemon::{create_instance, InstanceBase, Instances};
 use instance;
 use models::*;
@@ -106,15 +106,7 @@ impl YTRequest for ResolveDispatcher {
             },
         };
 
-        // match api_send_callback(
-        //     &SETTINGS.main.api_callback_ip,
-        //     SETTINGS.main.api_callback_port,
-        //     "music/addTitles",
-        //     &response,
-        // ) {
-        //     Ok(_) => info!("Callback successfull"),
-        //     Err(e) => warn!("Callback errored: {}", e),
-        // }
+        callback::send_resolve(&response);
     }
 }
 

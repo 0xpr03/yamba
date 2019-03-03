@@ -138,7 +138,7 @@ pub struct InstanceListResponse {
 }
 
 /// Url resolve response for ticket
-#[derive(Debug, Response)]
+#[derive(Debug, Serialize)]
 pub struct ResolveResponse {
     pub success: bool,
     pub msg: Option<String>,

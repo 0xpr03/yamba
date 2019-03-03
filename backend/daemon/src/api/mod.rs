@@ -23,11 +23,10 @@ use tokio::runtime;
 use std::net::SocketAddr;
 use std::sync::RwLockReadGuard;
 
-// use api;
-// use api_internal;
 use daemon::{InstanceBase, Instances};
-use instance::{self, Instance, ID};
+use instance::{Instance, ID};
 
+mod callback;
 mod internal;
 mod public;
 
