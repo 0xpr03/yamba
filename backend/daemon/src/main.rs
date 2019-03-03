@@ -53,6 +53,8 @@ extern crate sha2;
 extern crate tokio;
 extern crate tokio_signal;
 extern crate tokio_threadpool;
+#[macro_use]
+extern crate tower_web;
 
 use std::alloc::System;
 

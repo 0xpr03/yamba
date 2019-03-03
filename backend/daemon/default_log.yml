@@ -26,3 +26,5 @@ loggers:
   # Lower level for ourselfs
   yamba_backend:
     level: trace
+  tower_web:
+    level: trace
