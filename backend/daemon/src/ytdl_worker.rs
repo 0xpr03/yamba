@@ -18,7 +18,6 @@
 use failure::Fallible;
 use futures::{Future, Stream};
 use mpmc_scheduler as scheduler;
-use mysql::Pool;
 use tokio::runtime::Runtime;
 use tokio::timer::Interval;
 use tokio_threadpool::blocking;
@@ -30,16 +29,15 @@ use std::time::{Duration, Instant};
 use ytdl::YtDL;
 
 use daemon::Instances;
-use db;
 use instance::{SongCache, ID};
-use models::SongMin;
+use models::Song;
 use SETTINGS;
 
 /// Worker for ytdl tasks
 
 pub type R = (YTReqWrapped, RSongs);
 pub type YTReqWrapped = Box<dyn YTRequest + 'static + Send + Sync>;
-pub type RSongs = Fallible<Vec<SongMin>>;
+pub type RSongs = Fallible<Vec<Song>>;
 pub type Controller = scheduler::Controller<ID, YTReqWrapped, R>;
 pub type YTSender = scheduler::Sender<YTReqWrapped>;
 
@@ -78,7 +76,6 @@ pub fn crate_yt_updater(runtime: &mut Runtime, ytdl: Arc<YtDL>) {
 pub fn crate_ytdl_scheduler(
     runtime: &mut Runtime,
     ytdl: Arc<YtDL>,
-    pool: Pool,
     cache: SongCache,
     instances: Instances,
 ) -> Controller {
@@ -87,7 +84,7 @@ pub fn crate_ytdl_scheduler(
         move |req: YTReqWrapped| {
             let ytdl_c = ytdl.clone();
             let start = Instant::now();
-            let result = scheduler_retrieve(cache.clone(), &ytdl_c, &pool, req.url());
+            let result = scheduler_retrieve(cache.clone(), &ytdl_c, req.url());
             let end = start.elapsed();
             debug!(
                 "Request {} took {}{:03}ms to process",
@@ -109,25 +106,29 @@ pub fn crate_ytdl_scheduler(
 }
 
 /// Retrieve function for scheduler
-/// query ytdl, insert into db & update cache
+/// query ytdl, update cache
 /// returns all song IDs
-fn scheduler_retrieve(cache: SongCache, ytdl: &YtDL, pool: &Pool, url: &str) -> RSongs {
+fn scheduler_retrieve(cache: SongCache, ytdl: &YtDL, url: &str) -> RSongs {
     // check DB & cache
     // also works with playlists as playlists are not expected to
     // be a source URL entry in the database
-    let tracks = db::get_track_by_url(url, pool)?.and_then(|t| {
-        if cache.get(&t.id).is_some() {
-            Some(vec![t])
-        } else {
-            None
-        }
-    });
+    // TODO: handle caching via song ID
 
-    Ok(match tracks {
-        None => {
-            let tracks = ytdl.get_url_info(url)?;
-            db::insert_tracks(Some(cache), tracks, &pool)?
-        }
-        Some(v) => v,
-    })
+    let tracks = ytdl.get_url_info(url)?;
+    Ok(tracks
+        .into_iter()
+        .filter_map(|t| {
+            let min_song = match t.best_audio_format() {
+                Some(v) => v.url.clone(),
+                None => {
+                    warn!("No audio track for {}", t.webpage_url);
+                    return None;
+                }
+            };
+
+            let song: Song = t.into();
+            cache.upsert(song.id.clone(), min_song);
+            Some(song)
+        })
+        .collect())
 }
