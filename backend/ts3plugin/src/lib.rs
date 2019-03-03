@@ -37,7 +37,9 @@ use models::*;
 use failure::Fallible;
 use jsonrpc_client_http::HttpTransport;
 use regex::*;
-use std::collections::HashMap;
+use ts3plugin::TsApi;
+use ts3plugin::*;
+
 use std::env;
 use std::net::SocketAddr;
 use std::process;
@@ -46,8 +48,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
-use ts3plugin::TsApi;
-use ts3plugin::*;
 
 #[derive(Fail, Debug)]
 pub enum APIErr {
@@ -101,7 +101,9 @@ jsonrpc_client!(
 });
 
 lazy_static! {
-    static ref PORT: u16 = env::var("CALLBACK_YAMBA")
+    static ref CLIENT: reqwest::Client = reqwest::Client::new();
+
+    static ref CALLBACK_INTERNAL: SocketAddr = env::var("CALLBACK_YAMBA_INTERNAL")
         .unwrap_or("127.0.0.1:1330".to_string())
         .parse::<SocketAddr>()
         .unwrap();
@@ -761,7 +763,7 @@ impl Plugin for MyTsPlugin {
 }
 
 fn connected(id: i32) -> Fallible<()> {
-    match reqwest::Client::new()
+    match CLIENT
         .post(&format!("http://{}/internal/started", *CALLBACK_INTERNAL))
         .json(&ConnectedRequest {
             id,
@@ -783,7 +785,7 @@ fn connected(id: i32) -> Fallible<()> {
 
 /// run heartbeat command
 fn heartbeat(id: i32) -> Fallible<()> {
-    match reqwest::Client::new()
+    match CLIENT
         .post(&format!("http://{}/internal/heartbeat", *CALLBACK_INTERNAL))
         .json(&HeartbeatRequest { id })
         .send()
