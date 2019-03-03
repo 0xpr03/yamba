@@ -36,7 +36,7 @@ use api;
 use audio::{self, CContext, CMainloop, NullSink};
 use cache::Cache;
 use instance::*;
-use models::{DBInstanceType, InstanceStorage, SongID, TSSettings};
+use models::{self, SongID, TSSettings};
 use playback::{self, PlaybackSender, Player, PlayerEvent};
 use ts::TSInstance;
 use ytdl::YtDL;
@@ -46,8 +46,8 @@ use SETTINGS;
 /// Daemon init & startup of all servers
 
 // types used by rpc, api, playback daemons
-pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
-pub type Instances<'a> = Arc<RwLock<HashMap<i32, Instance>>>;
+// pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+pub type Instances = Arc<RwLock<HashMap<i32, Instance>>>;
 pub type WInstances = Weak<RwLock<HashMap<i32, Instance>>>;
 
 #[derive(Fail, Debug)]
@@ -62,23 +62,19 @@ pub enum DaemonErr {
     APICreationError(#[cause] failure::Error),
 }
 
-/*/// Format player name
-/// Standardizes the naming required for identification
-fn format_player_name(id: &i32) -> String {
-    format!("player#{}", id)
-}*/
-
-struct InstanceBase<'a> {
-    pub pool: Pool,
+pub struct InstanceBase {
     pub player_send: PlaybackSender,
-    pub mainloop: &'a CMainloop,
-    pub context: &'a CContext,
-    pub default_sink: &'a Arc<NullSink>,
-    pub ytdl: &'a Arc<YtDL>,
-    pub cache: &'a SongCache,
-    pub controller: &'a ytdl_worker::Controller,
+    pub mainloop: CMainloop,
+    pub context: CContext,
+    pub default_sink: Arc<NullSink>,
+    pub ytdl: Arc<YtDL>,
+    pub cache: SongCache,
+    pub controller: ytdl_worker::Controller,
     pub w_instances: WInstances,
 }
+
+unsafe impl Send for InstanceBase {}
+unsafe impl Sync for InstanceBase {}
 
 /// Start runtime
 pub fn start_runtime() -> Fallible<()> {
@@ -124,42 +120,38 @@ pub fn start_runtime() -> Fallible<()> {
 
         let cache = Cache::<SongID, String>::new(&mut rt);
 
-        let controller = Box::new(ytdl_worker::crate_ytdl_scheduler(
+        let controller = ytdl_worker::crate_ytdl_scheduler(
             &mut rt,
             ytdl.clone(),
-            pool.clone(),
             cache.clone(),
             instances.clone(),
-        ));
-
-        rpc::create_rpc_server(&mut rt, instances.clone())
-            .map_err(|e| DaemonErr::RPCCreationError(e))?;
+        );
 
         ytdl_worker::crate_yt_updater(&mut rt, ytdl.clone());
 
         playback::create_playback_server(&mut rt, player_rx, instances.clone())?;
 
-        info!("Loading instances..");
-
-        let inst_data = InstanceBase {
-            pool: pool.clone(),
+        let base = InstanceBase {
             player_send: player_tx,
-            mainloop: &mainloop,
-            context: &context,
-            default_sink: &default_sink,
-            ytdl: &ytdl,
-            cache: &cache,
-            controller: &controller,
+            mainloop: mainloop,
+            context: context,
+            default_sink: default_sink,
+            ytdl: ytdl,
+            cache: cache,
+            controller: controller,
             w_instances: Arc::downgrade(&instances),
         };
+        api::start_server(&mut rt, instances.clone(), base)?;
 
-        match load_instances(inst_data, &instances) {
-            Ok(_) => (),
-            Err(e) => {
-                error!("Unable to load instances: {}\n{}", e, e.backtrace());
-                return Err(DaemonErr::InitializationError(format!("{}", e)).into());
-            }
-        }
+        info!("Loading instances..");
+
+        // match load_instances(inst_data, &instances) {
+        //     Ok(_) => (),
+        //     Err(e) => {
+        //         error!("Unable to load instances: {}\n{}", e, e.backtrace());
+        //         return Err(DaemonErr::InitializationError(format!("{}", e)).into());
+        //     }
+        // }
 
         info!("Daemon initialized");
 
@@ -219,47 +211,43 @@ fn restart() {
 
 /// Load instances
 /// Stops previous instances
-fn load_instances(base: InstanceBase, instances: &Instances) -> Fallible<()> {
-    let mut instances = instances.write().expect("Main RwLock is poisoned!");
-    instances.clear();
-    let instance_ids = db::get_autostart_instance_ids(&base.pool)?;
-    for id in instance_ids {
-        let instance = match create_instance_from_id(&base, &id) {
-            Ok(v) => v,
-            Err(e) => {
-                error!(
-                    "Unable to load instance ID {}: {}\n{}",
-                    id,
-                    e,
-                    e.backtrace()
-                );
-                continue;
-            }
-        };
-        instances.insert(id, instance);
+// fn load_instances(base: InstanceBase, instances: &Instances) -> Fallible<()> {
+//     let mut instances = instances.write().expect("Main RwLock is poisoned!");
+//     instances.clear();
+//     for id in instance_ids {
+//         let instance = match create_instance_from_id(&base, &id) {
+//             Ok(v) => v,
+//             Err(e) => {
+//                 error!(
+//                     "Unable to load instance ID {}: {}\n{}",
+//                     id,
+//                     e,
+//                     e.backtrace()
+//                 );
+//                 continue;
+//             }
+//         };
+//         instances.insert(id, instance);
+//     }
+//     Ok(())
+// }
+
+pub fn create_instance(base: &InstanceBase, inst: models::InstanceLoadReq) -> Fallible<Instance> {
+    match inst.data {
+        models::InstanceType::TS(settings) => {
+            create_ts_instance(base, settings, inst.id, inst.volume)
+        }
     }
-    Ok(())
-}
-
-/// Load & create single instance by ID
-fn create_instance_from_id(base: &InstanceBase, id: &i32) -> Fallible<Instance> {
-    let data = db::load_instance_data(&base.pool, id)?;
-    let storage = db::read_instance_storage(id, &base.pool)?;
-
-    // can't match untill we have more than one type
-    let DBInstanceType::TS(ts_data) = data;
-    create_ts_instance(base, ts_data, storage)
 }
 
 /// Crate instance of type TS
 fn create_ts_instance(
     base: &InstanceBase,
     data: TSSettings,
-    storage: InstanceStorage,
+    id: ID,
+    volume: f64,
 ) -> Fallible<Instance> {
-    let id = data.id;
-
-    let player = Player::new(base.player_send.clone(), id.clone(), storage.volume)?;
+    let player = Player::new(base.player_send.clone(), id.clone(), volume)?;
     let sink = NullSink::new(
         base.mainloop.clone(),
         base.context.clone(),
@@ -269,11 +257,12 @@ fn create_ts_instance(
     player.set_pulse_device(sink.get_sink_name())?;
     Ok(Instance {
         voip: InstanceType::Teamspeak(Teamspeak {
-            ts: TSInstance::spawn(&data, &SETTINGS.main.rpc_bind_port)?,
+            ts: TSInstance::spawn(&data, &id, &SETTINGS.main.rpc_bind_port)?,
             sink,
             mute_sink: base.default_sink.clone(),
             updated: RwLock::new(Instant::now()),
         }),
+        url_resolve: base.controller.channel(id.clone(), 64),
         player: player,
         id: id,
         ytdl: base.ytdl.clone(),
