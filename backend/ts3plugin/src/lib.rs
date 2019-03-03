@@ -15,16 +15,29 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+extern crate serde;
 extern crate ts3plugin;
+#[macro_use]
+extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate jsonrpc_client_core;
+extern crate failure;
 extern crate jsonrpc_client_http;
 extern crate regex;
+extern crate reqwest;
+#[macro_use]
+extern crate failure_derive;
 
+mod models;
+
+use models::*;
+
+use failure::Fallible;
 use jsonrpc_client_http::HttpTransport;
 use regex::*;
+use std::collections::HashMap;
 use std::env;
 use std::process;
 use std::sync::mpsc::{channel, Sender};
@@ -35,13 +48,17 @@ use std::time::Duration;
 use ts3plugin::TsApi;
 use ts3plugin::*;
 
+#[derive(Fail, Debug)]
+pub enum APIErr {
+    #[fail(display = "Request response not successfull {}", _0)]
+    NoSuccess(&'static str),
+    #[fail(display = "Error performing request {}", _0)]
+    RequestError(#[cause] reqwest::Error),
+}
+
 jsonrpc_client!(
     #[derive(Debug)]
     pub struct BackendRPCClient {
-    // Call when connected
-    pub fn connected(&mut self, id: i32, process: u32) -> RpcRequest<bool>;
-    // Return: message
-    pub fn heartbeat(&mut self, id : i32) -> RpcRequest<(String)>;
 
     // Return: allowed, message, Volume [0 - 100]
     pub fn volume_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, f64)>;
@@ -219,15 +236,7 @@ impl Plugin for MyTsPlugin {
         }
 
         if status == ConnectStatus::ConnectionEstablished {
-            let mut rpc_api = self.client_mut.lock().unwrap();
-            let pid = process::id();
-            api.log_or_print(format!("PID: {}", pid), PLUGIN_NAME_I, LogLevel::Error);
-            match rpc_api.connected(*ID.as_ref().unwrap(), pid).call() {
-                Ok(v) => api.log_or_print(
-                    format!("Connected response: {}", v),
-                    PLUGIN_NAME_I,
-                    LogLevel::Debug,
-                ),
+            match connected(*ID.as_ref().unwrap()) {
                 Err(e) => {
                     api.log_or_print(
                         format!("Error trying to signal connected state to backend: {}", e),
@@ -243,7 +252,8 @@ impl Plugin for MyTsPlugin {
                         ),
                     }
                 }
-            } // if we don't get this through, we're not gonna receive any audio
+                Ok(_) => api.log_or_print(format!("Send connected"), PLUGIN_NAME_I, LogLevel::Info),
+            }
         }
     }
 
@@ -270,22 +280,20 @@ impl Plugin for MyTsPlugin {
             let mut failed_heartbeats = 0;
             if let Some(id) = id_copy {
                 while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
-                    if let Ok(mut client_lock) = client_mut_heartbeat.lock() {
-                        match client_lock.heartbeat(id).call() {
-                            Ok(_) => {
-                                failed_heartbeats = 0;
-                            }
-                            Err(e) => {
-                                failed_heartbeats += 1;
-                                TsApi::static_log_or_print(
-                                    format!(
-                                        "Backend server did not respond {} times!\nReason {}",
-                                        failed_heartbeats, e
-                                    ),
-                                    PLUGIN_NAME_I,
-                                    LogLevel::Warning,
-                                );
-                            }
+                    match heartbeat(id) {
+                        Ok(_) => {
+                            failed_heartbeats = 0;
+                        }
+                        Err(e) => {
+                            failed_heartbeats += 1;
+                            TsApi::static_log_or_print(
+                                format!(
+                                    "Backend server did not respond {} times!\nReason {}",
+                                    failed_heartbeats, e
+                                ),
+                                PLUGIN_NAME_I,
+                                LogLevel::Warning,
+                            );
                         }
                     }
                 }
@@ -751,4 +759,63 @@ impl Plugin for MyTsPlugin {
     }
 }
 
+fn connected(id: i32) -> Fallible<()> {
+    match reqwest::Client::new()
+        .post("http://127.0.0.1:1330/internal/started")
+        .json(&ConnectedRequest {
+            id,
+            pid: process::id(),
+        })
+        .send()
+        .and_then(|mut v| v.json::<ConnectedResponse>())
+    {
+        Ok(v) => {
+            if v.success {
+                Ok(())
+            } else {
+                Err(APIErr::NoSuccess("No success during connect-callback").into())
+            }
+        }
+        Err(e) => Err(APIErr::RequestError(e).into()),
+    }
+}
+
+/// run heartbeat command
+fn heartbeat(id: i32) -> Fallible<()> {
+    match reqwest::Client::new()
+        .post("http://127.0.0.1:1330/internal/heartbeat")
+        .json(&HeartbeatRequest { id })
+        .send()
+        .and_then(|mut v| v.json::<HeartbeatResponse>())
+    {
+        Err(e) => Err(APIErr::RequestError(e).into()),
+        Ok(v) => {
+            if v.success {
+                Ok(())
+            } else {
+                Err(APIErr::NoSuccess("No success during heartbeat").into())
+            }
+        }
+    }
+}
+
 create_plugin!(MyTsPlugin);
+
+#[cfg(test)]
+mod testing {
+    use super::*;
+    use std::collections::HashMap;
+    use std::process;
+    #[test]
+    fn test_connected() {
+        let pid = process::id();
+
+        let mut response = reqwest::Client::new()
+            .post("http://127.0.0.1:1330/internal/started")
+            .json(&ConnectedRequest { id: 1, pid })
+            .send()
+            .unwrap();
+        println!("{:?}", response);
+        println!("{:?}", response.text());
+    }
+}

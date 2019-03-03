@@ -14,10 +14,15 @@ crate-type = ["dylib"]
 massif = []
 
 [dependencies]
+failure = "0"
+failure_derive = "0"
 lazy_static = "1.1"
 jsonrpc-client-core = "0.5.0"
 jsonrpc-client-http = "0.5.0"
 regex = "1"
+serde = "1"
+serde_derive = "1"
+reqwest = {default-features = false, version = "0" }
 
 [dependencies.ts3plugin]
 git = "https://github.com/0xpr03/rust-ts3plugin"
