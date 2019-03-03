@@ -75,6 +75,8 @@ RUN ~/.cargo/bin/cargo build
 
 WORKDIR /opt/yamba
 
+COPY ./daemon/templates/* /root/templates/
+
 # copy entrypoint
 COPY ./entrypoint.sh ./entrypoint.sh
 RUN chmod 755 ./entrypoint.sh
