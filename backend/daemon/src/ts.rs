@@ -32,6 +32,7 @@ use std::env::current_dir;
 
 use rusqlite::{self, Connection};
 
+use instance::ID;
 use models::TSSettings;
 use SETTINGS;
 
@@ -85,7 +86,7 @@ impl TSInstance {
     /// Create a new instance controller
     /// Created from TSSettings model
     /// rpc port is for callbacks used by the yamba plugin
-    pub fn spawn(settings: &TSSettings, rpc_port: &u16) -> Fallible<TSInstance> {
+    pub fn spawn(settings: &TSSettings, id: &ID, rpc_port: &u16) -> Fallible<TSInstance> {
         let mut params = Vec::new();
         if let Some(v) = settings.port {
             params.push(("port".to_owned(), v.to_string()));
@@ -109,7 +110,7 @@ impl TSInstance {
             env::var("LD_LIBRARY_PATH").unwrap_or("".to_string())
         );
 
-        let path_config = current_dir()?.join("ts").join(format!("{}", settings.id));
+        let path_config = current_dir()?.join("ts").join(format!("{}", id));
 
         if path_config.exists() && SETTINGS.ts.clear_config {
             remove_dir_all(&path_config).map_err(|e| TSInstanceErr::ConfigCreationIOError(e))?;
@@ -129,7 +130,7 @@ impl TSInstance {
             .env("KDEDIR", "")
             .env("KDEDIRS", "")
             .env("TS3_CONFIG_DIR", path_config.to_string_lossy().into_owned())
-            .env(TS_ENV_ID, settings.id.to_string())
+            .env(TS_ENV_ID, id.to_string())
             .env(TS_ENV_CALLBACK, rpc_port.to_string())
             .args(&["--auto-servernum", "--server-args=-screen 0 640x480x24:32"])
             .arg(path_binary.to_string_lossy().to_mut())

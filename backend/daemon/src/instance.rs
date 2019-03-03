@@ -25,13 +25,11 @@ use std::time::Instant;
 use audio::NullSink;
 use cache::Cache;
 use daemon::WInstances;
-use db;
-use models::SongID;
-use models::{InstanceStorage, QueueID, SongMin};
+use models::{CacheSong, SongID, SongMin};
 use playback::Player;
 use ts::TSInstance;
 use ytdl::YtDL;
-use ytdl_worker::YTSender;
+use ytdl_worker::{YTReqWrapped, YTSender};
 
 /// module containing a single instance
 
@@ -47,15 +45,12 @@ pub enum InstanceErr {
 
 pub type ID = i32;
 /// Cache for resolved media URIs
-pub type SongCache = Cache<SongID, String>;
+pub type SongCache = Cache<SongID, CacheSong>;
 #[allow(non_camel_case_types)]
 type CURRENT_SONG = Arc<RwLock<Option<CurrentSong>>>;
 
-/// Struct holding the current song
-pub struct CurrentSong {
-    pub song: SongMin,
-    pub queue_id: QueueID,
-}
+/// Type holding the current song
+pub type CurrentSong = SongMin;
 
 /// Base for each instance
 pub struct Instance {
@@ -66,42 +61,21 @@ pub struct Instance {
     pub current_song: CURRENT_SONG,
     pub cache: SongCache,
     pub instances: WInstances,
+    pub url_resolve: YTSender,
 }
 
 impl Drop for Instance {
     fn drop(&mut self) {
         // don't store on clone drop
         println!("Storing instance {}", self.id);
-        self.player.pause();
-        if let Ok(mut lock) = self.store.write() {
-            lock.volume = self.player.get_volume();
-
-            match db::upsert_instance_storage(&*lock, &self.pool) {
-                Ok(_) => (),
-                Err(e) => error!("Unable to store instance {}", e),
-            }
-        }
+        self.player.stop();
     }
 }
 
 impl Instance {
-    /// Play previous track, does nothing if no song in history
-    pub fn play_previous_track(&self) -> Fallible<()> {
-        let mut lock = self.playback_history.lock().expect("Can't lock history!");
-        if let Some(song) = lock.pop_front() {
-            db::add_previous_song_to_queue(&self.pool, &self.id, &song.song.id, &song.queue_id)?;
-            self.player.stop();
-            let mut c_song_w = self.current_song.write().expect("Can't lock current song!");
-            *c_song_w = None;
-            drop(c_song_w);
-            drop(lock);
-            // drop locks first, then call play_track with specified qID
-            // allows for rewind of non-linear playback
-            self.play_track(Some(song.queue_id))?;
-        } else {
-            info!("No previous song to play!");
-        }
-        Ok(())
+    /// Resolve URL under this instances queue
+    pub fn dispatch_resolve(&self, request: YTReqWrapped) -> Fallible<()> {
+        Ok(self.url_resolve.try_send(request)?)
     }
 
     /// Stop playback
@@ -120,17 +94,9 @@ impl Instance {
             .read()
             .expect("Can't lock current song!")
             .is_some();
-        let stop_flag = self.stop_flag.load(Ordering::Relaxed);
-        trace!(
-            "Stop flag: {} has_current_song_ {}",
-            stop_flag,
-            has_current_song
-        );
 
-        if !stop_flag && has_current_song {
-            if let Err(e) = self.play_next_track() {
-                warn!("Couldn't play next track in queue. {}", e);
-            }
+        if has_current_song {
+            //TODO: send end of song event
         } else {
             trace!("Ignoring end of stream");
         }
@@ -156,14 +122,14 @@ impl Instance {
         match song_guard.as_ref() {
             Some(cur_song) => {
                 let position = self.player.get_position();
-                let length = format_time(cur_song.song.length);
-                let artist = match cur_song.song.artist.as_ref() {
+                let length = format_time(cur_song.length);
+                let artist = match cur_song.artist.as_ref() {
                     Some(v) => format!(" - {}", v),
                     None => String::new(),
                 };
                 format!(
                     "{}{} {:02}:{:02} / {} {}",
-                    cur_song.song.name.as_str(),
+                    cur_song.name.as_str(),
                     artist,
                     position.minutes + (position.hours * 60),
                     position.seconds,
@@ -174,64 +140,26 @@ impl Instance {
                     }
                 )
             }
-            None => {
-                if self.stop_flag.load(Ordering::Relaxed) {
-                    String::from("Playback stopped")
-                } else {
-                    String::from("Playback ended")
-                }
-            }
+            None => String::from("Playback ended"),
         }
     }
 
-    /// Clear queue
-    pub fn clear_queue(&self) -> Fallible<()> {
-        {
-            let mut c_song_w = self.current_song.write().expect("Can't lock current song!");
-            db::clear_queue(&self.pool, &self.id)?;
-            *c_song_w = None;
-        }
-        self.player.stop();
-        Ok(())
-    }
-
-    /// Play next track if queue_id is None, otherwise the specified track
-    fn play_track(&self, queue_id: Option<QueueID>) -> Fallible<()> {
+    /// Play song
+    pub fn play_track(&self, song: SongMin) -> Fallible<()> {
         let mut c_song_w = self.current_song.write().expect("Can't lock current song!");
-        if let Some(song) = c_song_w.take() {
-            trace!("Removing old song from queue {}", song.queue_id);
-            db::remove_from_queue(&self.pool, &song.queue_id)?;
-            let mut lock = self.playback_history.lock().expect("Can't lock history!");
-            lock.push_front(song);
-            drop(lock);
-        }
 
-        let song_data = match queue_id {
-            Some(queue_id) => Some((queue_id, db::get_track_by_queue_id(&self.pool, &queue_id)?)),
-            None => db::get_next_in_queue(&self.pool, &self.id)?,
-        };
-
-        if let Some((queue_id, song)) = song_data {
-            trace!("Found new song, queue_id: {}", queue_id);
-            let source = song.source.clone();
-            let songid = song.id.clone();
-            *c_song_w = Some(CurrentSong { queue_id, song });
-            let instances = self.instances.clone();
-            let cache = self.cache.clone();
-            let id = self.id.clone();
-            let ytdl = self.ytdl.clone();
-            thread::spawn(move || {
-                if let Err(e) =
-                    Instance::play_track_inner(instances, cache, id, ytdl, source, songid)
-                {
-                    warn!("Error while resolving next track! {}", e);
-                }
-            });
-        } else {
-            trace!("play_track can't find any song");
-            *c_song_w = None;
-            self.player.stop();
-        }
+        let source = song.source.clone();
+        let songid = song.id.clone();
+        *c_song_w = Some(song);
+        let instances = self.instances.clone();
+        let cache = self.cache.clone();
+        let id = self.id.clone();
+        let ytdl = self.ytdl.clone();
+        thread::spawn(move || {
+            if let Err(e) = Instance::play_track_inner(instances, cache, id, ytdl, source, songid) {
+                warn!("Error while resolving next track! {}", e);
+            }
+        });
 
         Ok(())
     }
