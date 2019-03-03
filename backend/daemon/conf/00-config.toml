@@ -33,6 +33,12 @@ api_callback_port = "82"
 # entry max age for stream cache
 cache_lifetime_secs = 3600
 
+# secrets for authorization
+# on callback
+api_callback_secret = "change me"
+# incoming api requests
+api_secret = "change me"
+
 [ytdl]
 # amount of concurrent ytdl workers
 workers = 4
