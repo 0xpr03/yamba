@@ -26,6 +26,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 
 use failure::{Fallible, ResultExt};
+use metrohash::MetroHash128;
 use serde_json;
 use serde_json::value::Value as JsonValue;
 use sha2::{Digest, Sha256};
@@ -167,6 +168,14 @@ impl Track {
     /// Return audio only formats
     pub fn audio_only_formats(&self) -> Vec<&Format> {
         self.formats.iter().filter(|f| f.is_audio_only()).collect()
+    }
+
+    /// calculates track ID
+    pub fn get_id(&self) -> String {
+        let mut hasher = MetroHash128::default();
+        self.hash(&mut hasher);
+        let (h1, h2) = hasher.finish128();
+        format!("{:x}{:x}", h1, h2)
     }
 }
 
