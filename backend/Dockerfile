@@ -82,5 +82,4 @@ COPY ./entrypoint.sh ./entrypoint.sh
 RUN chmod 755 ./entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
-#CMD ["/opt/yamba/daemon/target/debug/yamba-backend"]
-CMD ["/opt/yamba/daemon/target/debug/yamba-backend", "test-ts","-h","ek.proctet.net","--cid","5368","--clear-instances"]
+CMD ["/opt/yamba/daemon/target/debug/yamba-backend"]

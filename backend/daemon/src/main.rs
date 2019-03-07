@@ -136,38 +136,6 @@ fn main() -> Fallible<()> {
                         .help("media url"),
                 ),
         )
-        .subcommand(
-            SubCommand::with_name("test-ts")
-                .about("Test ts instance start, for test use")
-                .arg(
-                    Arg::with_name("host")
-                        .short("h")
-                        .required(true)
-                        .takes_value(true)
-                        .help("host address"),
-                )
-                .arg(
-                    Arg::with_name("port")
-                        .short("p")
-                        .required(false)
-                        .takes_value(true)
-                        .help("port address"),
-                )
-                .arg(
-                    Arg::with_name("cid")
-                        .long("cid")
-                        .required(false)
-                        .takes_value(true)
-                        .help("channel id"),
-                )
-                .arg(
-                    Arg::with_name("clear-instances")
-                        .long("clear-instances")
-                        .required(false)
-                        .takes_value(false)
-                        .help("Clear all previous instances"),
-                ),
-        )
         .get_matches();
 
     info!(
@@ -267,29 +235,6 @@ fn main() -> Fallible<()> {
                 println!("playthough finished");
             }
             info!("Finished");
-        }
-        ("test-ts", Some(sub_m)) => {
-            info!("Testing ts instance start");
-            info!(
-                "Folder: {} Exec: {}",
-                SETTINGS.ts.dir, SETTINGS.ts.start_binary
-            );
-            let addr = sub_m.value_of("host").unwrap();
-            let port = sub_m.value_of("port").map(|v| v.parse::<u16>().unwrap());
-            let cid = sub_m.value_of("cid").map(|v| v.parse::<i32>().unwrap());
-
-            let settings = models::TSSettings {
-                host: addr.to_string(),
-                port,
-                identity: "".to_string(),
-                cid,
-                name: "YAMBA_Test_Instance".to_string(),
-                password: None,
-            };
-
-            check_runtime()?;
-            daemon::start_runtime()?;
-            info!("Test ended");
         }
         (_, _) => {
             warn!("No params, entering daemon mode");
