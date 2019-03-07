@@ -27,4 +27,6 @@ loggers:
   yamba_backend:
     level: trace
   tower_web:
-    level: trace
+    level: warn
+  yamba_backend::api::internal:
+    level: warn
