@@ -24,9 +24,11 @@ use tower_web::*;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use super::callback::send_resolve;
 use super::*;
 use daemon::{create_instance, InstanceBase, Instances};
 use instance;
+use models::callback::ResolveResponse;
 use models::*;
 use ytdl_worker::{RSongs, YTRequest};
 use SETTINGS;

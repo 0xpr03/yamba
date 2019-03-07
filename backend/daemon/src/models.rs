@@ -137,15 +137,6 @@ pub struct InstanceListResponse {
     pub instances: Vec<ID>,
 }
 
-/// Url resolve response for ticket
-#[derive(Debug, Serialize)]
-pub struct ResolveResponse {
-    pub success: bool,
-    pub msg: Option<String>,
-    pub songs: Vec<Song>,
-    pub ticket: usize,
-}
-
 /// URL Resolver response with ticket number
 #[derive(Debug, Response)]
 pub struct ResolveTicketResponse {
@@ -195,4 +186,45 @@ pub struct InstanceOverview {
     pub volume: f64,
     pub inst_type: String,
     pub playback_info: String,
+}
+
+/// Callbacks
+
+pub mod callback {
+    use super::*;
+
+    #[derive(Debug, Serialize)]
+    pub struct InstanceStateResponse<'a> {
+        pub state: InstanceState,
+        pub id: &'a ID,
+    }
+
+    #[derive(Debug, Serialize)]
+    pub enum InstanceState {
+        Started,
+        Running,
+        Stopped,
+    }
+
+    #[derive(Debug, Serialize)]
+    pub struct PlaystateResponse {
+        pub state: Playstate,
+        pub id: ID,
+    }
+
+    #[derive(Debug, Serialize)]
+    pub enum Playstate {
+        Playing,
+        Paused,
+        EndOfMedia,
+    }
+
+    /// Url resolve response for ticket
+    #[derive(Debug, Serialize)]
+    pub struct ResolveResponse {
+        pub success: bool,
+        pub msg: Option<String>,
+        pub songs: Vec<Song>,
+        pub ticket: usize,
+    }
 }
