@@ -66,9 +66,7 @@ impl_web! {
             debug!("instance started request: {:?}",body);
             let success = match get_instance_by_id(&self.instances, &body.id) {
                 Some(v) => {
-                    match v.voip {
-                        InstanceType::Teamspeak(ref ts) => ts.on_connected(body.pid)?,
-                    }
+                    v.connected(body)?;
                     true
                 }
                 None => false,

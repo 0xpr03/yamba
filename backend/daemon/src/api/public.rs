@@ -108,7 +108,7 @@ impl YTRequest for ResolveDispatcher {
             },
         };
 
-        callback::send_resolve(&response);
+        send_resolve(&response);
     }
 }
 

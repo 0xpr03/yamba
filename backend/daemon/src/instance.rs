@@ -22,10 +22,11 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::Instant;
 
+use api::callback;
 use audio::NullSink;
 use cache::Cache;
 use daemon::WInstances;
-use models::{CacheSong, SongID, SongMin};
+use models::{callback::*, CacheSong, InstanceStartedReq, SongID, SongMin};
 use playback::Player;
 use ts::TSInstance;
 use ytdl::YtDL;
@@ -69,6 +70,12 @@ impl Drop for Instance {
         // don't store on clone drop
         println!("Storing instance {}", self.id);
         self.player.stop();
+
+        let _ = callback::send_instance_state(&InstanceStateResponse {
+            id: &self.id,
+            state: InstanceState::Stopped,
+        })
+        .map_err(|e| warn!("Can't send instance stopped: {}", e));
     }
 }
 
@@ -96,7 +103,7 @@ impl Instance {
             .is_some();
 
         if has_current_song {
-            //TODO: send end of song event
+            self.send_playstate_change(Playstate::EndOfMedia);
         } else {
             trace!("Ignoring end of stream");
         }
@@ -112,6 +119,21 @@ impl Instance {
         {
             self.player.play();
         }
+        Ok(())
+    }
+
+    /// Called when voip is connected & able to send audio
+    pub(crate) fn connected(&self, param: InstanceStartedReq) -> Fallible<()> {
+        match self.voip {
+            InstanceType::Teamspeak(ref ts) => ts.on_connected(param.pid)?,
+        }
+
+        let _ = callback::send_instance_state(&InstanceStateResponse {
+            id: &self.id,
+            state: InstanceState::Running,
+        })
+        .map_err(|e| warn!("Can't send instance running state {}", e));
+
         Ok(())
     }
 
@@ -162,6 +184,16 @@ impl Instance {
         });
 
         Ok(())
+    }
+
+    /// Send playstate change
+    fn send_playstate_change(&self, state: Playstate) {
+        if let Err(e) = callback::send_playback_state(&PlaystateResponse {
+            id: self.id.clone(),
+            state,
+        }) {
+            error!("Can't send playback state change: {}", e);
+        }
     }
 
     /// Inner function, blocking

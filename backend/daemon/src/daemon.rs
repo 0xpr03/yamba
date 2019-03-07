@@ -141,6 +141,7 @@ pub fn start_runtime() -> Fallible<()> {
             controller: controller,
             w_instances: Arc::downgrade(&instances),
         };
+
         api::start_server(&mut rt, instances.clone(), base)?;
 
         info!("Loading instances..");
@@ -232,12 +233,21 @@ fn restart() {
 //     Ok(())
 // }
 
+/// Create instance
 pub fn create_instance(base: &InstanceBase, inst: models::InstanceLoadReq) -> Fallible<Instance> {
-    match inst.data {
+    let inst = match inst.data {
         models::InstanceType::TS(settings) => {
-            create_ts_instance(base, settings, inst.id, inst.volume)
+            create_ts_instance(base, settings, inst.id, inst.volume)?
         }
-    }
+    };
+
+    let _ = api::callback::send_instance_state(&models::callback::InstanceStateResponse {
+        id: &inst.id,
+        state: models::callback::InstanceState::Started,
+    })
+    .map_err(|e| warn!("Can't send instance started {}", e));
+
+    Ok(inst)
 }
 
 /// Crate instance of type TS
