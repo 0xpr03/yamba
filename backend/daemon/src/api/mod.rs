@@ -18,7 +18,7 @@
 use failure::Fallible;
 use hashbrown::HashMap;
 use owning_ref::OwningRef;
-use tokio::runtime;
+use tokio::{executor, runtime};
 
 use std::net::SocketAddr;
 use std::sync::RwLockReadGuard;
@@ -26,7 +26,7 @@ use std::sync::RwLockReadGuard;
 use daemon::{InstanceBase, Instances};
 use instance::{Instance, ID};
 
-mod callback;
+pub mod callback;
 mod internal;
 mod public;
 
@@ -35,7 +35,9 @@ pub enum APIErr {
     #[fail(display = "API bind error {}", _0)]
     BindError(#[cause] std::io::Error),
     #[fail(display = "Instance incorrect {}", _0)]
-    InvalidInstane(ID),
+    InvalidInstance(ID),
+    #[fail(display = "Unable to spawn onto executor {}", _0)]
+    ExcecutionFailed(#[cause] executor::SpawnError),
 }
 
 pub fn start_server(

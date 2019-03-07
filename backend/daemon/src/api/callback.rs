@@ -15,15 +15,19 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use failure::Fallible;
+use futures::Future;
 use reqwest::header;
-use reqwest::{Client, ClientBuilder};
+use reqwest::{self, async};
+use tokio::executor::{DefaultExecutor, Executor};
 
-use models::ResolveResponse;
+use super::APIErr;
+use models::callback::*;
 use SETTINGS;
 use USERAGENT;
 
 lazy_static! {
-    static ref API_CLIENT: Client = {
+    static ref API_CLIENT_SYNC: reqwest::Client = {
         let mut headers = header::HeaderMap::new();
         headers.insert(
             header::USER_AGENT,
@@ -33,7 +37,22 @@ lazy_static! {
             header::AUTHORIZATION,
             header::HeaderValue::from_static(&SETTINGS.main.api_callback_secret),
         );
-        ClientBuilder::new()
+        reqwest::ClientBuilder::new()
+            .default_headers(headers)
+            .build()
+            .unwrap()
+    };
+    static ref API_CLIENT_ASYNC: async::Client = {
+        let mut headers = header::HeaderMap::new();
+        headers.insert(
+            header::USER_AGENT,
+            header::HeaderValue::from_static(&USERAGENT),
+        );
+        headers.insert(
+            header::AUTHORIZATION,
+            header::HeaderValue::from_static(&SETTINGS.main.api_callback_secret),
+        );
+        async::ClientBuilder::new()
             .default_headers(headers)
             .build()
             .unwrap()
@@ -46,12 +65,67 @@ lazy_static! {
         "{}:{}/callback/playback",
         SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port
     );
+    static ref CALLBACK_INSTANCE: String = format!(
+        "{}:{}/callback/instance",
+        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port
+    );
+    static ref CALLBACK_SONG: String = format!(
+        "{}:{}/callback/song",
+        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port
+    );
+}
+
+/// Send song-info change (length..)
+#[allow(unused)]
+pub fn send_song_info(v: &InstanceStateResponse) -> Fallible<()> {
+    let fut = API_CLIENT_ASYNC
+        .post(CALLBACK_SONG.as_str())
+        .json(v)
+        .send()
+        .map(|x| trace!("Song info callback response: {:?}", x))
+        .map_err(|err| warn!("Error sending song info callbacK: {:?}", err));
+    DefaultExecutor::current()
+        .spawn(Box::new(fut))
+        .map_err(|v| APIErr::ExcecutionFailed(v))?;
+    Ok(())
+}
+
+/// Send instance state change
+pub fn send_instance_state(v: &InstanceStateResponse) -> Fallible<()> {
+    let fut = API_CLIENT_ASYNC
+        .post(CALLBACK_INSTANCE.as_str())
+        .json(v)
+        .send()
+        .map(|x| trace!("Instance state callback response: {:?}", x))
+        .map_err(|err| warn!("Error sending instance state callbacK: {:?}", err));
+    DefaultExecutor::current()
+        .spawn(Box::new(fut))
+        .map_err(|v| APIErr::ExcecutionFailed(v))?;
+    Ok(())
+}
+
+/// Send playstate change
+pub fn send_playback_state(v: &PlaystateResponse) -> Fallible<()> {
+    let fut = API_CLIENT_ASYNC
+        .post(CALLBACK_PLAYBACK.as_str())
+        .json(v)
+        .send()
+        .map(|x| trace!("Playstate callback response: {:?}", x))
+        .map_err(|err| warn!("Error sending playstate callbacK: {:?}", err));
+    DefaultExecutor::current()
+        .spawn(Box::new(fut))
+        .map_err(|v| APIErr::ExcecutionFailed(v))?;
+    Ok(())
 }
 
 /// Send callback for url resolve
 pub fn send_resolve(body: &ResolveResponse) {
-    match API_CLIENT.post(CALLBACK_RESOLVE.as_str()).json(body).send() {
+    match API_CLIENT_SYNC
+        .post(CALLBACK_RESOLVE.as_str())
+        .json(body)
+        .send()
+    {
         Ok(v) => debug!("Callback response: {:?}", v),
-        Err(e) => warn!("Error on callback: {}", e),
+        Err(e) => warn!("Error on resolve callback: {}", e),
     }
 }
