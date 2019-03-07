@@ -28,6 +28,9 @@ use instance::InstanceType;
 use models::{DefaultResponse, HeartbeatReq, InstanceStartedReq};
 use SETTINGS;
 
+/// Internal API, used for plugin<->daemon communication
+/// Not secured or intended for public exposure
+
 /// Address parser for internal
 /// Used also for runtime checks
 pub fn parse_addr() -> Fallible<SocketAddr> {
