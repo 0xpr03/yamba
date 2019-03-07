@@ -25,7 +25,7 @@ use gst_player::{self, Cast};
 use tokio::runtime;
 
 use std::path::Path;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use daemon::Instances;
 use instance::ID;
@@ -39,7 +39,7 @@ pub struct Position {
     pub seconds: u64,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PlaybackState {
     Stopped,
     Paused,
@@ -80,11 +80,7 @@ pub struct Player {
     player: gst_player::Player,
     pulsesink: gst::Element,
     volume: RwLock<f64>,
-    /*// player name
-    name: String,
-    // ID of player
-    id: Arc<i32>,*/
-    state: RwLock<PlaybackState>,
+    state: Arc<RwLock<PlaybackState>>,
 }
 
 unsafe impl Send for Player {}
@@ -188,6 +184,9 @@ impl Player {
 
         let events_clone = events.clone();
         let id_clone = id.clone();
+
+        let state_store = Arc::new(RwLock::new(PlaybackState::Stopped));
+        let state_clone = state_store.clone();
         player.connect_state_changed(move |_, state| {
             let mut events = events_clone.clone();
             debug!("state changed: {:?}", state);
@@ -199,6 +198,7 @@ impl Player {
             };
             if let Some(s) = state {
                 let id = id_clone.clone();
+                *state_clone.write().expect("Can't read state store") = s.clone();
                 events
                     .try_send(PlayerEvent {
                         id,
@@ -239,7 +239,7 @@ impl Player {
             player,
             pulsesink,
             volume: RwLock::new(volume),
-            state: RwLock::new(PlaybackState::Stopped),
+            state: state_store,
         })
     }
 
@@ -374,7 +374,7 @@ pub fn create_playback_server(
                     .expect("Can't read instance!")
                     .get(&event.id)
                 {
-                    *v.player.state.write().unwrap() = state;
+                    //TODO
                 }
             }
             PlayerEventType::PositionUpdated => (), // silence
