@@ -47,7 +47,7 @@ pub enum PlaybackState {
 }
 
 /// Player event types
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum PlayerEventType {
     UriLoaded,
     MediaInfoUpdated,
@@ -59,7 +59,7 @@ pub enum PlayerEventType {
 }
 
 /// Player event
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct PlayerEvent {
     pub id: ID,
     pub event_type: PlayerEventType,
