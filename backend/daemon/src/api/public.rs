@@ -122,10 +122,10 @@ impl_web! {
             let inst_r = self.instances.read().expect("Can't write instances!");
             let instances = inst_r.values().map(|r|{
                 InstanceOverview {
-                    id: r.id,
+                    id: r.get_id(),
                     playing: r.is_playing(),
                     volume: r.get_volume(),
-                    inst_type: match r.voip {
+                    inst_type: match r.get_voip() {
                         instance::InstanceType::Teamspeak(_) => String::from("Teamspeak"),
                     },
                     playback_info: r.playback_info(),
@@ -157,7 +157,7 @@ impl_web! {
             debug!("instance start request: {:?}",body);
             let mut inst_w = self.instances.write().expect("Can't write instances!");
             if !inst_w.contains_key(&body.id) {
-                match create_instance(&self.base, body).map(|v|  {inst_w.insert(v.id.clone(),v); () }) {
+                match create_instance(&self.base, body).map(|v|  {inst_w.insert(v.get_id(),v); () }) {
                     Ok(_) => Ok(DefaultResponse{success: true,msg: None}),
                     Err(e) => Ok(DefaultResponse{success: false,msg: Some(format!("{}",e))})
                 }

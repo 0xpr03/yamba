@@ -62,6 +62,7 @@ pub enum DaemonErr {
     APICreationError(#[cause] failure::Error),
 }
 
+/// Base for creating instances
 pub struct InstanceBase {
     pub player_send: PlaybackSender,
     pub mainloop: CMainloop,
@@ -71,6 +72,21 @@ pub struct InstanceBase {
     pub cache: SongCache,
     pub controller: ytdl_worker::Controller,
     pub w_instances: WInstances,
+}
+
+impl InstanceDataProvider for InstanceBase {
+    fn get_controller(&self) -> &ytdl_worker::Controller {
+        &self.controller
+    }
+    fn get_ytdl(&self) -> &Arc<YtDL> {
+        &self.ytdl
+    }
+    fn get_cache(&self) -> &SongCache {
+        &self.cache
+    }
+    fn get_weak_instances(&self) -> &WInstances {
+        &self.w_instances
+    }
 }
 
 unsafe impl Send for InstanceBase {}
@@ -210,29 +226,6 @@ fn restart() {
     );
 }
 
-/// Load instances
-/// Stops previous instances
-// fn load_instances(base: InstanceBase, instances: &Instances) -> Fallible<()> {
-//     let mut instances = instances.write().expect("Main RwLock is poisoned!");
-//     instances.clear();
-//     for id in instance_ids {
-//         let instance = match create_instance_from_id(&base, &id) {
-//             Ok(v) => v,
-//             Err(e) => {
-//                 error!(
-//                     "Unable to load instance ID {}: {}\n{}",
-//                     id,
-//                     e,
-//                     e.backtrace()
-//                 );
-//                 continue;
-//             }
-//         };
-//         instances.insert(id, instance);
-//     }
-//     Ok(())
-// }
-
 /// Create instance
 pub fn create_instance(base: &InstanceBase, inst: models::InstanceLoadReq) -> Fallible<Instance> {
     let inst = match inst.data {
@@ -242,7 +235,7 @@ pub fn create_instance(base: &InstanceBase, inst: models::InstanceLoadReq) -> Fa
     };
 
     let _ = api::callback::send_instance_state(&models::callback::InstanceStateResponse {
-        id: &inst.id,
+        id: &inst.get_id(),
         state: models::callback::InstanceState::Started,
     })
     .map_err(|e| warn!("Can't send instance started {}", e));
@@ -263,28 +256,20 @@ fn create_ts_instance(
         base.context.clone(),
         format!("yambasink{}", &id),
     )?;
-
     player.set_pulse_device(sink.get_sink_name())?;
-    Ok(Instance {
-        voip: InstanceType::Teamspeak(Teamspeak {
-            ts: TSInstance::spawn(
-                &data,
-                &id,
-                &SETTINGS.main.api_internal_bind_ip,
-                &SETTINGS.main.api_internal_bind_port,
-            )?,
-            sink,
-            mute_sink: base.default_sink.clone(),
-            updated: RwLock::new(Instant::now()),
-        }),
-        url_resolve: base.controller.channel(id.clone(), 64),
-        player: player,
-        id: id,
-        ytdl: base.ytdl.clone(),
-        cache: base.cache.clone(),
-        current_song: Arc::new(RwLock::new(None)),
-        instances: base.w_instances.clone(),
-    })
+    let voip = InstanceType::Teamspeak(Teamspeak {
+        ts: TSInstance::spawn(
+            &data,
+            &id,
+            &SETTINGS.main.api_internal_bind_ip,
+            &SETTINGS.main.api_internal_bind_port,
+        )?,
+        sink,
+        mute_sink: base.default_sink.clone(),
+        updated: RwLock::new(Instant::now()),
+    });
+
+    Ok(Instance::new(id, voip, base, player))
 }
 
 /// Parse socket address

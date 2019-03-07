@@ -30,7 +30,7 @@ use models::{callback::*, CacheSong, InstanceStartedReq, SongID, SongMin};
 use playback::Player;
 use ts::TSInstance;
 use ytdl::YtDL;
-use ytdl_worker::{YTReqWrapped, YTSender};
+use ytdl_worker::{Controller, YTReqWrapped, YTSender};
 
 /// module containing a single instance
 
@@ -44,6 +44,13 @@ pub enum InstanceErr {
     InvalidSource(String),
 }
 
+pub trait InstanceDataProvider {
+    fn get_controller(&self) -> &Controller;
+    fn get_ytdl(&self) -> &Arc<YtDL>;
+    fn get_cache(&self) -> &SongCache;
+    fn get_weak_instances(&self) -> &WInstances;
+}
+
 pub type ID = i32;
 /// Cache for resolved media URIs
 pub type SongCache = Cache<SongID, CacheSong>;
@@ -55,14 +62,14 @@ pub type CurrentSong = SongMin;
 
 /// Base for each instance
 pub struct Instance {
-    pub id: ID,
-    pub voip: InstanceType,
-    pub player: Player,
-    pub ytdl: Arc<YtDL>,
-    pub current_song: CURRENT_SONG,
-    pub cache: SongCache,
-    pub instances: WInstances,
-    pub url_resolve: YTSender,
+    id: ID,
+    voip: InstanceType,
+    player: Player,
+    ytdl: Arc<YtDL>,
+    current_song: CURRENT_SONG,
+    cache: SongCache,
+    instances: WInstances,
+    url_resolve: YTSender,
 }
 
 impl Drop for Instance {
@@ -80,6 +87,24 @@ impl Drop for Instance {
 }
 
 impl Instance {
+    pub fn new(
+        id: ID,
+        voip: InstanceType,
+        base: &InstanceDataProvider,
+        player: Player,
+    ) -> Instance {
+        Instance {
+            voip: voip,
+            url_resolve: base.get_controller().channel(id.clone(), 64),
+            player,
+            id: id,
+            ytdl: base.get_ytdl().clone(),
+            cache: base.get_cache().clone(),
+            current_song: Arc::new(RwLock::new(None)),
+            instances: base.get_weak_instances().clone(),
+        }
+    }
+
     /// Resolve URL under this instances queue
     pub fn dispatch_resolve(&self, request: YTReqWrapped) -> Fallible<()> {
         Ok(self.url_resolve.try_send(request)?)
@@ -107,6 +132,14 @@ impl Instance {
         } else {
             trace!("Ignoring end of stream");
         }
+    }
+
+    pub fn get_id(&self) -> ID {
+        self.id
+    }
+
+    pub fn get_voip(&self) -> &InstanceType {
+        &self.voip
     }
 
     pub fn is_playing(&self) -> bool {
