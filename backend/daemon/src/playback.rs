@@ -349,7 +349,7 @@ pub fn create_playback_server(
                 trace!("URI loaded for {}", event.id);
                 let instances_r = instances.read().expect("Can't read instance!");
                 if let Some(v) = instances_r.get(&event.id) {
-                    v.player.play();
+                    v.play();
                 }
             }
             PlayerEventType::VolumeChanged(v) => {

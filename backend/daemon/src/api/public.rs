@@ -123,8 +123,8 @@ impl_web! {
             let instances = inst_r.values().map(|r|{
                 InstanceOverview {
                     id: r.id,
-                    playing: r.player.is_playing(),
-                    volume: r.player.get_volume(),
+                    playing: r.is_playing(),
+                    volume: r.get_volume(),
                     inst_type: match r.voip {
                         instance::InstanceType::Teamspeak(_) => String::from("Teamspeak"),
                     },
@@ -203,7 +203,7 @@ impl_web! {
         fn playback_pause(&self, body: PlaybackPauseReq) -> Fallible<DefaultResponse> {
             debug!("playback pause request: {:?}",body);
             let success = match get_instance_by_id(&self.instances, &body.id) {
-                Some(v) =>  {v.player.pause(); true},
+                Some(v) =>  {v.pause(); true},
                 None => false,
             };
 
@@ -222,7 +222,7 @@ impl_web! {
         fn volume_set(&self, body: VolumeSetReq) -> Fallible<DefaultResponse> {
             trace!("volume set: {:?}", body);
             let success = if let Some(inst) = get_instance_by_id(&self.instances, &body.id) {
-                inst.player.set_volume(body.volume);
+                inst.set_volume(body.volume);
                 true
             } else {
                 false
@@ -234,7 +234,7 @@ impl_web! {
         #[content_type("application/json")]
         fn volume_get(&self, query_string: VolumeGetReq) -> Fallible<VolumeResponse> {
             trace!("Volume get: {:?}",query_string);
-            let volume = get_instance_by_id(&self.instances, &query_string.id).map(|inst| inst.player.get_volume());
+            let volume = get_instance_by_id(&self.instances, &query_string.id).map(|inst| inst.get_volume());
             Ok(VolumeResponse{volume,msg: None})
         }
     }

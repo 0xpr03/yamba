@@ -109,6 +109,26 @@ impl Instance {
         }
     }
 
+    pub fn is_playing(&self) -> bool {
+        self.player.is_playing()
+    }
+
+    pub fn set_volume(&self, v: f64) {
+        self.player.set_volume(v);
+    }
+
+    pub fn get_volume(&self) -> f64 {
+        self.player.get_volume()
+    }
+
+    pub fn pause(&self) {
+        self.player.pause();
+    }
+
+    pub fn play(&self) {
+        self.player.play();
+    }
+
     /// Resume playback
     pub fn resume_playback(&self) -> Fallible<()> {
         if self
