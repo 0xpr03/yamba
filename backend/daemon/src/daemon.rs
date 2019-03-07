@@ -15,7 +15,7 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use failure::{self, Fallible};
+use failure::Fallible;
 use futures::sync::mpsc;
 use futures::{future, Future, Stream};
 use gst;
@@ -28,7 +28,7 @@ use std::i32;
 use std::net::SocketAddr;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
-use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Mutex, RwLock, Weak};
+use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, RwLock, Weak};
 use std::thread;
 use std::time::Instant;
 
@@ -37,7 +37,7 @@ use audio::{self, CContext, CMainloop, NullSink};
 use cache::Cache;
 use instance::*;
 use models::{self, SongID, TSSettings};
-use playback::{self, PlaybackSender, Player, PlayerEvent};
+use playback::{PlaybackSender, Player, PlayerEvent};
 use ts::TSInstance;
 use ytdl::YtDL;
 use ytdl_worker;
@@ -56,10 +56,6 @@ pub enum DaemonErr {
     RuntimeCreationError(#[cause] tokio::io::Error),
     #[fail(display = "Unable initialize daemon {}", _0)]
     InitializationError(String),
-    #[fail(display = "Unable to create rpc server {}", _0)]
-    RPCCreationError(#[cause] failure::Error),
-    #[fail(display = "Unable to create api server {}", _0)]
-    APICreationError(#[cause] failure::Error),
 }
 
 /// Base for creating instances
@@ -159,16 +155,6 @@ pub fn start_runtime() -> Fallible<()> {
         };
 
         api::start_server(&mut rt, instances.clone(), base)?;
-
-        info!("Loading instances..");
-
-        // match load_instances(inst_data, &instances) {
-        //     Ok(_) => (),
-        //     Err(e) => {
-        //         error!("Unable to load instances: {}\n{}", e, e.backtrace());
-        //         return Err(DaemonErr::InitializationError(format!("{}", e)).into());
-        //     }
-        // }
 
         info!("Daemon initialized");
 
@@ -270,9 +256,4 @@ fn create_ts_instance(
     });
 
     Ok(Instance::new(id, voip, base, player))
-}
-
-/// Parse socket address
-pub fn parse_socket_address(ip: &str, port: u16) -> Fallible<SocketAddr> {
-    Ok(SocketAddr::new(ip.parse()?, port))
 }

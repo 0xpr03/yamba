@@ -34,8 +34,6 @@ mod public;
 pub enum APIErr {
     #[fail(display = "API bind error {}", _0)]
     BindError(#[cause] std::io::Error),
-    #[fail(display = "Instance incorrect {}", _0)]
-    InvalidInstance(ID),
     #[fail(display = "Unable to spawn onto executor {}", _0)]
     ExcecutionFailed(#[cause] executor::SpawnError),
 }

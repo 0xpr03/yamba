@@ -16,12 +16,11 @@
  */
 
 use failure::Fallible;
-use futures::sync::mpsc::{Receiver, Sender};
+use futures::sync::mpsc::Receiver;
 use futures::Stream;
 use tokio::runtime;
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Instant;
 
@@ -37,8 +36,6 @@ use ytdl_worker::{Controller, YTReqWrapped, YTSender};
 
 /// module containing a single instance
 
-const MAX_BACK_TITLES: usize = 30;
-
 #[derive(Fail, Debug, PartialEq)]
 pub enum InstanceErr {
     #[fail(display = "No Audio track for URL {}", _0)]
@@ -47,6 +44,7 @@ pub enum InstanceErr {
     InvalidSource(String),
 }
 
+/// Data provider for creation of instances
 pub trait InstanceDataProvider {
     fn get_controller(&self) -> &Controller;
     fn get_ytdl(&self) -> &Arc<YtDL>;

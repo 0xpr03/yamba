@@ -17,7 +17,6 @@
 
 use failure::Fallible;
 use tokio::{net::TcpListener, runtime};
-use tower_web::middleware::log::LogMiddleware;
 use tower_web::view::Handlebars;
 use tower_web::*;
 
@@ -74,13 +73,11 @@ unsafe impl Sync for ApiResource {}
 struct ResolveDispatcher {
     url: String,
     ticket: usize,
-    host: String,
 }
 
 impl ResolveDispatcher {
     pub fn new(req: ResolveRequest, ticket: usize) -> ResolveDispatcher {
         ResolveDispatcher {
-            host: req.callback_address,
             ticket,
             url: req.url,
         }

@@ -15,11 +15,6 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use chrono::naive::NaiveDateTime;
-use serde::Serialize;
-
-use std::fmt::Debug;
-
 use instance::ID;
 use ytdl::Track;
 
@@ -149,7 +144,6 @@ pub struct ResolveTicketResponse {
 pub struct ResolveRequest {
     pub instance: ID,
     pub url: String,
-    pub callback_address: String,
 }
 
 #[derive(Debug, Extract)]

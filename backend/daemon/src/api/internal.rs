@@ -24,7 +24,6 @@ use std::net::SocketAddr;
 
 use super::{get_instance_by_id, APIErr};
 use daemon::Instances;
-use instance::InstanceType;
 use models::{DefaultResponse, HeartbeatReq, InstanceStartedReq};
 use SETTINGS;
 
