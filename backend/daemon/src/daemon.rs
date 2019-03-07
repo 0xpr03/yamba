@@ -145,7 +145,7 @@ pub fn start_runtime() -> Fallible<()> {
 
         ytdl_worker::crate_yt_updater(&mut rt, ytdl.clone());
 
-        playback::create_playback_server(&mut rt, player_rx, instances.clone())?;
+        create_playback_event_handler(&mut rt, player_rx, instances.clone())?;
 
         let base = InstanceBase {
             player_send: player_tx,

@@ -16,6 +16,9 @@
  */
 
 use failure::Fallible;
+use futures::sync::mpsc::{Receiver, Sender};
+use futures::Stream;
+use tokio::runtime;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
@@ -25,9 +28,9 @@ use std::time::Instant;
 use api::callback;
 use audio::NullSink;
 use cache::Cache;
-use daemon::WInstances;
+use daemon::{Instances, WInstances};
 use models::{callback::*, CacheSong, InstanceStartedReq, SongID, SongMin};
-use playback::Player;
+use playback::{PlaybackState, Player, PlayerEvent, PlayerEventType};
 use ts::TSInstance;
 use ytdl::YtDL;
 use ytdl_worker::{Controller, YTReqWrapped, YTSender};
@@ -119,7 +122,7 @@ impl Instance {
     }
 
     /// Handle end of stream event
-    pub fn end_of_stream(&self) {
+    fn end_of_stream(&self) {
         // !stop-flag && no current song (avoid feedback loop)
         let has_current_song = self
             .current_song
@@ -324,4 +327,62 @@ impl Teamspeak {
         self.mute_sink.set_sink_for_process(process_id)?;
         Ok(())
     }
+}
+
+/// Register event handler for playback in daemon
+pub fn create_playback_event_handler(
+    runtime: &mut runtime::Runtime,
+    tx: Receiver<PlayerEvent>,
+    instances: Instances,
+) -> Fallible<()> {
+    let stream = tx.for_each(move |event| {
+        match event.event_type {
+            PlayerEventType::UriLoaded => {
+                trace!("URI loaded for {}", event.id);
+                let instances_r = instances.read().expect("Can't read instance!");
+                if let Some(v) = instances_r.get(&event.id) {
+                    v.play();
+                }
+            }
+            PlayerEventType::VolumeChanged(v) => {
+                trace!("Volume changed to {} for {}", v, event.id);
+            }
+            PlayerEventType::EndOfStream => {
+                trace!("End of stream for {}", event.id);
+                if let Some(v) = instances
+                    .read()
+                    .expect("Can't read instance!")
+                    .get(&event.id)
+                {
+                    v.end_of_stream();
+                } else {
+                    debug!("Instance not found {}", event.id);
+                }
+            }
+            PlayerEventType::StateChanged(state) => {
+                trace!("State changed for {}: {:?}", event.id, state);
+                if let Some(v) = instances
+                    .read()
+                    .expect("Can't read instance!")
+                    .get(&event.id)
+                {
+                    v.send_playstate_change(match state {
+                        PlaybackState::Playing => Playstate::Playing,
+                        PlaybackState::Stopped => Playstate::Stopped,
+                        PlaybackState::Paused => Playstate::Paused,
+                    });
+                }
+            }
+            PlayerEventType::PositionUpdated => (), // silence
+            PlayerEventType::MediaInfoUpdated => (), // silence
+            PlayerEventType::Error(e) => {
+                warn!("Internal playback error for instance {}:\n{}", event.id, e);
+            }
+        }
+        Ok(())
+    });
+
+    runtime.spawn(stream);
+    debug!("Running ");
+    Ok(())
 }

@@ -16,18 +16,15 @@
  */
 
 use failure::Fallible;
-use futures::sync::mpsc::{Receiver, Sender};
-use futures::Stream;
+use futures::sync::mpsc::Sender;
 use glib::FlagsClass;
 use gst;
 use gst::prelude::*;
 use gst_player::{self, Cast};
-use tokio::runtime;
 
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 
-use daemon::Instances;
 use instance::ID;
 
 /// Playback abstraction
@@ -335,60 +332,6 @@ impl Player {
     pub fn stop(&self) {
         self.player.stop();
     }
-}
-
-/// Register event handler for playback in daemon
-pub fn create_playback_server(
-    runtime: &mut runtime::Runtime,
-    tx: Receiver<PlayerEvent>,
-    instances: Instances,
-) -> Fallible<()> {
-    let stream = tx.for_each(move |event| {
-        match event.event_type {
-            PlayerEventType::UriLoaded => {
-                trace!("URI loaded for {}", event.id);
-                let instances_r = instances.read().expect("Can't read instance!");
-                if let Some(v) = instances_r.get(&event.id) {
-                    v.play();
-                }
-            }
-            PlayerEventType::VolumeChanged(v) => {
-                trace!("Volume changed to {} for {}", v, event.id);
-            }
-            PlayerEventType::EndOfStream => {
-                trace!("End of stream for {}", event.id);
-                if let Some(v) = instances
-                    .read()
-                    .expect("Can't read instance!")
-                    .get(&event.id)
-                {
-                    v.end_of_stream();
-                } else {
-                    debug!("Instance not found {}", event.id);
-                }
-            }
-            PlayerEventType::StateChanged(state) => {
-                trace!("State changed for {}: {:?}", event.id, state);
-                if let Some(v) = instances
-                    .read()
-                    .expect("Can't read instance!")
-                    .get(&event.id)
-                {
-                    //TODO
-                }
-            }
-            PlayerEventType::PositionUpdated => (), // silence
-            PlayerEventType::MediaInfoUpdated => (), // silence
-            PlayerEventType::Error(e) => {
-                warn!("Internal playback error for instance {}:\n{}", event.id, e);
-            }
-        }
-        Ok(())
-    });
-
-    runtime.spawn(stream);
-    debug!("Running ");
-    Ok(())
 }
 
 #[cfg(test)]

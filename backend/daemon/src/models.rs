@@ -216,6 +216,7 @@ pub mod callback {
     pub enum Playstate {
         Playing,
         Paused,
+        Stopped,
         EndOfMedia,
     }
 
