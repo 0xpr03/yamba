@@ -25,7 +25,6 @@ use tokio_signal::unix::{self, Signal};
 
 use std::env::{args, current_exe};
 use std::i32;
-use std::net::SocketAddr;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, RwLock, Weak};
@@ -36,9 +35,9 @@ use api;
 use audio::{self, CContext, CMainloop, NullSink};
 use cache::Cache;
 use instance::*;
-use models::{self, SongID, TSSettings};
 use playback::{PlaybackSender, Player, PlayerEvent};
 use ts::TSInstance;
+use yamba_types::models::{self, SongID, TSSettings};
 use ytdl::YtDL;
 use ytdl_worker;
 use SETTINGS;
@@ -221,7 +220,7 @@ pub fn create_instance(base: &InstanceBase, inst: models::InstanceLoadReq) -> Fa
     };
 
     let _ = api::callback::send_instance_state(&models::callback::InstanceStateResponse {
-        id: &inst.get_id(),
+        id: inst.get_id(),
         state: models::callback::InstanceState::Started,
     })
     .map_err(|e| warn!("Can't send instance started {}", e));

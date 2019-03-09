@@ -33,7 +33,7 @@ use std::env::current_dir;
 use rusqlite::{self, Connection};
 
 use instance::ID;
-use models::TSSettings;
+use yamba_types::models::TSSettings;
 use SETTINGS;
 
 /// TS Instance

@@ -15,14 +15,18 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use instance::ID;
-use ytdl::Track;
+use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "track")]
+use crate::track::Track;
 
 /// Song identifier, char(32)
 pub type SongID = String;
 
 /// Cache representation
 pub type CacheSong = String;
+
+pub type ID = i32;
 
 /// Database models
 
@@ -38,6 +42,7 @@ pub struct Song {
     pub downloaded: bool,
 }
 
+#[cfg(feature = "track")]
 impl From<Track> for Song {
     fn from(mut track: Track) -> Self {
         Song {
@@ -66,27 +71,31 @@ impl Song {
 }
 
 /// Playback request data
-#[derive(Debug, Extract)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Extract))]
 pub struct PlaybackUrlReq {
     pub id: ID,
     pub song: SongMin,
 }
 
 /// Volume set data
-#[derive(Debug, Extract)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Extract))]
 pub struct VolumeSetReq {
     pub id: ID,
     pub volume: f64,
 }
 
 /// Pause playback request
-#[derive(Debug, Extract)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Extract))]
 pub struct PlaybackPauseReq {
     pub id: ID,
 }
 
 /// Generic Request who require an instance ID
-#[derive(Debug, Extract)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Extract))]
 pub struct GenericRequest {
     pub id: ID,
 }
@@ -97,14 +106,15 @@ pub type InstanceStopReq = GenericRequest;
 pub type HeartbeatReq = GenericRequest;
 
 /// Instance started request, internal API
-#[derive(Debug, Extract)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Extract))]
 pub struct InstanceStartedReq {
     pub id: ID,
     pub pid: u32,
 }
 
 /// Minimal song representation as required for playback
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SongMin {
     pub id: SongID,
     pub name: String,
@@ -115,50 +125,56 @@ pub struct SongMin {
     pub length: Option<u32>,
 }
 
-#[derive(Debug, Response)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct DefaultResponse {
     pub success: bool,
     pub msg: Option<String>,
 }
 
-#[derive(Debug, Response)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct VolumeResponse {
     pub volume: Option<f64>,
     pub msg: Option<String>,
 }
 
-#[derive(Debug, Response)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct InstanceListResponse {
     pub instances: Vec<ID>,
 }
 
 /// URL Resolver response with ticket number
-#[derive(Debug, Response)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct ResolveTicketResponse {
     pub ticket: Option<usize>,
     pub msg: Option<String>,
 }
 
 /// Request to resolve an URL for given instance queue
-#[derive(Debug, Extract)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Extract))]
 pub struct ResolveRequest {
     pub instance: ID,
     pub url: String,
 }
 
-#[derive(Debug, Extract)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Extract))]
 pub struct InstanceLoadReq {
     pub id: ID, //TODO:  zugriff ermöglichen, benötigt für plugin um sich zu identifizieren
     pub data: InstanceType,
     pub volume: f64,
 }
 
-#[derive(Debug, Deserialize)] // workaround https://github.com/carllerche/tower-web/issues/189 using Deserialize
+#[derive(Debug, Serialize, Deserialize)] // workaround https://github.com/carllerche/tower-web/issues/189 using Deserialize
 pub enum InstanceType {
     TS(TSSettings),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TSSettings {
     pub host: String,
     pub port: Option<u16>,
@@ -168,12 +184,13 @@ pub struct TSSettings {
     pub password: Option<String>,
 }
 
-#[derive(Debug, Response)]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct InstanceOverviewResponse {
     pub instances: Vec<InstanceOverview>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct InstanceOverview {
     pub id: ID,
     pub playing: bool,
@@ -187,26 +204,26 @@ pub struct InstanceOverview {
 pub mod callback {
     use super::*;
 
-    #[derive(Debug, Serialize)]
-    pub struct InstanceStateResponse<'a> {
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct InstanceStateResponse {
         pub state: InstanceState,
-        pub id: &'a ID,
+        pub id: ID,
     }
 
-    #[derive(Debug, Serialize)]
+    #[derive(Debug, Serialize, Deserialize)]
     pub enum InstanceState {
         Started,
         Running,
         Stopped,
     }
 
-    #[derive(Debug, Serialize)]
+    #[derive(Debug, Serialize, Deserialize)]
     pub struct PlaystateResponse {
         pub state: Playstate,
         pub id: ID,
     }
 
-    #[derive(Debug, Serialize)]
+    #[derive(Debug, Serialize, Deserialize)]
     pub enum Playstate {
         Playing,
         Paused,
@@ -215,7 +232,7 @@ pub mod callback {
     }
 
     /// Url resolve response for ticket
-    #[derive(Debug, Serialize)]
+    #[derive(Debug, Serialize, Deserialize)]
     pub struct ResolveResponse {
         pub success: bool,
         pub msg: Option<String>,

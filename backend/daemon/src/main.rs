@@ -27,16 +27,13 @@ extern crate log;
 extern crate lazy_static;
 extern crate config as config_rs;
 extern crate reqwest;
+#[macro_use]
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate futures;
-#[macro_use]
-extern crate serde_json;
 extern crate atomic;
 extern crate chrono;
 extern crate concurrent_hashmap;
 extern crate erased_serde;
+extern crate futures;
 extern crate glib;
 extern crate gstreamer as gst;
 extern crate gstreamer_player as gst_player;
@@ -48,6 +45,7 @@ extern crate metrohash;
 extern crate mpmc_scheduler;
 extern crate owning_ref;
 extern crate rusqlite;
+extern crate serde_json;
 extern crate serde_urlencoded;
 extern crate sha2;
 extern crate tokio;
@@ -55,6 +53,7 @@ extern crate tokio_signal;
 extern crate tokio_threadpool;
 #[macro_use]
 extern crate tower_web;
+extern crate yamba_types;
 
 use std::alloc::System;
 
@@ -68,7 +67,6 @@ mod config;
 mod daemon;
 mod http;
 mod instance;
-mod models;
 mod playback;
 mod ts;
 mod ytdl;

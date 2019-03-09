@@ -27,8 +27,8 @@ use super::callback::send_resolve;
 use super::*;
 use daemon::{create_instance, InstanceBase, Instances};
 use instance;
-use models::callback::ResolveResponse;
-use models::*;
+use yamba_types::models::callback::ResolveResponse;
+use yamba_types::models::*;
 use ytdl_worker::{RSongs, YTRequest};
 use SETTINGS;
 

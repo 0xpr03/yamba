@@ -28,11 +28,12 @@ use api::callback;
 use audio::NullSink;
 use cache::Cache;
 use daemon::{Instances, WInstances};
-use models::{callback::*, CacheSong, InstanceStartedReq, SongID, SongMin};
 use playback::{PlaybackState, Player, PlayerEvent, PlayerEventType};
 use ts::TSInstance;
+use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, SongID, SongMin};
 use ytdl::YtDL;
 use ytdl_worker::{Controller, YTReqWrapped, YTSender};
+use SETTINGS;
 
 /// module containing a single instance
 
@@ -80,7 +81,7 @@ impl Drop for Instance {
         self.player.stop();
 
         let _ = callback::send_instance_state(&InstanceStateResponse {
-            id: &self.id,
+            id: self.get_id(),
             state: InstanceState::Stopped,
         })
         .map_err(|e| warn!("Can't send instance stopped: {}", e));
@@ -183,7 +184,7 @@ impl Instance {
         }
 
         let _ = callback::send_instance_state(&InstanceStateResponse {
-            id: &self.id,
+            id: self.get_id(),
             state: InstanceState::Running,
         })
         .map_err(|e| warn!("Can't send instance running state {}", e));
@@ -270,7 +271,7 @@ impl Instance {
                 None => return Err(InstanceErr::InvalidSource(source).into()),
             };
 
-            let url_temp = match track.best_audio_format() {
+            let url_temp = match track.best_audio_format(SETTINGS.ytdl.min_audio_bitrate) {
                 Some(v) => v.url.clone(),
                 None => return Err(InstanceErr::NoAudioTrack(source).into()),
             };

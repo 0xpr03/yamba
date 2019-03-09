@@ -21,7 +21,7 @@ log4rs = "0.8"
 lazy_static = "1"
 config = "0.9"
 reqwest = "0.9"
-serde = "1.0"
+serde = { features = ["derive"], version = "1.0" }
 serde_derive = "1.0"
 serde_json = "1.0"
 serde_plain = "0.3"
@@ -48,3 +48,7 @@ concurrent-hashmap = {version = "0.2", default-features = false}
 mpmc-scheduler = "0.2"
 http = "0.1"
 tower-web = "0.3"
+
+[dependencies.yamba_types]
+path = "../../types"
+features = ["track","tower"]

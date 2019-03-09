@@ -24,7 +24,7 @@ use std::net::SocketAddr;
 
 use super::{get_instance_by_id, APIErr};
 use daemon::Instances;
-use models::{DefaultResponse, HeartbeatReq, InstanceStartedReq};
+use yamba_types::models::{DefaultResponse, HeartbeatReq, InstanceStartedReq};
 use SETTINGS;
 
 /// Internal API, used for plugin<->daemon communication

@@ -17,16 +17,15 @@
 
 use std::env::current_dir;
 use std::fs::{remove_file, rename, set_permissions, DirBuilder, File};
-use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader, ErrorKind, Read};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, RwLock};
 use std::thread;
+use yamba_types::track::Track;
 
 use failure::{Fallible, ResultExt};
-use metrohash::MetroHash128;
 use serde_json;
 use serde_json::value::Value as JsonValue;
 use sha2::{Digest, Sha256};
@@ -47,168 +46,6 @@ const YTDL_NAME: &'static str = "youtube-dl"; // name of the python program file
 
 lazy_static! {
     static ref LOCK: Arc<RwLock<()>> = Arc::new(RwLock::new(()));
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Track {
-    pub title: String,
-    pub id: String,
-    pub extractor: String,
-    pub duration: Option<f64>,
-    pub formats: Vec<Format>,
-    pub protocol: Option<String>,
-    pub webpage_url: String,
-    pub artist: Option<String>,
-    pub uploader: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Format {
-    pub filesize: Option<i64>,
-    pub format: String,
-    pub abr: Option<i64>,
-    // audio bit rate
-    pub format_id: String,
-    pub url: String,
-    pub protocol: Option<String>,
-    pub vcodec: Option<String>,
-    pub acodec: Option<String>,
-    // audio codec
-    pub http_headers: HttpHeaders,
-}
-
-impl Hash for Track {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.title.hash(state);
-        self.extractor.hash(state);
-    }
-}
-
-impl Track {
-    /// Takes the artist of this track
-    /// Can be uploader/artist
-    pub fn take_artist(&mut self) -> Option<String> {
-        if let Some(v) = self.artist.take() {
-            return Some(v);
-        } else if let Some(v) = self.uploader.take() {
-            return Some(v);
-        }
-        None
-    }
-
-    /// Duration as u32
-    pub fn duration_as_u32(&self) -> Option<u32> {
-        if let Some(v) = self.duration {
-            Some(v as u32)
-        } else {
-            None
-        }
-    }
-
-    /// Returns best audio format
-    pub fn best_audio_format(&self) -> Option<&Format> {
-        let track_audio = self.best_audio_only_format();
-        let track_mixed = self.best_mixed_audio_format();
-
-        if let Some(audio_track) = track_audio {
-            if let Some(mixed_track) = track_mixed {
-                let abr_audio = audio_track
-                    .abr
-                    .expect("No audio bitrate in audio-only track!");
-                if abr_audio >= mixed_track.abr.unwrap()
-                    || abr_audio >= SETTINGS.ytdl.min_audio_bitrate
-                {
-                    return Some(audio_track);
-                } else {
-                    return Some(mixed_track);
-                }
-            } else {
-                track_mixed
-            }
-        } else {
-            trace!("Using fallback track..");
-            self.formats.get(0)
-        }
-    }
-
-    /// Returns bests audio format with video
-    pub fn best_mixed_audio_format(&self) -> Option<&Format> {
-        Track::filter_best_audio_format(self.mixed_only_formats())
-    }
-
-    /// Returns format with best audio bitrate from input
-    pub fn filter_best_audio_format(formats: Vec<&Format>) -> Option<&Format> {
-        let mut max_bitrate: i64 = -1;
-        let mut max_format: Option<&Format> = None;
-
-        formats.into_iter().for_each(|format| {
-            if let Some(bitrate) = format.abr {
-                if max_bitrate < bitrate {
-                    max_bitrate = bitrate;
-                    max_format = Option::Some(format);
-                }
-            }
-        });
-        max_format
-    }
-
-    /// Returns best only-audio format
-    pub fn best_audio_only_format(&self) -> Option<&Format> {
-        Track::filter_best_audio_format(self.audio_only_formats())
-    }
-
-    /// Return audio+video formats
-    pub fn mixed_only_formats(&self) -> Vec<&Format> {
-        self.formats
-            .iter()
-            .filter(|f| f.has_audio() && f.has_video())
-            .collect()
-    }
-
-    /// Return audio only formats
-    pub fn audio_only_formats(&self) -> Vec<&Format> {
-        self.formats.iter().filter(|f| f.is_audio_only()).collect()
-    }
-
-    /// calculates track ID
-    pub fn get_id(&self) -> String {
-        let mut hasher = MetroHash128::default();
-        self.hash(&mut hasher);
-        let (h1, h2) = hasher.finish128();
-        format!("{:x}{:x}", h1, h2)
-    }
-}
-
-impl Format {
-    pub fn has_audio(&self) -> bool {
-        match self.acodec {
-            Some(ref ac) => ac != "none",
-            None => false,
-        }
-    }
-    pub fn has_video(&self) -> bool {
-        match self.vcodec {
-            Some(ref vc) => vc != "none",
-            None => false,
-        }
-    }
-    pub fn is_audio_only(&self) -> bool {
-        !self.has_video() && self.has_audio()
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct HttpHeaders {
-    #[serde(rename = "Accept-Charset")]
-    pub accept_charset: String,
-    #[serde(rename = "Accept-Language")]
-    pub accept_language: String,
-    #[serde(rename = "Accept-Encoding")]
-    pub accept_encoding: String,
-    #[serde(rename = "Accept")]
-    pub accept: String,
-    #[serde(rename = "User-Agent")]
-    pub user_agent: String,
 }
 
 #[derive(Fail, Debug)]

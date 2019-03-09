@@ -30,7 +30,7 @@ use ytdl::YtDL;
 
 use daemon::Instances;
 use instance::{SongCache, ID};
-use models::Song;
+use yamba_types::models::Song;
 use SETTINGS;
 
 /// Worker for ytdl tasks
@@ -118,7 +118,7 @@ fn scheduler_retrieve(cache: SongCache, ytdl: &YtDL, url: &str) -> RSongs {
     Ok(tracks
         .into_iter()
         .filter_map(|t| {
-            let min_song = match t.best_audio_format() {
+            let min_song = match t.best_audio_format(SETTINGS.ytdl.min_audio_bitrate) {
                 Some(v) => v.url.clone(),
                 None => {
                     warn!("No audio track for {}", t.webpage_url);

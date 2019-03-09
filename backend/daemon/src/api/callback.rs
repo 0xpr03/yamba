@@ -22,7 +22,7 @@ use reqwest::{self, async};
 use tokio::executor::{DefaultExecutor, Executor};
 
 use super::APIErr;
-use models::callback::*;
+use yamba_types::models::callback::*;
 use SETTINGS;
 use USERAGENT;
 
