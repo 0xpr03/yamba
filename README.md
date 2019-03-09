@@ -37,6 +37,6 @@ Follow the instructions
 
 
 # License
-Copyright © 2018-2019 by Aron Heinecke, Tristan Schönhals, Oliver Habersetzer  
+Copyright © 2018-2019 by the yamba authors  
 under the [GPLv3](LICENSE)  
 see COPYRIGHT for full details
