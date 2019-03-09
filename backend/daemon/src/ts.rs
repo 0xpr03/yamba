@@ -20,7 +20,7 @@ use serde_urlencoded;
 
 use std::env;
 use std::fs::{remove_dir_all, DirBuilder};
-use std::io;
+use std::io::{self, ErrorKind};
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
@@ -59,19 +59,32 @@ pub enum TSInstanceErr {
 
 impl Drop for TSInstance {
     fn drop(&mut self) {
-        match self.is_running() {
-            Ok(true) | Err(_) => {
-                // ignore error, otherwise run only if alive
-                if let Err(e) = TSInstance::kill_by_ppid(&self.process.id()) {
-                    warn!("Couldn't kill instance by ppid: {}", e);
-                }
+        //
+        let kill = match self.is_running() {
+            Ok(true) => true,
+            Err(_) => {
+                warn!("Can't check xvfb state!");
+                true
+            }
+            Ok(false) => false,
+        };
+        // ignore error, otherwise run only if alive
+        if kill {
+            info!("xvfb Running, killing");
 
+            // pkill all childs of xvfb-run TODO: killing only ts should be enough (we're also killing xvfb currently)
+            if let Err(e) = TSInstance::kill_by_ppid(&self.process.id()) {
+                warn!("Couldn't kill ts instance by ppid: {}", e);
+            }
+            // we expect xvfb-run to return when xvfb/ts dies
+            if let Err(e_wait) = TSInstance::wait_for_child_timeout(5000, &mut self.process) {
+                // otherwise we just kill xvfb-run also
+                warn!("Xvfb not finished, killing.. {}", e_wait);
                 match self.kill() {
                     Ok(()) => (),
-                    Err(e) => warn!("Couldn't kill instance on cleanup {}", e),
+                    Err(e) => warn!("Couldn't kill xvfb instance on cleanup {}", e),
                 }
             }
-            _ => (),
         }
     }
 }
@@ -181,7 +194,7 @@ impl TSInstance {
             .arg(ppid.to_string())
             .output()?;
         trace!(
-            "pkill status: {} stderr: {:?}",
+            "ts pkill status: {} stderr: {:?}",
             output.status,
             output.stderr
         );
@@ -281,7 +294,14 @@ impl TSInstance {
     }
 
     pub fn kill(&mut self) -> Fallible<()> {
-        Ok(self.process.kill()?)
+        match self.process.kill() {
+            Err(ref e) if e.kind() == ErrorKind::InvalidInput => trace!("Xvfb already dead"),
+            Err(e) => return Err(e.into()),
+            Ok(_) => (),
+        }
+
+        TSInstance::wait_for_child_timeout(5000, &mut self.process)?;
+        Ok(())
     }
 
     pub fn is_running(&mut self) -> Fallible<bool> {
