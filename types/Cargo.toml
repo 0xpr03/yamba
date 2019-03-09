@@ -5,7 +5,9 @@ authors = ["Aron Heinecke <aron.heinecke@t-online.de>"]
 edition = "2018"
 
 [features]
+# Add tower-rs Extract/Response
 tower = ["tower-web"]
+# Add Track support, should only be required for daemon
 track = ["metrohash"]
 
 [dependencies]
