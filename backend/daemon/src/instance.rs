@@ -77,7 +77,7 @@ pub struct Instance {
 impl Drop for Instance {
     fn drop(&mut self) {
         // don't store on clone drop
-        println!("Storing instance {}", self.id);
+        println!("Dropping instance {}", self.id);
         self.player.stop();
 
         let _ = callback::send_instance_state(&InstanceStateResponse {

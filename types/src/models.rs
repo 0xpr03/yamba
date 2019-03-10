@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/// All of the types here are written from the daemons point of view
+/// So a PlaybackUrlReq means client -> daemon request (incoming for daemon)
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "track")]
