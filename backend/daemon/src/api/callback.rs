@@ -73,6 +73,10 @@ lazy_static! {
         "{}:{}/callback/song",
         SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port
     );
+    static ref CALLBACK_VOLUME: String = format!(
+        "{}:{}/callback/volume",
+        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port
+    );
 }
 
 /// Send song-info change (length..)
@@ -112,6 +116,20 @@ pub fn send_playback_state(v: &PlaystateResponse) -> Fallible<()> {
         .send()
         .map(|x| trace!("Playstate callback response: {:?}", x))
         .map_err(|err| warn!("Error sending playstate callbacK: {:?}", err));
+    DefaultExecutor::current()
+        .spawn(Box::new(fut))
+        .map_err(|v| APIErr::ExcecutionFailed(v))?;
+    Ok(())
+}
+
+/// Send volume change
+pub fn send_volume_change(v: &VolumeChange) -> Fallible<()> {
+    let fut = API_CLIENT_ASYNC
+        .post(CALLBACK_VOLUME.as_str())
+        .json(v)
+        .send()
+        .map(|x| trace!("Volume callback response: {:?}", x))
+        .map_err(|err| warn!("Error sending volume callbacK: {:?}", err));
     DefaultExecutor::current()
         .spawn(Box::new(fut))
         .map_err(|v| APIErr::ExcecutionFailed(v))?;

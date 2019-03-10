@@ -150,6 +150,10 @@ impl Instance {
 
     pub fn set_volume(&self, v: f64) {
         self.player.set_volume(v);
+        callback::send_volume_change(&VolumeChange {
+            id: self.get_id(),
+            volume: v,
+        });
     }
 
     pub fn get_volume(&self) -> f64 {

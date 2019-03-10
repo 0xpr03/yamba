@@ -235,6 +235,8 @@ pub mod callback {
         EndOfMedia,
     }
 
+    pub type VolumeChange = VolumeSetReq;
+
     /// Url resolve response for ticket
     #[derive(Debug, Serialize, Deserialize)]
     pub struct ResolveResponse {
