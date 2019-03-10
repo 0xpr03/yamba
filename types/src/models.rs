@@ -29,6 +29,9 @@ pub type CacheSong = String;
 
 pub type ID = i32;
 
+/// Volume it 0 to 1.0 (you can go above but that's undefined)
+pub type Volume = f64;
+
 /// Database models
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -84,7 +87,7 @@ pub struct PlaybackUrlReq {
 #[cfg_attr(feature = "tower", derive(Extract))]
 pub struct VolumeSetReq {
     pub id: ID,
-    pub volume: f64,
+    pub volume: Volume,
 }
 
 /// Pause playback request
@@ -136,7 +139,7 @@ pub struct DefaultResponse {
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct VolumeResponse {
-    pub volume: Option<f64>,
+    pub volume: Option<Volume>,
     pub msg: Option<String>,
 }
 
@@ -167,7 +170,7 @@ pub struct ResolveRequest {
 pub struct InstanceLoadReq {
     pub id: ID, //TODO:  zugriff ermöglichen, benötigt für plugin um sich zu identifizieren
     pub data: InstanceType,
-    pub volume: f64,
+    pub volume: Volume,
 }
 
 #[derive(Debug, Serialize, Deserialize)] // workaround https://github.com/carllerche/tower-web/issues/189 using Deserialize
@@ -195,7 +198,7 @@ pub struct InstanceOverviewResponse {
 pub struct InstanceOverview {
     pub id: ID,
     pub playing: bool,
-    pub volume: f64,
+    pub volume: Volume,
     pub inst_type: String,
     pub playback_info: String,
 }
