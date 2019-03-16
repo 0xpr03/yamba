@@ -231,9 +231,9 @@ pub mod callback {
 
     #[derive(Debug, Serialize, Deserialize)]
     pub enum InstanceState {
-        Started,
-        Running,
-        Stopped,
+        Started = 1,
+        Running = 2,
+        Stopped = 0,
     }
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -244,10 +244,10 @@ pub mod callback {
 
     #[derive(Debug, Serialize, Deserialize)]
     pub enum Playstate {
-        Playing,
-        Paused,
-        Stopped,
-        EndOfMedia,
+        Stopped = 0,
+        Playing = 1,
+        Paused = 2,
+        EndOfMedia = 3,
     }
 
     pub type VolumeChange = VolumeSetReq;
