@@ -210,6 +210,19 @@ pub struct InstanceOverview {
 pub mod callback {
     use super::*;
 
+    /// Start of the path for all callbacks
+    pub const PATH_START_: &'static str = "callback";
+    /// Full path for callback
+    pub const PATH_INSTANCE: &'static str = "/callback/instance";
+    /// Full path for callback
+    pub const PATH_RESOLVE: &'static str = "/callback/resolve";
+    /// Full path for callback
+    pub const PATH_PLAYBACK: &'static str = "/callback/playback";
+    /// Full path for callback
+    pub const PATH_SONG: &'static str = "/callback/song";
+    /// Full path for callback
+    pub const PATH_VOLUME: &'static str = "/callback/volume";
+
     #[derive(Debug, Serialize, Deserialize)]
     pub struct InstanceStateResponse {
         pub state: InstanceState,
