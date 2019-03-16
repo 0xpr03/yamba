@@ -41,7 +41,7 @@ use ts3plugin::TsApi;
 use ts3plugin::*;
 
 use std::env;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::process;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
@@ -102,7 +102,10 @@ jsonrpc_client!(
 
 lazy_static! {
     static ref CLIENT: reqwest::Client = reqwest::Client::new();
-
+    static ref ADDRESS: SocketAddr = env::var("CALLBACK_YAMBA")
+        .unwrap_or("127.0.0.1:1337".to_string())
+        .parse::<SocketAddr>()
+        .unwrap_or(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1337));
     static ref CALLBACK_INTERNAL: SocketAddr = env::var("CALLBACK_YAMBA_INTERNAL")
         .unwrap_or("127.0.0.1:1330".to_string())
         .parse::<SocketAddr>()
@@ -140,7 +143,6 @@ lazy_static! {
 #[derive(Debug)]
 struct MyTsPlugin {
     killer: Sender<()>,
-    rpc_host: String,
     client_mut: Arc<Mutex<BackendRPCClient<jsonrpc_client_http::HttpHandle>>>,
 }
 
@@ -264,7 +266,7 @@ impl Plugin for MyTsPlugin {
         api.log_or_print("Initializing ", PLUGIN_NAME_I, LogLevel::Debug);
 
         let rpc_host: String;
-        rpc_host = format!("http://localhost:{}/", PORT.to_string());
+        rpc_host = format!("http://localhost:{}/", ADDRESS.to_string());
 
         if ID.is_none() {
             return Err(InitError::Failure);
@@ -311,7 +313,6 @@ impl Plugin for MyTsPlugin {
 
         let me = MyTsPlugin {
             killer: sender,
-            rpc_host: rpc_host,
             client_mut: client_mut_self,
         };
 
