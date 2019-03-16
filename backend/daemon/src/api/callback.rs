@@ -58,24 +58,24 @@ lazy_static! {
             .unwrap()
     };
     static ref CALLBACK_RESOLVE: String = format!(
-        "{}:{}/callback/resolve",
-        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port
+        "{}:{}{}",
+        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port, PATH_RESOLVE
     );
     static ref CALLBACK_PLAYBACK: String = format!(
-        "{}:{}/callback/playback",
-        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port
+        "{}:{}{}",
+        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port, PATH_PLAYBACK
     );
     static ref CALLBACK_INSTANCE: String = format!(
-        "{}:{}/callback/instance",
-        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port
+        "{}:{}{}",
+        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port, PATH_INSTANCE
     );
     static ref CALLBACK_SONG: String = format!(
-        "{}:{}/callback/song",
-        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port
+        "{}:{}{}",
+        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port, PATH_SONG
     );
     static ref CALLBACK_VOLUME: String = format!(
-        "{}:{}/callback/volume",
-        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port
+        "{}:{}{}",
+        SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port, PATH_VOLUME
     );
 }
 
