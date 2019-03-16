@@ -39,6 +39,7 @@ use SETTINGS;
 /// TS Instance
 
 const TS_ENV_CALLBACK_INTERNAL: &'static str = "CALLBACK_YAMBA_INTERNAL";
+const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
 const TS_ENV_ID: &'static str = "ID_YAMBA";
 const TS_SETTINGS_FILE: &'static str = "settings.db";
 const TS_PLUGINS_DIR: &'static str = "plugins";
@@ -98,10 +99,13 @@ pub struct TSInstance {
 impl TSInstance {
     /// Create a new instance controller
     /// Created from TSSettings model
+    /// callback_host_interal is for daemon <-> ts communication
     /// rpc port is for callbacks used by the yamba plugin
     pub fn spawn(
         settings: &TSSettings,
         id: &ID,
+        callback_host_internal: &str,
+        callback_port_internal: &u16,
         callback_host: &str,
         callback_port: &u16,
     ) -> Fallible<TSInstance> {
@@ -151,6 +155,10 @@ impl TSInstance {
             .env(TS_ENV_ID, id.to_string())
             .env(
                 TS_ENV_CALLBACK_INTERNAL,
+                format!("{}:{}", callback_host_internal, callback_port_internal),
+            )
+            .env(
+                TS_ENV_CALLBACK,
                 format!("{}:{}", callback_host, callback_port),
             )
             .args(&["--auto-servernum", "--server-args=-screen 0 640x480x24:32"])

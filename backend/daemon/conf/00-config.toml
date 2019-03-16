@@ -21,6 +21,9 @@
 
 [main]
 user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:55.0) Gecko/20100101 Firefox/55.0"
+# ts jsonrpc callback address
+api_jsonrpc_port = 1337
+api_jsonrpc_ip = "127.0.0.1"
 # rpc server binding socket
 api_internal_bind_port = 1330
 api_internal_bind_ip = "127.0.0.1"

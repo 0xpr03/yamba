@@ -62,6 +62,8 @@ pub struct ConfigMain {
     pub user_agent: String,
     pub api_internal_bind_port: u16,
     pub api_internal_bind_ip: String,
+    pub api_jsonrpc_port: u16,
+    pub api_jsonrpc_ip: String,
     pub api_bind_port: u16,
     pub api_bind_ip: String,
     pub api_callback_port: u16,

@@ -248,6 +248,8 @@ fn create_ts_instance(
             &id,
             &SETTINGS.main.api_internal_bind_ip,
             &SETTINGS.main.api_internal_bind_port,
+            &SETTINGS.main.api_jsonrpc_ip,
+            &SETTINGS.main.api_jsonrpc_port,
         )?,
         sink,
         mute_sink: base.default_sink.clone(),
