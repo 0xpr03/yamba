@@ -265,8 +265,13 @@ impl Plugin for MyTsPlugin {
     fn new(api: &mut TsApi) -> Result<Box<MyTsPlugin>, InitError> {
         api.log_or_print("Initializing ", PLUGIN_NAME_I, LogLevel::Debug);
 
-        let rpc_host: String;
-        rpc_host = format!("http://localhost:{}/", ADDRESS.to_string());
+        let rpc_host: String = format!("http://{}", ADDRESS.to_string());
+
+        api.log_or_print(
+            format!("RPC Host: {}", rpc_host),
+            PLUGIN_NAME_I,
+            LogLevel::Debug,
+        );
 
         if ID.is_none() {
             return Err(InitError::Failure);
