@@ -1,0 +1,12 @@
+{
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "files.exclude": {
+        "**/target": true,
+        "**/ts": true
+    },
+    "files.watcherExclude": {
+        "**/target": true,
+        "**/ts": true
+    }
+}
