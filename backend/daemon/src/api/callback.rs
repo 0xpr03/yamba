@@ -58,23 +58,23 @@ lazy_static! {
             .unwrap()
     };
     static ref CALLBACK_RESOLVE: String = format!(
-        "{}:{}{}",
+        "http://{}:{}{}",
         SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port, PATH_RESOLVE
     );
     static ref CALLBACK_PLAYBACK: String = format!(
-        "{}:{}{}",
+        "http://{}:{}{}",
         SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port, PATH_PLAYBACK
     );
     static ref CALLBACK_INSTANCE: String = format!(
-        "{}:{}{}",
+        "http://{}:{}{}",
         SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port, PATH_INSTANCE
     );
     static ref CALLBACK_SONG: String = format!(
-        "{}:{}{}",
+        "http://{}:{}{}",
         SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port, PATH_SONG
     );
     static ref CALLBACK_VOLUME: String = format!(
-        "{}:{}{}",
+        "http://{}:{}{}",
         SETTINGS.main.api_callback_ip, SETTINGS.main.api_callback_port, PATH_VOLUME
     );
 }
