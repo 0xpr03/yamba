@@ -29,6 +29,7 @@ extern crate regex;
 extern crate reqwest;
 #[macro_use]
 extern crate failure_derive;
+extern crate yamba_types;
 
 mod models;
 
@@ -39,6 +40,7 @@ use jsonrpc_client_http::HttpTransport;
 use regex::*;
 use ts3plugin::TsApi;
 use ts3plugin::*;
+use yamba_types::rpc::*;
 
 use std::env;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -62,42 +64,42 @@ jsonrpc_client!(
     pub struct BackendRPCClient {
 
     // Return: allowed, message, Volume [0 - 100]
-    pub fn volume_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, f64)>;
+    pub fn volume_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<VolumeResponse>;
     // Return: allowed, message, success
-    pub fn volume_set(&mut self, id : i32, invokerName : String, invokerGroups : String, volume : f64) -> RpcRequest<(bool, String, bool)>;
+    pub fn volume_set(&mut self, id : i32, invoker_name : String, invoker_groups : String, volume : f64) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn volume_lock(&mut self, id : i32, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
+    pub fn volume_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
 
     // Return: allowed, message, title
-    pub fn track_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
+    pub fn track_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<TitleResponse>;
     // Return: allowed, message, success
-    pub fn track_next(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_next(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn track_previous(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_previous(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn track_resume(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_resume(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn track_pause(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_pause(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn track_stop(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_stop(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
 
     // Return: allowed, message, name
-    pub fn playlist_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
+    pub fn playlist_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<PlaylistResponse>;
     // n > 0: return the next n tracks
     // n <= 0 isn't allowed
     // Return: allowed, message, tracklist
-    pub fn queue_tracks(&mut self, id : i32, invokerName : String, invokerGroups : String, n : i32) -> RpcRequest<(bool, String, Vec<String>)>;
+    pub fn queue_tracks(&mut self, id : i32, invoker_name : String, invoker_groups : String, n : i32) -> RpcRequest<TitleListResponse>;
     // Return: allowed, message, success
-    pub fn queue_clear(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn queue_clear(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn queue_lock(&mut self, id : i32, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
+    pub fn queue_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn playlist_queue(&mut self, id : i32, invokerName : String, invokerGroups : String, url : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn playlist_queue(&mut self, id : i32, invoker_name : String, invoker_groups : String, url : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn playlist_load(&mut self, id : i32, invokerName : String, invokerGroups : String, playlist_name : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn playlist_load(&mut self, id : i32, invoker_name : String, invoker_groups : String, playlist_name : String) -> RpcRequest<DefaultResponse>;
 
     // debug, halt bot
-    pub fn halt(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn halt(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
 });
 
 lazy_static! {
@@ -389,9 +391,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -407,9 +409,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -426,9 +428,9 @@ impl Plugin for MyTsPlugin {
                                 .call()
                             {
                                 Ok(res) => {
-                                    rpc_allowed = res.0;
-                                    rpc_message = res.1;
-                                    let success = if res.2 { "Ok" } else { "Failure" };
+                                    rpc_allowed = res.allowed;
+                                    rpc_message = res.message;
+                                    let success = if res.success { "Ok" } else { "Failure" };
                                     if rpc_allowed {
                                         let _ = connection.send_message(format!("{}", success));
                                     }
@@ -447,9 +449,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let vol = res.2;
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let vol = res.volume;
                                 if rpc_allowed {
                                     let _ = connection
                                         .send_message(format!("{}", (vol * 100.0) as i32));
@@ -466,9 +468,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let title = res.2;
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let title = res.title;
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", title));
                                 }
@@ -484,9 +486,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -502,9 +504,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -520,9 +522,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -538,9 +540,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -556,9 +558,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -574,9 +576,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let name = res.2;
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let name = res.name;
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", name));
                                 }
@@ -593,9 +595,9 @@ impl Plugin for MyTsPlugin {
                                 .call()
                             {
                                 Ok(res) => {
-                                    rpc_allowed = res.0;
-                                    rpc_message = res.1;
-                                    let tracks = res.2;
+                                    rpc_allowed = res.allowed;
+                                    rpc_message = res.message;
+                                    let tracks = res.tracklist;
                                     if rpc_allowed {
                                         print_tracks(connection, tracks);
                                     }
@@ -614,9 +616,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let tracks = res.2;
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let tracks = res.tracklist;
                                 if rpc_allowed {
                                     print_tracks(connection, tracks);
                                 }
@@ -632,9 +634,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -650,9 +652,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -668,9 +670,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -689,9 +691,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -708,9 +710,9 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", success));
                                 }
@@ -726,9 +728,9 @@ impl Plugin for MyTsPlugin {
                             if R_HALT.is_match(&message) {
                                 match client_lock.halt(id, invoker_name, invoker_groups).call() {
                                     Ok(res) => {
-                                        rpc_allowed = res.0;
-                                        rpc_message = res.1;
-                                        let success = if res.2 { "Ok" } else { "Failure" };
+                                        rpc_allowed = res.allowed;
+                                        rpc_message = res.message;
+                                        let success = if res.success { "Ok" } else { "Failure" };
                                         if rpc_allowed {
                                             let _ = connection.send_message(format!("{}", success));
                                         }
@@ -754,6 +756,7 @@ impl Plugin for MyTsPlugin {
                     if is_rpc_error {
                         let _ = connection
                             .send_message(format!("RPC call failed\nReason: {}", rpc_error));
+                        println!("Error on JSONRPC: {:?}", rpc_error);
                     } else if !rpc_allowed {
                         let _ = connection
                             .send_message(format!("Action not allowed!\nReason: {}", rpc_message));

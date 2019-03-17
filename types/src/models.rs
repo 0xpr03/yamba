@@ -23,16 +23,13 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "track")]
 use crate::track::Track;
 
+pub use crate::{Volume, ID};
+
 /// Song identifier, char(32)
 pub type SongID = String;
 
 /// Cache representation
 pub type CacheSong = String;
-
-pub type ID = i32;
-
-/// Volume it 0 to 1.0 (you can go above but that's undefined)
-pub type Volume = f64;
 
 /// Database models
 
