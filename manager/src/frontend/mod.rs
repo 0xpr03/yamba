@@ -16,6 +16,9 @@ use tokio::{
     runtime::Runtime,
 };
 
+mod api;
+mod form;
+
 #[derive(Fail, Debug)]
 pub enum ServerErr {
     #[fail(display = "Failed to bind callback server {}", _0)]
@@ -43,12 +46,16 @@ pub fn init_frontend_server(
         server::new(move || {
             App::with_state(instances.clone())
                 .middleware(middleware::Logger::default())
+                .resource("/api/create/ts", |r| {
+                    r.method(http::Method::POST).with(api::handle_create_ts)
+                })
                 .handler(
                     "/",
                     fs::StaticFiles::new("./templates")
                         .unwrap()
                         .index_file("index.html"),
                 )
+                .boxed()
         })
         .bind(bind_addr)
         .map_err(|e| ServerErr::BindFailed(e))
