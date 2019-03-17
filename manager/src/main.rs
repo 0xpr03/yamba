@@ -26,7 +26,7 @@ use env_logger::{self, Env};
 use futures::future::{self, Future};
 use futures::stream::Stream;
 use tokio::runtime::Runtime;
-use tokio_signal::unix::{self, Signal};
+use tokio_signal;
 use yamba_types::models::{InstanceLoadReq, InstanceType, TSSettings};
 
 use std::net::SocketAddr;
@@ -138,19 +138,11 @@ fn main() -> Fallible<()> {
     let _shutdown_guard_frontend =
         frontend::init_frontend_server(instances.clone(), addr_frontend)?;
 
-    let ft_sigint = Signal::new(unix::SIGINT).flatten_stream().into_future();
-    let ft_sigterm = Signal::new(unix::SIGTERM).flatten_stream().into_future();
-    let ftb_sigquit = Signal::new(unix::SIGQUIT).flatten_stream().into_future();
-    let ftb_sighub = Signal::new(unix::SIGHUP).flatten_stream().into_future();
-    match runtime.block_on(future::select_all(vec![
-        ft_sigint,
-        ft_sigterm,
-        ftb_sigquit,
-        ftb_sighub,
-    ])) {
+    let ctrl_c = tokio_signal::ctrl_c().flatten_stream().into_future();
+
+    match runtime.block_on(ctrl_c) {
         Err(e) => {
             // first tuple element conains error, but is neither display nor debug..
-            let ((_, _), _, _) = e;
             error!("Error in signal handler");
             println!("Shutting down daemon..");
         }
