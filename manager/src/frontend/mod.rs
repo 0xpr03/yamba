@@ -1,19 +1,26 @@
-use crate::instance::Instance;
+use crate::instance::Instances;
 use actix::System;
 use actix_web::{
     error::Result,
-    http,
+    fs, http,
     middleware::{self, Middleware, Started},
     server, App, AsyncResponder, Error, HttpMessage, HttpRequest, HttpResponse, Json,
 };
 use failure::Fallible;
 use futures::{sync::mpsc, Future, Stream};
 use std::net::IpAddr;
+use std::net::SocketAddr;
 use std::thread;
 use tokio::{
     executor::{DefaultExecutor, Executor, SpawnError},
     runtime::Runtime,
 };
+
+#[derive(Fail, Debug)]
+pub enum ServerErr {
+    #[fail(display = "Failed to bind callback server {}", _0)]
+    BindFailed(#[cause] std::io::Error),
+}
 
 /// Guard that automatically shuts down the server on drop
 pub struct ShutdownGuard {
@@ -26,34 +33,24 @@ impl Drop for ShutdownGuard {
     }
 }
 
-pub fn init_frontend_server(instances: &Instances) -> Fallible<ShutdownGuard> {
+pub fn init_frontend_server(
+    instances: Instances,
+    bind_addr: SocketAddr,
+) -> Fallible<ShutdownGuard> {
     let (tx, rx) = mpsc::channel(1);
     thread::spawn(move || {
         let mut sys = System::new("callback_server");
         server::new(move || {
-            App::with_state(instances)
+            App::with_state(instances.clone())
                 .middleware(middleware::Logger::default())
-                .middleware(SecurityModule::new(backend.addr.ip()))
-                .resource(cb::PATH_INSTANCE, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_instance, |((cfg, _),)| {
-                            cfg.limit(4096);
-                        })
-                })
-                .resource(cb::PATH_VOLUME, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_volume, |((cfg, _),)| {
-                            cfg.limit(4096);
-                        })
-                })
-                .resource(cb::PATH_PLAYBACK, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_playback, |((cfg, _),)| {
-                            cfg.limit(4096);
-                        })
-                })
+                .handler(
+                    "/",
+                    fs::StaticFiles::new("./templates")
+                        .unwrap()
+                        .index_file("index.html"),
+                )
         })
-        .bind("127.0.0.1:8080")
+        .bind(bind_addr)
         .map_err(|e| ServerErr::BindFailed(e))
         .unwrap()
         .shutdown_timeout(1)

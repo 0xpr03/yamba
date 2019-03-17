@@ -84,7 +84,7 @@ fn main() -> Fallible<()> {
                 .long("bind")
                 .value_name("IP:PORT")
                 .help("Set bind Address to use for frontend")
-                .default_value("127.0.0.1:3031")
+                .default_value("127.0.0.1:8080")
                 .takes_value(true),
         )
         .arg(
@@ -113,7 +113,7 @@ fn main() -> Fallible<()> {
         .get_matches();
 
     let addr_daemon: SocketAddr = matches.value_of("daemon").unwrap().parse()?;
-    let addr_bind: SocketAddr = matches.value_of("bind").unwrap().parse()?;
+    let addr_frontend: SocketAddr = matches.value_of("frontend").unwrap().parse()?;
     let addr_jsonrpc: SocketAddr = matches.value_of("jsonrpc").unwrap().parse()?;
     let api_secret = matches.value_of("api_secret").unwrap();
 
@@ -134,6 +134,9 @@ fn main() -> Fallible<()> {
         Err(e) => error!("Error during test-cmd handling: {}", e),
         Ok(_) => (),
     }
+
+    let _shutdown_guard_frontend =
+        frontend::init_frontend_server(instances.clone(), addr_frontend)?;
 
     let ft_sigint = Signal::new(unix::SIGINT).flatten_stream().into_future();
     let ft_sigterm = Signal::new(unix::SIGTERM).flatten_stream().into_future();
