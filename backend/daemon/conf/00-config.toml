@@ -52,7 +52,7 @@ dir="ytdl"
 # intervall for updates in hours
 update_intervall=12
 # for version checking
-version_source="https://rg3.github.io/youtube-dl/update/versions.json"
+version_source="https://ytdl-org.github.io/youtube-dl/update/versions.json"
 # key in version map for current
 version_key = "latest"
 # download
