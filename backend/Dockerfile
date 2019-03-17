@@ -1,7 +1,6 @@
 FROM ubuntu:18.10 as toolchain
 
 LABEL maintainers="Aron Heinecke <Ox0p54r36@t-online.de>, \
-                   Oliver Habersetzer <oliver.habersetzer@gmail.com>, \
                    Tristan Schönhals <tristan.schoenhals@gmail.com>"
 
 EXPOSE 1338
@@ -50,6 +49,11 @@ FROM toolchain as dependencies
 WORKDIR /opt/yamba
 RUN USER=root ~/.cargo/bin/cargo new --lib --vcs none ts3plugin
 RUN USER=root ~/.cargo/bin/cargo new --bin --vcs none daemon
+
+# types
+WORKDIR /opt/types
+COPY ./types ./
+RUN ~/.cargo/bin/cargo build
 
 # build daemon dependencies
 WORKDIR /opt/yamba/daemon
