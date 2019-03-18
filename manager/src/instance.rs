@@ -77,24 +77,32 @@ impl Instance {
         }
     }
 
+    /// Start instance, ignore outcome spawn on runtime
     pub fn start_with_rt(&mut self, rt: &mut Runtime) -> Fallible<()> {
-        rt.spawn(
-            self.start_internal()?
-                .map_err(|e| error!("{:?}", e))
-                .map(|_| ()),
-        );
+        rt.spawn(self.start()?.map_err(|e| error!("{:?}", e)).map(|_| ()));
         Ok(())
     }
 
-    fn start_internal(
-        &self,
-    ) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
+    pub fn is_running(&self) -> bool {
+        self.state.load(Ordering::Relaxed) != InstanceState::Stopped as usize
+    }
+
+    /// Return start future
+    pub fn start(&self) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
         Ok(self.backend.create_instance(&self.model)?)
     }
 
-    pub fn start(&mut self) -> Fallible<()> {
+    /// Return stop future
+    pub fn stop(&self) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
+        Ok(self
+            .backend
+            .stop_instance(&InstanceStopReq { id: self.get_id() })?)
+    }
+
+    /// Start instance, ignore outcome
+    pub fn start_ignore(&mut self) -> Fallible<()> {
         trace!("Startin instance {}", self.id);
-        Backend::spawn_ignore(self.start_internal()?)?;
+        Backend::spawn_ignore(self.start()?)?;
         Ok(())
     }
 
