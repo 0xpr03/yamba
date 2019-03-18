@@ -10,12 +10,14 @@
 
 <body>
     <div style="padding: 1em; margin-top: 2em; margin: auto; width: 30%; text-align: center;">
-        <form action="/api/create/ts" method="post">
+        <form action="/form/create/ts" method="post">
+            <input type="hidden" name="id" value="1">
+            <input type="hidden" id="custId" name="name" value="myYAMBAInstance">
             <div class="input-group mb-3">
                 <div class="input-group-prepend">
-                    <span class="input-group-text" id="basic-addon1">IP</span>
+                    <span class="input-group-text" id="basic-addon1">Host</span>
                 </div>
-                <input type="text" name="ip" class="form-control" aria-describedby="basic-addon1" required>
+                <input type="text" name="host" class="form-control" aria-describedby="basic-addon1" required>
             </div>
             <div class="input-group mb-3">
                 <div class="input-group-prepend">
