@@ -136,7 +136,7 @@ fn main() -> Fallible<()> {
     }
 
     let _shutdown_guard_frontend =
-        frontend::init_frontend_server(instances.clone(), addr_frontend)?;
+        frontend::init_frontend_server(&instances, &backend, addr_frontend)?;
 
     let ctrl_c = tokio_signal::ctrl_c().flatten_stream().into_future();
 

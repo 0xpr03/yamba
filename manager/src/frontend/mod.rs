@@ -19,6 +19,12 @@ use tokio::{
 mod api;
 mod form;
 
+#[derive(Clone)]
+pub struct FrState {
+    pub instances: Instances,
+    pub backend: Backend,
+}
+
 #[derive(Fail, Debug)]
 pub enum ServerErr {
     #[fail(display = "Failed to bind callback server {}", _0)]
@@ -37,14 +43,19 @@ impl Drop for ShutdownGuard {
 }
 
 pub fn init_frontend_server(
-    instances: Instances,
+    instances: &Instances,
+    backend: &Backend,
     bind_addr: SocketAddr,
 ) -> Fallible<ShutdownGuard> {
     let (tx, rx) = mpsc::channel(1);
+    let state = FrState {
+        instances: instances.clone(),
+        backend: backend.clone(),
+    };
     thread::spawn(move || {
         let mut sys = System::new("callback_server");
         server::new(move || {
-            App::with_state(instances.clone())
+            App::with_state(state.clone())
                 .middleware(middleware::Logger::default())
                 .resource("/api/create/ts", |r| {
                     r.method(http::Method::POST).with(api::handle_create_ts)
