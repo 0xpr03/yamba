@@ -62,6 +62,7 @@ pub fn init_frontend_server(
                     r.method(http::Method::POST)
                         .with_async(api::handle_create_ts)
                 })
+                .handler("/static", fs::StaticFiles::new("./static").unwrap())
                 .handler(
                     "/",
                     fs::StaticFiles::new("./templates")
