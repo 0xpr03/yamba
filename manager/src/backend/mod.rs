@@ -20,17 +20,18 @@ pub mod callback;
 
 use failure::Fallible;
 use futures::future::Future;
+use hashbrown::HashMap;
 use reqwest::{self, header, r#async::*};
 use serde::Serialize;
-use std::fmt::Debug;
 use tokio::{
     executor::{DefaultExecutor, Executor, SpawnError},
     runtime::Runtime,
 };
-use yamba_types::models::{self, callback as cb};
+use yamba_types::models::{self, callback as cb, Ticket, ID};
 
+use std::fmt::Debug;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::instance::Instances;
 
@@ -45,6 +46,25 @@ pub struct Backend {
     addr: SocketAddr,
     client: Client,
     instances: Instances,
+    tickets: TicketStorage,
+}
+
+#[derive(Clone)]
+pub struct TicketStorage {
+    internal: Arc<Mutex<HashMap<Ticket, ID>>>,
+}
+
+impl TicketStorage {
+    fn new() -> TicketStorage {
+        TicketStorage {
+            internal: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    pub fn get_id(&self, id: &Ticket) -> Option<ID> {
+        let mut storage = self.internal.lock().expect("Can't lock tickets!");
+        storage.remove(id)
+    }
 }
 
 impl Backend {
@@ -53,6 +73,7 @@ impl Backend {
         addr: SocketAddr,
         instances: Instances,
         api_secret: &str,
+        callback_bind: SocketAddr,
     ) -> Fallible<(Backend, callback::ShutdownGuard)> {
         let mut headers = header::HeaderMap::new();
         headers.insert(
@@ -63,13 +84,16 @@ impl Backend {
             header::AUTHORIZATION,
             header::HeaderValue::from_str(api_secret)?,
         );
+        let tickets = TicketStorage::new();
         let backend = Backend {
             client: ClientBuilder::new().default_headers(headers).build()?,
             instances,
             addr,
+            tickets: tickets.clone(),
         };
 
-        let shutdown_guard = callback::init_callback_server(backend.clone())?;
+        let shutdown_guard =
+            callback::init_callback_server(backend.clone(), callback_bind, tickets)?;
 
         Ok((backend, shutdown_guard))
     }
@@ -108,7 +132,7 @@ impl Backend {
         inst: &models::InstanceStopReq,
     ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
         let fut = self
-            .get_request_base(&format!("http://{}/instance/stop", self.addr), inst)?
+            .get_request_base(&format!("http://{}/instance/stop", self.addr), inst, true)?
             .and_then(|mut x| x.json::<models::DefaultResponse>());
         Ok(fut)
     }
@@ -119,7 +143,29 @@ impl Backend {
         inst: &models::InstanceLoadReq,
     ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
         let fut = self
-            .get_request_base(&format!("http://{}/instance/start", self.addr), inst)?
+            .get_request_base(&format!("http://{}/instance/start", self.addr), inst, true)?
+            .and_then(|mut x| x.json::<models::DefaultResponse>());
+        Ok(fut)
+    }
+
+    /// Resolve URL request
+    pub fn resolve_url(
+        &self,
+        request: &models::ResolveRequest,
+    ) -> Fallible<impl Future<Item = models::ResolveTicketResponse, Error = reqwest::Error>> {
+        let fut = self
+            .get_request_base(&format!("http://{}/resolve/url", self.addr), request, true)?
+            .and_then(|mut x| x.json::<models::ResolveTicketResponse>());
+        Ok(fut)
+    }
+
+    /// Set Volume request
+    pub fn set_volume(
+        &self,
+        request: &models::VolumeSetReq,
+    ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
+        let fut = self
+            .get_request_base(&format!("http://{}/volume", self.addr), request, true)?
             .and_then(|mut x| x.json::<models::DefaultResponse>());
         Ok(fut)
     }
@@ -134,7 +180,7 @@ impl Backend {
         T: Serialize,
     {
         Ok(self
-            .get_request_base(addr, data)?
+            .get_request_base(addr, data, true)?
             .map(|x| trace!("Request response: {:?}", x))
             .map_err(|err| warn!("Error sending api request: {:?}", err)))
     }
@@ -144,10 +190,16 @@ impl Backend {
         &self,
         addr: &str,
         data: &T,
+        post: bool,
     ) -> Fallible<impl Future<Item = Response, Error = reqwest::Error>>
     where
         T: Serialize,
     {
-        Ok(self.client.post(addr).json(data).send())
+        let req = if post {
+            self.client.post(addr)
+        } else {
+            self.client.get(addr)
+        };
+        Ok(req.json(data).send())
     }
 }
