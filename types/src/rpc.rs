@@ -11,6 +11,8 @@ pub trait GetId {
 	fn get_id(&self) -> ID;
 }
 
+/// Error code for permission error
+pub const PermissionErrorCode:i64  = 403;
 
 macro_rules! add_trait {
     ( ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
@@ -28,6 +30,9 @@ macro_rules! add_trait {
 add_trait! {
                 (GetId) for ParamVolume
 }
+add_trait! {
+                (GetId) for ParamQueue
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ParamVolume {
@@ -35,6 +40,14 @@ pub struct ParamVolume {
 	pub invoker_name: String,
 	pub invoker_groups: String,
 	pub volume: Volume,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ParamQueue {
+	pub id: ID,
+	pub invoker_name: String,
+	pub invoker_groups: String,
+	pub url: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

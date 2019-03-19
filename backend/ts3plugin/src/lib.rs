@@ -94,7 +94,7 @@ jsonrpc_client!(
     // Return: allowed, message, success
     pub fn queue_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn playlist_queue(&mut self, id : i32, invoker_name : String, invoker_groups : String, url : String) -> RpcRequest<DefaultResponse>;
+    pub fn queue(&mut self, id : i32, invoker_name : String, invoker_groups : String, url : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
     pub fn playlist_load(&mut self, id : i32, invoker_name : String, invoker_groups : String, playlist_name : String) -> RpcRequest<DefaultResponse>;
 
@@ -687,7 +687,7 @@ impl Plugin for MyTsPlugin {
                             .replace("[URL]", "")
                             .replace("[/URL]", "");
                         match client_lock
-                            .playlist_queue(id, invoker_name, invoker_groups, url)
+                            .queue(id, invoker_name, invoker_groups, url)
                             .call()
                         {
                             Ok(res) => {
