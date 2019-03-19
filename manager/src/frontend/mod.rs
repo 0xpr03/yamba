@@ -54,10 +54,10 @@ pub fn init_frontend_server(
         backend: backend.clone(),
     };
     thread::spawn(move || {
-        let mut sys = System::new("callback_server");
+        let mut sys = System::new("frontend_server");
         server::new(move || {
             App::with_state(state.clone())
-                .middleware(middleware::Logger::default())
+                .middleware(middleware::Logger::new("manager::api::frontend"))
                 .resource("/form/create/ts", |r| {
                     r.method(http::Method::POST)
                         .with_async(api::handle_create_ts)

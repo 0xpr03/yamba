@@ -100,7 +100,7 @@ pub fn init_callback_server(backend: Backend) -> Fallible<ShutdownGuard> {
         let mut sys = System::new("callback_server");
         server::new(move || {
             App::with_state(backend.clone())
-                .middleware(middleware::Logger::default())
+                .middleware(middleware::Logger::new("manager::api::backend"))
                 .middleware(SecurityModule::new(backend.addr.ip()))
                 .resource(cb::PATH_INSTANCE, |r| {
                     r.method(http::Method::POST)
