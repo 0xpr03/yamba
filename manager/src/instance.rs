@@ -21,7 +21,8 @@ use futures::future::Future;
 use hashbrown::HashMap;
 use tokio::runtime::Runtime;
 use yamba_types::models::{
-    callback::InstanceState, DefaultResponse, InstanceLoadReq, InstanceStopReq, SongMin, ID,
+    callback::InstanceState, DefaultResponse, InstanceLoadReq, InstanceStopReq, SongMin, Volume,
+    VolumeSetReq, ID,
 };
 
 use std::sync::{
@@ -39,7 +40,7 @@ pub type SPlaylist = Playlist<SongMin>;
 pub struct Instance {
     id: ID,
     playlist: SPlaylist,
-    volume: RwLock<f64>,
+    volume: RwLock<Volume>,
     state: AtomicUsize,
     backend: Backend,
     model: InstanceLoadReq,
@@ -88,11 +89,28 @@ impl Instance {
     }
 
     /// Return start future
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn start(&self) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
         Ok(self.backend.create_instance(&self.model)?)
     }
 
+    /// Return volume set future
+    #[must_use = "Future doesn't do anything untill polled!"]
+    pub fn set_volume(
+        &self,
+        v: Volume,
+    ) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
+        let mut vol_w = self.volume.write().expect("Can't lock volume!");
+        *vol_w = v.clone();
+        drop(vol_w);
+        Ok(self.backend.set_volume(&VolumeSetReq {
+            id: self.get_id(),
+            volume: v,
+        })?)
+    }
+
     /// Return stop future
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn stop(&self) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
         Ok(self
             .backend
