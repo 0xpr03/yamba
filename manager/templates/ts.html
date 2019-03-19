@@ -4,13 +4,14 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="static/bootstrap.min.css"
-        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="static/bootstrap.min.css" crossorigin="anonymous">
+    <script src="static/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
+    <script src="static/bootstrap.min.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
     <div style="padding: 1em; margin-top: 2em; margin: auto; width: 30%; text-align: center;">
-        <form action="/form/create/ts" method="post">
+        <form id="tsForm" action="/form/create/ts" method="post">
             <input type="hidden" name="id" value="1">
             <input type="hidden" id="custId" name="name" value="myYAMBAInstance">
             <div class="input-group mb-3">
@@ -40,4 +41,30 @@
             <input type="submit" value="Create & Run" class="btn btn-primary btn-lg">
         </form>
     </div>
+    <div id="alert" style="display:none;" class="alert alert-danger" role="alert">
+        TEMP
+    </div>
+
+    <script>
+        $("#tsForm").submit(function (e) {
+            e.preventDefault();
+
+            var form = $(this);
+            var url = form.attr("action");
+            $.ajax({
+                url: url,
+                type: "post",
+                dataType: "json",
+                data: form.serialize(),
+
+            }).done(function (data) {
+                console.log(data);
+            }).fail(function (data) {
+                console.log(data);
+                $('#alert').show();
+                $('#alert').text(data.responseText);
+            });
+        })
+    </script>
+
 </body>
