@@ -30,9 +30,9 @@ api_internal_bind_ip = "127.0.0.1"
 # api server binding socket
 api_bind_port = 1338
 api_bind_ip = "127.0.0.1"
-# api callback data, daemon to frontend
+# api callback host, daemon -> management
 api_callback_ip = "127.0.0.1" # safe default, use 0.0.0.0 only if you know noone can access from external
-api_callback_port = "82"
+api_callback_port = 1336
 # entry max age for stream cache
 cache_lifetime_secs = 3600
 
@@ -47,6 +47,7 @@ api_secret = "change me"
 workers = 4
 # max amount of backlog requests per instance / web interface
 # any additional will get dropped
+# round up to next 2^n
 instance_backlog_max = 32
 dir="ytdl"
 # intervall for updates in hours
