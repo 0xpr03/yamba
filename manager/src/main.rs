@@ -61,6 +61,15 @@ fn main() -> Fallible<()> {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("callback")
+                .short("c")
+                .long("daemon")
+                .value_name("IP:PORT")
+                .help("Set daemon callback bind to use")
+                .default_value("127.0.0.1:1336")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("api_secret")
                 .short("s")
                 .long("secret")
@@ -115,14 +124,19 @@ fn main() -> Fallible<()> {
     let addr_daemon: SocketAddr = matches.value_of("daemon").unwrap().parse()?;
     let addr_frontend: SocketAddr = matches.value_of("frontend").unwrap().parse()?;
     let addr_jsonrpc: SocketAddr = matches.value_of("jsonrpc").unwrap().parse()?;
+    let addr_callback_bind: SocketAddr = matches.value_of("callback").unwrap().parse()?;
     let api_secret = matches.value_of("api_secret").unwrap();
 
     let instances = instance::create_instances();
 
     let mut runtime = Runtime::new()?;
 
-    let (backend, _shutdown_guard) =
-        backend::Backend::new(addr_daemon, instances.clone(), api_secret)?;
+    let (backend, _shutdown_guard) = backend::Backend::new(
+        addr_daemon,
+        instances.clone(),
+        api_secret,
+        addr_callback_bind,
+    )?;
 
     let _server = jsonrpc::create_server(
         &addr_jsonrpc,

@@ -94,7 +94,11 @@ impl Drop for ShutdownGuard {
 }
 
 /// Init callback server
-pub fn init_callback_server(backend: Backend) -> Fallible<ShutdownGuard> {
+pub fn init_callback_server(
+    backend: Backend,
+    callback_server: SocketAddr,
+    tickets: super::TicketStorage,
+) -> Fallible<ShutdownGuard> {
     let (tx, rx) = mpsc::channel(1);
     thread::spawn(move || {
         let mut sys = System::new("callback_server");
@@ -121,7 +125,7 @@ pub fn init_callback_server(backend: Backend) -> Fallible<ShutdownGuard> {
                         })
                 })
         })
-        .bind("127.0.0.1:8080")
+        .bind(callback_server)
         .map_err(|e| ServerErr::BindFailed(e))
         .unwrap()
         .shutdown_timeout(1)
