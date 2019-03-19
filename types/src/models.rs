@@ -31,6 +31,9 @@ pub type SongID = String;
 /// Cache representation
 pub type CacheSong = String;
 
+/// Resolver ticket
+pub type Ticket = usize;
+
 /// Database models
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -152,7 +155,7 @@ pub struct InstanceListResponse {
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct ResolveTicketResponse {
-    pub ticket: Option<usize>,
+    pub ticket: Option<Ticket>,
     pub msg: Option<String>,
 }
 
@@ -255,6 +258,6 @@ pub mod callback {
         pub success: bool,
         pub msg: Option<String>,
         pub songs: Vec<Song>,
-        pub ticket: usize,
+        pub ticket: Ticket,
     }
 }

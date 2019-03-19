@@ -72,7 +72,7 @@ unsafe impl Sync for ApiResource {}
 
 struct ResolveDispatcher {
     url: String,
-    ticket: usize,
+    ticket: Ticket,
 }
 
 impl ResolveDispatcher {
