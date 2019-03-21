@@ -71,6 +71,7 @@ struct ApiResource {
 unsafe impl Send for ApiResource {}
 unsafe impl Sync for ApiResource {}
 
+/// Struct for resolve jobs
 struct ResolveDispatcher {
     url: String,
     ticket: Ticket,

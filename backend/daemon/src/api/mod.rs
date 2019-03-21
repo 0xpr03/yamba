@@ -41,6 +41,7 @@ pub enum APIErr {
     ExcecutionFailed(#[cause] executor::SpawnError),
 }
 
+/// Start api server
 pub fn start_server(
     runtime: &mut runtime::Runtime,
     instances: Instances,
