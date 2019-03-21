@@ -15,6 +15,11 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+mod heartbeat;
+pub mod instance;
+
+pub use self::heartbeat::HeartbeatMap;
+use concurrent_hashmap::ConcHashMap;
 use failure::Fallible;
 use futures::sync::mpsc;
 use futures::{future, Future, Stream};
@@ -31,10 +36,10 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, RwLock, Weak};
 use std::thread;
 use std::time::Instant;
 
+use self::instance::*;
 use api;
 use audio::{self, CContext, CMainloop, NullSink};
 use cache::Cache;
-use instance::*;
 use playback::{PlaybackSender, Player, PlayerEvent};
 use ts::TSInstance;
 use yamba_types::models::{self, SongID, TSSettings};
@@ -67,6 +72,7 @@ pub struct InstanceBase {
     pub cache: SongCache,
     pub controller: ytdl_worker::Controller,
     pub w_instances: WInstances,
+    pub heartbeat: HeartbeatMap,
 }
 
 impl InstanceDataProvider for InstanceBase {
@@ -151,6 +157,7 @@ pub fn start_runtime() -> Fallible<()> {
             cache: cache,
             controller: controller,
             w_instances: Arc::downgrade(&instances),
+            heartbeat: heartbeat::HeartbeatMap::new(),
         };
 
         api::start_server(&mut rt, instances.clone(), base)?;
@@ -253,8 +260,13 @@ fn create_ts_instance(
         )?,
         sink,
         mute_sink: base.default_sink.clone(),
-        updated: RwLock::new(Instant::now()),
     });
 
-    Ok(Instance::new(id, voip, base, player))
+    Ok(Instance::new(
+        id,
+        voip,
+        base,
+        player,
+        base.heartbeat.clone(),
+    ))
 }

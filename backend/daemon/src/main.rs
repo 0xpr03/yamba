@@ -67,7 +67,6 @@ mod cache;
 mod config;
 mod daemon;
 mod http;
-mod instance;
 mod playback;
 mod ts;
 mod ytdl;

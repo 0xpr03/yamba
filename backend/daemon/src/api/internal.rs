@@ -16,7 +16,6 @@
  */
 
 use failure::Fallible;
-use http_r::{response::Response, status::StatusCode};
 use tokio::{net::TcpListener, runtime};
 use tower_web::middleware::log::LogMiddleware;
 use tower_web::*;
@@ -24,8 +23,8 @@ use tower_web::*;
 use std::net::SocketAddr;
 
 use super::{get_instance_by_id, invalid_instance, ok, APIErr, Rsp};
-use daemon::Instances;
-use yamba_types::models::{DefaultResponse, HeartbeatReq, InstanceStartedReq};
+use daemon::{HeartbeatMap, Instances};
+use yamba_types::models::{HeartbeatReq, InstanceStartedReq};
 use SETTINGS;
 
 /// Internal API, used for plugin<->daemon communication
@@ -41,7 +40,11 @@ pub fn parse_addr() -> Fallible<SocketAddr> {
 }
 
 /// Start api server
-pub fn start_server(runtime: &mut runtime::Runtime, instances: Instances) -> Fallible<()> {
+pub fn start_server(
+    runtime: &mut runtime::Runtime,
+    instances: Instances,
+    heartbeat: HeartbeatMap,
+) -> Fallible<()> {
     let addr = parse_addr()?;
     let incoming = TcpListener::bind(&addr)
         .map_err(|e| APIErr::BindError(e))?
@@ -50,7 +53,10 @@ pub fn start_server(runtime: &mut runtime::Runtime, instances: Instances) -> Fal
     runtime.spawn(
         ServiceBuilder::new()
             .middleware(LogMiddleware::new("yamba_backend::api::internal"))
-            .resource(InternalAPI { instances })
+            .resource(InternalAPI {
+                instances,
+                heartbeat,
+            })
             .serve(incoming),
     );
     Ok(())
@@ -58,6 +64,7 @@ pub fn start_server(runtime: &mut runtime::Runtime, instances: Instances) -> Fal
 
 struct InternalAPI {
     instances: Instances,
+    heartbeat: HeartbeatMap,
 }
 
 impl_web! {
@@ -80,13 +87,12 @@ impl_web! {
         #[post("/internal/heartbeat")]
         #[content_type("application/json")]
         fn heartbeat(&self, body: HeartbeatReq) -> Rsp {
-            match get_instance_by_id(&self.instances, &body.id) {
-                Some(v) => {
-                    //TODO
-                    ok()
-                }
-                None => invalid_instance(),
-
+            let inst_r = self.instances.read().expect("Can't write instances!");
+            if inst_r.contains_key(&body.id) {
+                self.heartbeat.update(body.id);
+                ok()
+            } else {
+                invalid_instance()
             }
         }
     }

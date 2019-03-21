@@ -28,8 +28,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::callback::send_resolve;
 use super::*;
-use daemon::{create_instance, InstanceBase, Instances};
-use instance;
+use daemon::{create_instance, InstanceBase, Instances,instance};
 use ytdl_worker::{RSongs, YTRequest};
 use SETTINGS;
 

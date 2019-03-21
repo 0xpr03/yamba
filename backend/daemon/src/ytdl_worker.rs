@@ -28,8 +28,8 @@ use std::time::{Duration, Instant};
 
 use ytdl::YtDL;
 
+use daemon::instance::{SongCache, ID};
 use daemon::Instances;
-use instance::{SongCache, ID};
 use yamba_types::models::Song;
 use SETTINGS;
 

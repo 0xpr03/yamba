@@ -26,8 +26,10 @@ use yamba_types::models::{DefaultResponse, ErrorCodes, ErrorResponse};
 use std::net::SocketAddr;
 use std::sync::RwLockReadGuard;
 
-use daemon::{InstanceBase, Instances};
-use instance::{Instance, ID};
+use daemon::{
+    instance::{Instance, ID},
+    InstanceBase, Instances,
+};
 
 pub mod callback;
 mod internal;
@@ -47,7 +49,7 @@ pub fn start_server(
     instances: Instances,
     base: InstanceBase,
 ) -> Fallible<()> {
-    internal::start_server(runtime, instances.clone())?;
+    internal::start_server(runtime, instances.clone(), base.heartbeat.clone())?;
     public::start_server(runtime, instances, base)?;
     Ok(())
 }

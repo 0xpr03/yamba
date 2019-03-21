@@ -25,7 +25,7 @@ use gst_player::{self, Cast};
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 
-use instance::ID;
+use daemon::instance::ID;
 
 /// Playback abstraction
 

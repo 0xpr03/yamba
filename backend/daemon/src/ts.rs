@@ -32,7 +32,7 @@ use std::env::current_dir;
 
 use rusqlite::{self, Connection};
 
-use instance::ID;
+use daemon::instance::ID;
 use yamba_types::models::TSSettings;
 use SETTINGS;
 

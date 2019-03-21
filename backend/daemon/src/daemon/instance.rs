@@ -27,7 +27,7 @@ use std::time::Instant;
 use api::callback;
 use audio::NullSink;
 use cache::Cache;
-use daemon::{Instances, WInstances};
+use daemon::{HeartbeatMap, Instances, WInstances};
 use playback::{PlaybackState, Player, PlayerEvent, PlayerEventType};
 use ts::TSInstance;
 use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, SongID, SongMin};
@@ -94,8 +94,9 @@ impl Instance {
         voip: InstanceType,
         base: &InstanceDataProvider,
         player: Player,
+        heartbeats: HeartbeatMap,
     ) -> Instance {
-        Instance {
+        let instance = Instance {
             voip: voip,
             url_resolve: base.get_controller().channel(id.clone(), 64),
             player,
@@ -104,13 +105,20 @@ impl Instance {
             cache: base.get_cache().clone(),
             current_song: Arc::new(RwLock::new(None)),
             instances: base.get_weak_instances().clone(),
-        }
+        };
+
+        heartbeats.update(instance.get_id());
+
+        instance
     }
 
     /// Resolve URL under this instances queue
     pub fn dispatch_resolve(&self, request: YTReqWrapped) -> Fallible<()> {
         Ok(self.url_resolve.try_send(request)?)
     }
+
+    /// Do heartbeat update
+    pub fn heartbeat(&self) {}
 
     /// Stop playback
     pub fn stop_playback(&self) {
@@ -317,7 +325,6 @@ pub struct Teamspeak {
     pub ts: TSInstance,
     pub sink: NullSink,
     pub mute_sink: Arc<NullSink>,
-    pub updated: RwLock<Instant>,
 }
 
 impl Teamspeak {
