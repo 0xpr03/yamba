@@ -16,13 +16,14 @@
  */
 
 use failure::Fallible;
+use http_r::{response::Response, status::StatusCode};
 use tokio::{net::TcpListener, runtime};
 use tower_web::middleware::log::LogMiddleware;
 use tower_web::*;
 
 use std::net::SocketAddr;
 
-use super::{get_instance_by_id, APIErr};
+use super::{get_instance_by_id, invalid_instance, ok, APIErr, Rsp};
 use daemon::Instances;
 use yamba_types::models::{DefaultResponse, HeartbeatReq, InstanceStartedReq};
 use SETTINGS;
@@ -64,31 +65,29 @@ impl_web! {
 
         #[post("/internal/started")]
         #[content_type("application/json")]
-        fn connected(&self, body: InstanceStartedReq) -> Fallible<DefaultResponse> {
+        fn connected(&self, body: InstanceStartedReq) -> Rsp {
             debug!("instance started request: {:?}",body);
-            let success = match get_instance_by_id(&self.instances, &body.id) {
+            match get_instance_by_id(&self.instances, &body.id) {
                 Some(v) => {
                     v.connected(body)?;
-                    true
-                }
-                None => false,
+                    ok()
+                },
+                None => invalid_instance(),
+            }
 
-            };
-            Ok(DefaultResponse{success,msg: None})
         }
 
         #[post("/internal/heartbeat")]
         #[content_type("application/json")]
-        fn heartbeat(&self, body: HeartbeatReq) -> Fallible<DefaultResponse> {
-            let success = match get_instance_by_id(&self.instances, &body.id) {
+        fn heartbeat(&self, body: HeartbeatReq) -> Rsp {
+            match get_instance_by_id(&self.instances, &body.id) {
                 Some(v) => {
                     //TODO
-                true
+                    ok()
                 }
-                None => false,
+                None => invalid_instance(),
 
-            };
-            Ok(DefaultResponse{success,msg: None})
+            }
         }
     }
 }

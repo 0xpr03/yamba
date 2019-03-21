@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use crate::track::Track;
 
 pub use crate::{Volume, ID};
+pub use crate::ErrorCodes;
 
 /// Song identifier, char(32)
 pub type SongID = String;
@@ -134,8 +135,16 @@ pub struct SongMin {
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct DefaultResponse {
-    pub success: bool,
     pub msg: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Response, Extract))]
+pub struct ErrorResponse {
+    /// Detailed error code
+    pub details: ErrorCodes,
+    /// Error details as string
+    pub msg: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

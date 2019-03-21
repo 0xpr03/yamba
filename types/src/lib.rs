@@ -19,6 +19,7 @@
 #[cfg(feature = "tower")]
 #[macro_use]
 extern crate tower_web;
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "rest")]
 pub mod models;
@@ -28,6 +29,14 @@ pub mod rpc;
 pub mod track;
 
 pub type ID = i32;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ErrorCodes {
+    NONE = 0,
+    INVALID_INSTANCE = 401,
+    INVALID_VOLUME = 402,
+    INSTANCE_RUNNING = 403,
+}
 
 /// Volume it 0 to 1.0 (you can go above but that's undefined)
 pub type Volume = f64;

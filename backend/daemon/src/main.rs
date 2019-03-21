@@ -53,6 +53,7 @@ extern crate tokio_signal;
 extern crate tokio_threadpool;
 #[macro_use]
 extern crate tower_web;
+extern crate http as http_r;
 extern crate yamba_types;
 
 use std::alloc::System;

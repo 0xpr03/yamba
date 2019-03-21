@@ -17,8 +17,11 @@
 
 use failure::Fallible;
 use hashbrown::HashMap;
+use http_r::{response::Response, status::StatusCode};
 use owning_ref::OwningRef;
+use serde::Serialize;
 use tokio::{executor, runtime};
+use yamba_types::models::{DefaultResponse, ErrorCodes, ErrorResponse};
 
 use std::net::SocketAddr;
 use std::sync::RwLockReadGuard;
@@ -58,6 +61,41 @@ pub fn check_runtime() -> Fallible<()> {
 /// Unify bind addr parsing
 fn parse_address(host: &str, port: &u16) -> Fallible<SocketAddr> {
     Ok(format!("{}:{}", host, port).parse()?)
+}
+
+/// Response type
+type Rsp = Fallible<Response<String>>;
+
+/// Helper returning empty DefaultResponse
+fn ok() -> Rsp {
+    Ok(Response::builder()
+        .body(serde_json::to_string(&DefaultResponse { msg: None }).unwrap())
+        .unwrap())
+}
+
+/// Helper to return invalid instance error
+fn invalid_instance() -> Rsp {
+    Ok(Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(
+            serde_json::to_string(&ErrorResponse {
+                details: ErrorCodes::INVALID_INSTANCE,
+                msg: String::from("Invalid Instance"),
+            })
+            .unwrap(),
+        )
+        .unwrap())
+}
+
+/// Helper for custom response
+fn custom_response<T>(code: StatusCode, data: T) -> Rsp
+where
+    T: Serialize,
+{
+    Ok(Response::builder()
+        .status(code)
+        .body(serde_json::to_string(&data).unwrap())
+        .unwrap())
 }
 
 /// Get instance by ID

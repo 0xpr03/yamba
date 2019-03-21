@@ -16,9 +16,12 @@
  */
 
 use failure::Fallible;
+use http_r::{response::Response, status::StatusCode};
 use tokio::{net::TcpListener, runtime};
 use tower_web::view::Handlebars;
 use tower_web::*;
+use yamba_types::models::callback::ResolveResponse;
+use yamba_types::models::*;
 
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -27,8 +30,6 @@ use super::callback::send_resolve;
 use super::*;
 use daemon::{create_instance, InstanceBase, Instances};
 use instance;
-use yamba_types::models::callback::ResolveResponse;
-use yamba_types::models::*;
 use ytdl_worker::{RSongs, YTRequest};
 use SETTINGS;
 
@@ -150,16 +151,13 @@ impl_web! {
 
         #[post("/instance/start")]
         #[content_type("application/json")]
-        fn instance_start(&self, body: InstanceLoadReq) -> Fallible<DefaultResponse> {
+        fn instance_start(&self, body: InstanceLoadReq) -> Rsp {
             debug!("instance start request: {:?}",body);
             let mut inst_w = self.instances.write().expect("Can't write instances!");
             if !inst_w.contains_key(&body.id) {
-                match create_instance(&self.base, body).map(|v|  {inst_w.insert(v.get_id(),v); () }) {
-                    Ok(_) => Ok(DefaultResponse{success: true,msg: None}),
-                    Err(e) => Ok(DefaultResponse{success: false,msg: Some(format!("{}",e))})
-                }
+                create_instance(&self.base, body).map(|v|  {inst_w.insert(v.get_id(),v); ok() })?
             } else {
-                Ok(DefaultResponse{success: false,msg: Some(String::from("Instance running!"))})
+                custom_response(StatusCode::CONFLICT,ErrorResponse{msg: String::from("Instance running!"),details: ErrorCodes::INSTANCE_RUNNING})
             }
         }
 
@@ -174,57 +172,55 @@ impl_web! {
 
         #[post("/instance/stop")]
         #[content_type("application/json")]
-        fn instance_stop(&self, body: InstanceStopReq) -> Fallible<DefaultResponse> {
+        fn instance_stop(&self, body: InstanceStopReq) -> Rsp {
             debug!("instance stop request: {:?}",body);
             let mut inst_w = self.instances.write().expect("Can't write instances!");
-            let success = inst_w.remove(&body.id).is_some();
-            Ok(DefaultResponse{success, msg: None})
+            match inst_w.remove(&body.id) {
+                Some(_) => ok(),
+                None => invalid_instance(),
+            }
         }
 
 
         #[post("/playback/url")]
         #[content_type("application/json")]
-        fn playback_start(&self, body: PlaybackUrlReq) -> Fallible<DefaultResponse> {
+        fn playback_start(&self, body: PlaybackUrlReq) -> Rsp {
             // if body.song.source TODO: check for non-localhost URL
             debug!("playback request: {:?}",body);
-            let success = match get_instance_by_id(&self.instances, &body.id) {
-                Some(v) => {v.play_track(body.song)?; true },
-                None => false,
-            };
-
-            Ok(DefaultResponse{success,msg: None})
+            match get_instance_by_id(&self.instances, &body.id) {
+                Some(v) => {v.play_track(body.song)?; ok() },
+                None => invalid_instance(),
+            }
         }
 
         #[post("/playback/pause")]
         #[content_type("application/json")]
-        fn playback_pause(&self, body: PlaybackPauseReq) -> Fallible<DefaultResponse> {
+        fn playback_pause(&self, body: PlaybackPauseReq) -> Rsp {
             debug!("playback pause request: {:?}",body);
-            let success = match get_instance_by_id(&self.instances, &body.id) {
-                Some(v) =>  {v.pause(); true},
-                None => false,
-            };
-
-            Ok(DefaultResponse{success,msg: None})
+            match get_instance_by_id(&self.instances, &body.id) {
+                Some(v) =>  {v.pause(); ok()},
+                None => invalid_instance(),
+            }
         }
 
         #[get("/playback/state")]
         #[content_type("application/json")]
-        fn playback_state(&self, query_string: StateGetReq) -> Fallible<DefaultResponse> {
+        fn playback_state(&self, query_string: StateGetReq) -> Rsp {
             debug!("playback state request: {:?}",query_string);
-            Ok(DefaultResponse{success: false,msg: Some(String::from("Not Implemented"))})
+            custom_response(StatusCode::NOT_IMPLEMENTED,ErrorResponse{details: ErrorCodes::NONE,msg: String::from("not implemented yet")})
         }
 
         #[post("/volume")]
         #[content_type("application/json")]
-        fn volume_set(&self, body: VolumeSetReq) -> Fallible<DefaultResponse> {
+        fn volume_set(&self, body: VolumeSetReq) -> Rsp {
             trace!("volume set: {:?}", body);
-            let success = if let Some(inst) = get_instance_by_id(&self.instances, &body.id) {
-                inst.set_volume(body.volume);
-                true
-            } else {
-                false
-            };
-            Ok(DefaultResponse{success,msg: None})
+            match get_instance_by_id(&self.instances, &body.id) {
+                Some(inst) => {
+                    inst.set_volume(body.volume);
+                    ok()
+                }
+                None => invalid_instance(),
+            }
         }
 
         #[get("/volume")]
