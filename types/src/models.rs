@@ -35,8 +35,7 @@ pub type CacheSong = String;
 /// Resolver ticket
 pub type Ticket = usize;
 
-/// Database models
-
+/// Full song representation
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Song {
     pub id: SongID,
@@ -46,7 +45,6 @@ pub struct Song {
     pub artist: Option<String>,
     /// Length in seconds
     pub length: Option<u32>,
-    pub downloaded: bool,
 }
 
 #[cfg(feature = "track")]
@@ -58,7 +56,6 @@ impl From<Track> for Song {
             length: track.duration_as_u32(),
             name: track.title,
             source: track.webpage_url,
-            downloaded: false,
         }
     }
 }
@@ -164,8 +161,7 @@ pub struct InstanceListResponse {
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct ResolveTicketResponse {
-    pub ticket: Option<Ticket>,
-    pub msg: Option<String>,
+    pub ticket: Ticket,
 }
 
 /// Request to resolve an URL for given instance queue
