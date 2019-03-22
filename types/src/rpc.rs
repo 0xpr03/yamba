@@ -1,7 +1,7 @@
 
 use serde::{Serialize,Deserialize};
 pub use crate::{Volume, ID};
-
+pub use crate::ErrorCodes;
 
 //allowed, message, success
 
@@ -52,9 +52,14 @@ pub struct ParamQueue {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DefaultResponse {
+	pub message: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ErrorResponse {
 	pub allowed: bool,
 	pub message: String,
-	pub success: bool,
+	pub details: ErrorCodes,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

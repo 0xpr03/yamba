@@ -28,7 +28,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::callback::send_resolve;
 use super::*;
-use daemon::{create_instance, InstanceBase, Instances,instance};
+use daemon::{create_instance, instance, InstanceBase, Instances};
 use ytdl_worker::{RSongs, YTRequest};
 use SETTINGS;
 
@@ -134,18 +134,18 @@ impl_web! {
 
         #[get("/resolve/url")]
         #[content_type("application/json")]
-        fn resolve(&self, query_string: ResolveRequest) -> Fallible<ResolveTicketResponse> {
+        fn resolve(&self, query_string: ResolveRequest) -> Rsp {
             debug!("url resolve request: {:?}",query_string);
             match get_instance_by_id(&self.instances, &query_string.instance) {
                 Some(v) => {
                     let t = CALLBACK_TICKET.fetch_add(1, Ordering::SeqCst);
                     let dispatcher = ResolveDispatcher::new(query_string, t.clone());
                     match v.dispatch_resolve(dispatcher.wrap()) {
-                        Ok(_) => Ok(ResolveTicketResponse{ticket: Some(t),msg: None}),
-                        Err(_) => Ok(ResolveTicketResponse{ticket: None,msg: Some(String::from("Queue overload"))})
+                        Ok(_) => ok_response(ResolveTicketResponse{ticket: t}),
+                        Err(_) => custom_response(StatusCode::TOO_MANY_REQUESTS,ErrorResponse{msg: String::from("Queue overload!"),details: ErrorCodes::RESOLVE_QUEUE_OVERLOAD})
                     }
                 }
-                None => Ok(ResolveTicketResponse{ticket: None,msg: Some(String::from("Invalid instance"))})
+                None => invalid_instance()
             }
         }
 

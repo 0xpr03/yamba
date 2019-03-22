@@ -391,11 +391,8 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
                                 if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
+                                    let _ = connection.send_message(format!("Ok"));
                                 }
                             }
                             Err(e) => {
@@ -409,12 +406,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -428,12 +420,7 @@ impl Plugin for MyTsPlugin {
                                 .call()
                             {
                                 Ok(res) => {
-                                    rpc_allowed = res.allowed;
-                                    rpc_message = res.message;
-                                    let success = if res.success { "Ok" } else { "Failure" };
-                                    if rpc_allowed {
-                                        let _ = connection.send_message(format!("{}", success));
-                                    }
+                                    let _ = connection.send_message(format!("Ok"));
                                 }
                                 Err(e) => {
                                     is_rpc_error = true;
@@ -486,12 +473,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -504,12 +486,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -522,12 +499,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -540,12 +512,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -558,12 +525,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -634,12 +596,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -652,12 +609,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -670,12 +622,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -691,12 +638,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -710,12 +652,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let success = if res.success { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -728,12 +665,7 @@ impl Plugin for MyTsPlugin {
                             if R_HALT.is_match(&message) {
                                 match client_lock.halt(id, invoker_name, invoker_groups).call() {
                                     Ok(res) => {
-                                        rpc_allowed = res.allowed;
-                                        rpc_message = res.message;
-                                        let success = if res.success { "Ok" } else { "Failure" };
-                                        if rpc_allowed {
-                                            let _ = connection.send_message(format!("{}", success));
-                                        }
+                                        let _ = connection.send_message(format!("Ok"));
                                     }
                                     Err(e) => {
                                         is_rpc_error = true;

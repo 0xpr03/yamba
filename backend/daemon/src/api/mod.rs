@@ -76,6 +76,16 @@ fn ok() -> Rsp {
         .unwrap())
 }
 
+/// Helper returning 200 + specified json struct
+fn ok_response<T>(val: T) -> Rsp
+where
+    T: Serialize,
+{
+    Ok(Response::builder()
+        .body(serde_json::to_string(&val).unwrap())
+        .unwrap())
+}
+
 /// Helper to return invalid instance error
 fn invalid_instance() -> Rsp {
     Ok(Response::builder()
