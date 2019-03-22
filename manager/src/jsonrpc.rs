@@ -78,11 +78,19 @@ where
 	})
 }
 
+/// Helper to send failure as 500 status
+fn send_internal_server_error(err: failure::Error) -> impl Future<Item = Value, Error = Error> {
+	result(Ok(serde_json::to_value(Error {
+		data: None,
+		message: err.to_string(),
+		code: error::ErrorCode::InternalError,
+	})
+	.unwrap()))
+}
+
 #[inline]
 fn response_ignore() -> DefaultResponse {
 	DefaultResponse {
-		success: true,
-		allowed: true,
 		message: String::from("default"),
 	}
 }
@@ -90,8 +98,6 @@ fn response_ignore() -> DefaultResponse {
 #[inline]
 fn response_invalid_instance(id: &ID) -> DefaultResponse {
 	DefaultResponse {
-		success: false,
-		allowed: true,
 		message: format!("invalid instance {}", id),
 	}
 }

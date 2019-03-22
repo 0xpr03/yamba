@@ -1,3 +1,20 @@
+/*
+ *  YAMBA manager
+ *  Copyright (C) 2019 Aron Heinecke
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 use super::*;
 use actix::System;
 use actix_web::{
@@ -47,7 +64,7 @@ impl<S> Middleware<S> for SecurityModule {
 
 /// Handle instance callback
 fn callback_instance(
-    (data, req): (Json<cb::InstanceStateResponse>, HttpRequest<Backend>),
+    (data, req): (Json<cb::InstanceStateResponse>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
     debug!("Instance state change: {:?}", data);
     let inst = req.state().instances.read().expect("Can't lock instances!");
@@ -58,7 +75,7 @@ fn callback_instance(
 }
 
 fn callback_volume(
-    (data, req): (Json<cb::InstanceStateResponse>, HttpRequest<Backend>),
+    (data, req): (Json<cb::InstanceStateResponse>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
     debug!("Volume change: {:?}", data);
     let inst = req.state().instances.read().expect("Can't lock instances!");
@@ -69,7 +86,7 @@ fn callback_volume(
 }
 
 fn callback_playback(
-    (data, req): (Json<cb::PlaystateResponse>, HttpRequest<Backend>),
+    (data, req): (Json<cb::PlaystateResponse>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
     debug!("Volume change: {:?}", data);
     let inst = req.state().instances.read().expect("Can't lock instances!");
@@ -79,6 +96,20 @@ fn callback_playback(
             v => debug!("Playback change: {:?}", v),
         }
     }
+    HttpResponse::Ok().json(true)
+}
+
+fn callback_resolve(
+    (data, req): (Json<cb::ResolveResponse>, HttpRequest<CallbackState>),
+) -> HttpResponse {
+    debug!("Resolve callback: {:?}", data);
+    let data_r = data.into_inner();
+    let ticket = data_r.ticket;
+    let songs = data_r.songs;
+    req.state()
+        .backend
+        .tickets
+        .handle(&ticket, &req.state().instances, songs);
     HttpResponse::Ok().json(true)
 }
 
@@ -93,17 +124,29 @@ impl Drop for ShutdownGuard {
     }
 }
 
+#[derive(Clone)]
+struct CallbackState {
+    backend: Backend,
+    instances: Instances,
+}
+
 /// Init callback server
 pub fn init_callback_server(
     backend: Backend,
+    instances: Instances,
     callback_server: SocketAddr,
-    tickets: super::TicketStorage,
+    _tickets: super::TicketHandler,
 ) -> Fallible<ShutdownGuard> {
+    let state = CallbackState {
+        backend: backend.clone(),
+        instances,
+    };
+
     let (tx, rx) = mpsc::channel(1);
     thread::spawn(move || {
         let mut sys = System::new("callback_server");
         server::new(move || {
-            App::with_state(backend.clone())
+            App::with_state(state.clone())
                 .middleware(middleware::Logger::new("manager::api::backend"))
                 .middleware(SecurityModule::new(backend.addr.ip()))
                 .resource(cb::PATH_INSTANCE, |r| {
@@ -122,6 +165,12 @@ pub fn init_callback_server(
                     r.method(http::Method::POST)
                         .with_config(callback_playback, |((cfg, _),)| {
                             cfg.limit(4096);
+                        })
+                })
+                .resource(cb::PATH_RESOLVE, |r| {
+                    r.method(http::Method::POST)
+                        .with_config(callback_resolve, |((cfg, _),)| {
+                            cfg.limit(256096);
                         })
                 })
         })

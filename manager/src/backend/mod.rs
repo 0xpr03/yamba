@@ -1,22 +1,22 @@
 /*
- *  YAMBA middleware
+ *  YAMBA manager
  *  Copyright (C) 2019 Aron Heinecke
  *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 
 pub mod callback;
+pub mod tickets;
 
 use failure::Fallible;
 use futures::future::Future;
@@ -33,6 +33,8 @@ use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
+use self::tickets::TicketHandler;
+
 use crate::instance::Instances;
 
 #[derive(Fail, Debug)]
@@ -45,26 +47,7 @@ pub enum BackendErr {
 pub struct Backend {
     addr: SocketAddr,
     client: Client,
-    instances: Instances,
-    tickets: TicketStorage,
-}
-
-#[derive(Clone)]
-pub struct TicketStorage {
-    internal: Arc<Mutex<HashMap<Ticket, ID>>>,
-}
-
-impl TicketStorage {
-    fn new() -> TicketStorage {
-        TicketStorage {
-            internal: Arc::new(Mutex::new(HashMap::new())),
-        }
-    }
-
-    pub fn get_id(&self, id: &Ticket) -> Option<ID> {
-        let mut storage = self.internal.lock().expect("Can't lock tickets!");
-        storage.remove(id)
-    }
+    tickets: TicketHandler,
 }
 
 impl Backend {
@@ -84,18 +67,22 @@ impl Backend {
             header::AUTHORIZATION,
             header::HeaderValue::from_str(api_secret)?,
         );
-        let tickets = TicketStorage::new();
+        let tickets = TicketHandler::new();
         let backend = Backend {
             client: ClientBuilder::new().default_headers(headers).build()?,
-            instances,
             addr,
             tickets: tickets.clone(),
         };
 
         let shutdown_guard =
-            callback::init_callback_server(backend.clone(), callback_bind, tickets)?;
+            callback::init_callback_server(backend.clone(), instances, callback_bind, tickets)?;
 
         Ok((backend, shutdown_guard))
+    }
+
+    /// Returns ticket handler
+    pub fn get_tickets(&self) -> &TicketHandler {
+        &self.tickets
     }
 
     /// Spawn future on default executor

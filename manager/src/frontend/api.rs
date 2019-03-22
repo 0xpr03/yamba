@@ -1,3 +1,20 @@
+/*
+ *  YAMBA manager
+ *  Copyright (C) 2019 Aron Heinecke
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 use actix::System;
 use actix_web::{
     error::{InternalError, Result},
@@ -11,6 +28,7 @@ use futures::{
     sync::mpsc,
     Future, Stream,
 };
+use reqwest::StatusCode;
 use std::net::IpAddr;
 use std::net::SocketAddr;
 use std::thread;
@@ -72,19 +90,24 @@ pub fn handle_create_ts(
         match inst.start() {
             Ok(v) => Either::A(v.then(|res| {
                 result(Ok(match res {
-                    Err(e) => HttpResponse::InternalServerError()
-                        .content_type("text/plain")
-                        .body(format!("Error during start {:?}", e)),
-                    Ok(response) => {
-                        if response.success {
-                            HttpResponse::Ok()
-                                .content_type("text/plain")
-                                .body(format!("Started instance."))
-                        } else {
-                            HttpResponse::InternalServerError()
-                                .content_type("text/plain")
-                                .body(format!("Error during start {:?}", response.msg))
-                        }
+                    Err(e) => match e.status() {
+                        Some(StatusCode::CONFLICT) => HttpResponse::Conflict()
+                            .content_type("text/plain")
+                            .body(format!("Instance already started! {:?}", e)),
+                        _ => HttpResponse::InternalServerError()
+                            .content_type("text/plain")
+                            .body(format!("Error during start {:?}", e)),
+                    },
+                    Ok(_response) => {
+                        // if response.success {
+                        HttpResponse::Ok()
+                            .content_type("text/plain")
+                            .body(format!("Started instance."))
+                        // } else {
+                        //     HttpResponse::InternalServerError()
+                        //         .content_type("text/plain")
+                        //         .body(format!("Error during start {:?}", response.msg))
+                        // }
                     }
                 }))
             })),

@@ -1,19 +1,18 @@
 /*
- *  YAMBA middleware
+ *  YAMBA manager
  *  Copyright (C) 2019 Aron Heinecke
  *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 
 use failure::Fallible;
@@ -21,8 +20,8 @@ use futures::future::Future;
 use hashbrown::HashMap;
 use tokio::runtime::Runtime;
 use yamba_types::models::{
-    callback::InstanceState, DefaultResponse, InstanceLoadReq, InstanceStopReq, SongMin, Volume,
-    VolumeSetReq, ID,
+    callback::InstanceState, DefaultResponse, InstanceLoadReq, InstanceStopReq, ResolveRequest,
+    ResolveTicketResponse, Song, Volume, VolumeSetReq, ID,
 };
 
 use std::sync::{
@@ -30,12 +29,12 @@ use std::sync::{
     Arc, RwLock,
 };
 
-use crate::backend::Backend;
+use crate::backend::{tickets::TicketHandler, Backend};
 use crate::playlist::Playlist;
 
 pub type Instances = Arc<RwLock<HashMap<ID, Instance>>>;
 
-pub type SPlaylist = Playlist<SongMin>;
+pub type SPlaylist = Playlist<Song>;
 
 pub struct Instance {
     id: ID,
@@ -115,6 +114,32 @@ impl Instance {
         Ok(self
             .backend
             .stop_instance(&InstanceStopReq { id: self.get_id() })?)
+    }
+
+    /// Add songs to end of queue
+    pub fn add_to_queue(&self, songs: Vec<Song>) {
+        self.playlist.push(songs);
+    }
+
+    /// Return queue future
+    #[must_use = "Future doesn't do anything untill polled!"]
+    pub fn queue(
+        &self,
+        url: String,
+    ) -> Fallible<impl Future<Item = ResolveTicketResponse, Error = reqwest::Error>> {
+        let fut = self.backend.resolve_url(&ResolveRequest {
+            instance: self.get_id(),
+            url,
+        })?;
+
+        let tickets = self.backend.get_tickets().clone();
+        let id = self.get_id();
+        let fut = fut.map(move |v| {
+            tickets.add_queue(id, v.ticket.clone());
+            v
+        });
+
+        Ok(fut)
     }
 
     /// Start instance, ignore outcome
