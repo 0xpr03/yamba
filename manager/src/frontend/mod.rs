@@ -21,13 +21,8 @@ use actix::System;
 use actix_web::{fs, http, middleware, server, App};
 use failure::Fallible;
 use futures::{sync::mpsc, Future, Stream};
-use std::net::IpAddr;
 use std::net::SocketAddr;
 use std::thread;
-use tokio::{
-    executor::{DefaultExecutor, Executor, SpawnError},
-    runtime::Runtime,
-};
 
 mod api;
 mod form;

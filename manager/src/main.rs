@@ -22,7 +22,7 @@ use failure::Fallible;
 #[macro_use]
 extern crate log;
 use env_logger::{self, Env};
-use futures::future::{self, Future};
+use futures::future::Future;
 use futures::stream::Stream;
 use tokio::runtime::Runtime;
 use tokio_signal;

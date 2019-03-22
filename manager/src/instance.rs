@@ -29,7 +29,7 @@ use std::sync::{
     Arc, RwLock,
 };
 
-use crate::backend::{tickets::TicketHandler, Backend};
+use crate::backend::Backend;
 use crate::playlist::Playlist;
 
 pub type Instances = Arc<RwLock<HashMap<ID, Instance>>>;
