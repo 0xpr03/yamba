@@ -1,19 +1,18 @@
 /*
- *  YAMBA middleware
+ *  YAMBA manager
  *  Copyright (C) 2019 Aron Heinecke
  *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 
 use failure::Fallible;
@@ -35,12 +34,6 @@ use std::sync::RwLockReadGuard;
 
 use crate::instance::{Instance, Instances};
 
-// macro_rules! response_ok {
-// 	() => {
-// 		result(Ok(serde_json::to_value(response_ignore()).unwrap()))
-// 	};
-// }
-
 /// Parse input and call fn on success
 fn parse_input<T, F, D>(data: Params, foo: F) -> impl Future<Item = Value, Error = Error>
 where
@@ -52,8 +45,6 @@ where
 		Ok(v) => Either::A(foo(v)),
 		Err(e) => Either::B(result(Err(e))),
 	}
-	// let v = data.parse::<T>().unwrap();
-	// foo(v)
 }
 
 /// Parse input, get correct instance, call fn on success
@@ -127,36 +118,41 @@ pub fn create_server(
 	let inst_c = instances.clone();
 	io.add_method("volume_set", move |data: Params| {
 		parse_input_instance(inst_c.clone(), data, |v: ParamVolume, inst| {
-			inst.set_volume(v.volume)
-				.unwrap()
-				.map_err(|e| {
-					warn!("Unable to set volume: {}", e);
-					Error {
-						data: None,
-						message: e.to_string(),
-						code: error::ErrorCode::InternalError,
-					}
-				})
-				.map(|_| serde_json::to_value(response_ignore()).unwrap())
-			// Ok(v) => v,
-			// Err(e) => {
-			// 	warn!("Unable to set volume! {}", e);
-			// 	result(Err(Error {
-			// 		code: ErrorCode::ServerError,
-			// 		message: format!(""),
-			// 		data: None,
-			// 	}))
-			// }
-			// }
+			match inst.set_volume(v.volume) {
+				Err(e) => Either::A(send_internal_server_error(e)),
+				Ok(val) => Either::B(
+					val.map_err(|e| {
+						warn!("Unable to set volume: {}", e);
+						Error {
+							data: None,
+							message: e.to_string(),
+							code: error::ErrorCode::InternalError,
+						}
+					})
+					.map(|_| serde_json::to_value(response_ignore()).unwrap()),
+				),
+			}
 		})
 	});
-	// io.add_method("queue", move |data: Params| {
-	// 	parse_input_instance(
-	// 		instances.clone(),
-	// 		data,
-	// 		|v: ParamQueue, inst| response_ok!(),
-	// 	)
-	// });
+	let inst_c = instances.clone();
+	io.add_method("queue", move |data: Params| {
+		parse_input_instance(inst_c.clone(), data, |v: ParamQueue, inst| {
+			match inst.queue(v.url) {
+				Err(e) => Either::A(send_internal_server_error(e)),
+				Ok(val) => Either::B(
+					val.map_err(|e| {
+						warn!("Unable to set volume: {}", e);
+						Error {
+							data: None,
+							message: e.to_string(),
+							code: error::ErrorCode::InternalError,
+						}
+					})
+					.map(|_v| serde_json::to_value(response_ignore()).unwrap()),
+				),
+			}
+		})
+	});
 
 	let server = ServerBuilder::new(io)
 		.allowed_hosts(DomainsValidation::AllowOnly(vec![allowed_host.into()]))
