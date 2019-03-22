@@ -17,15 +17,15 @@
 
 use failure::Fallible;
 use futures::{
-	future::{result, Either, IntoFuture},
+	future::{result, Either},
 	Future,
 };
 use hashbrown::HashMap;
-use jsonrpc_core::types::error::{self, Error, ErrorCode};
+use jsonrpc_core::types::error::{self, Error};
 use jsonrpc_core::*;
 use jsonrpc_http_server::*;
 use owning_ref::OwningRef;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 use serde_json;
 use yamba_types::rpc::*;
 

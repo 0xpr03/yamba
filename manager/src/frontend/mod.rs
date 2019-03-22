@@ -18,12 +18,7 @@
 use crate::backend::Backend;
 use crate::instance::Instances;
 use actix::System;
-use actix_web::{
-    error::Result,
-    fs, http,
-    middleware::{self, Middleware, Started},
-    server, App, AsyncResponder, Error, HttpMessage, HttpRequest, HttpResponse, Json,
-};
+use actix_web::{fs, http, middleware, server, App};
 use failure::Fallible;
 use futures::{sync::mpsc, Future, Stream};
 use std::net::IpAddr;

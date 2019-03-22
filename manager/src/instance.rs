@@ -65,6 +65,7 @@ pub fn create_instances() -> Instances {
     Arc::new(RwLock::new(HashMap::new()))
 }
 
+#[allow(unused)]
 impl Instance {
     pub fn new(id: ID, backend: Backend, model: InstanceLoadReq) -> Instance {
         Instance {

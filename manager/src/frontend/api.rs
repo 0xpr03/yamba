@@ -15,32 +15,16 @@
  *  limitations under the License.
  */
 
-use actix::System;
-use actix_web::{
-    error::{InternalError, Result},
-    fs, http,
-    middleware::{self, Middleware, Started},
-    server, App, AsyncResponder, Error, Form, HttpMessage, HttpRequest, HttpResponse, Json, State,
-};
-use failure::Fallible;
+use actix_web::{Error, Form, HttpResponse, State};
 use futures::{
-    future::{ok, result, Either},
-    sync::mpsc,
-    Future, Stream,
+    future::{result, Either},
+    Future,
 };
 use reqwest::StatusCode;
-use std::net::IpAddr;
-use std::net::SocketAddr;
-use std::thread;
-use tokio::{
-    executor::{DefaultExecutor, Executor, SpawnError},
-    runtime::Runtime,
-};
 use yamba_types::models::{InstanceLoadReq, InstanceType, TSSettings};
 
 use super::*;
-use crate::backend::Backend;
-use crate::instance::{Instance, Instances};
+use crate::instance::Instance;
 
 pub fn handle_create_ts(
     (state, params): (State<FrState>, Form<super::form::TSCreate>),

@@ -20,18 +20,13 @@ pub mod tickets;
 
 use failure::Fallible;
 use futures::future::Future;
-use hashbrown::HashMap;
 use reqwest::{self, header, r#async::*};
 use serde::Serialize;
-use tokio::{
-    executor::{DefaultExecutor, Executor, SpawnError},
-    runtime::Runtime,
-};
-use yamba_types::models::{self, callback as cb, Ticket, ID};
+use tokio::executor::{DefaultExecutor, Executor, SpawnError};
+use yamba_types::models;
 
 use std::fmt::Debug;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
 
 use self::tickets::TicketHandler;
 

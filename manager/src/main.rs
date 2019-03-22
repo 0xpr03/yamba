@@ -36,8 +36,6 @@ mod instance;
 mod jsonrpc;
 mod playlist;
 
-const MUSIC_PATH: &'static str = "/datadisk/Music/";
-
 #[derive(Fail, Debug)]
 pub enum ParamErr {
     #[fail(display = "TS Address is invalid {}", _0)]

@@ -21,16 +21,12 @@ use actix_web::{
     error::Result,
     http,
     middleware::{self, Middleware, Started},
-    server, App, AsyncResponder, Error, HttpMessage, HttpRequest, HttpResponse, Json,
+    server, App, HttpRequest, HttpResponse, Json,
 };
 use failure::Fallible;
 use futures::{sync::mpsc, Future, Stream};
 use std::net::IpAddr;
 use std::thread;
-use tokio::{
-    executor::{DefaultExecutor, Executor, SpawnError},
-    runtime::Runtime,
-};
 use yamba_types::models::callback as cb;
 
 #[derive(Fail, Debug)]

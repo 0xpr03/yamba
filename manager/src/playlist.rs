@@ -56,6 +56,7 @@ impl<T> PartialEq for Item<T> {
 
 pub type ItemReturn<'a, T> = Option<OwningRef<RwLockReadGuard<'a, Vec<Item<T>>>, Item<T>>>;
 
+#[allow(unused)]
 impl<T> Playlist<T>
 where
     T: Sync, // rayon iter
