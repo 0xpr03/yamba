@@ -35,18 +35,6 @@ pub type CacheSong = String;
 /// Resolver ticket
 pub type Ticket = usize;
 
-/// Full song representation
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Song {
-    pub id: SongID,
-    pub name: String,
-    /// URL (not youtube-dl Format URL)
-    pub source: String,
-    pub artist: Option<String>,
-    /// Length in seconds
-    pub length: Option<u32>,
-}
-
 #[cfg(feature = "track")]
 impl From<Track> for Song {
     fn from(mut track: Track) -> Self {
@@ -60,26 +48,13 @@ impl From<Track> for Song {
     }
 }
 
-impl Song {
-    /// Convert Song into minimal song model
-    #[allow(dead_code)]
-    pub fn into_song_min(self) -> SongMin {
-        SongMin {
-            id: self.id,
-            source: self.source,
-            artist: self.artist,
-            name: self.name,
-            length: self.length,
-        }
-    }
-}
-
 /// Playback request data
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Extract))]
 pub struct PlaybackUrlReq {
+    /// Instance
     pub id: ID,
-    pub song: SongMin,
+    pub song: Song,
 }
 
 /// Volume set data
@@ -119,7 +94,7 @@ pub struct InstanceStartedReq {
 
 /// Minimal song representation as required for playback
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SongMin {
+pub struct Song {
     pub id: SongID,
     pub name: String,
     /// URL (not youtube-dl Format URL)
@@ -247,7 +222,7 @@ pub mod callback {
         pub id: ID,
     }
 
-    #[derive(Debug, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Serialize, Deserialize)]
     pub enum Playstate {
         Stopped = 0,
         Playing = 1,

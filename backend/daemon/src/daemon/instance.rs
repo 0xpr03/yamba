@@ -30,7 +30,7 @@ use cache::Cache;
 use daemon::{HeartbeatMap, Instances, WInstances};
 use playback::{PlaybackState, Player, PlayerEvent, PlayerEventType};
 use ts::TSInstance;
-use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, SongID, SongMin};
+use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, Song, SongID};
 use ytdl::YtDL;
 use ytdl_worker::{Controller, YTReqWrapped, YTSender};
 use SETTINGS;
@@ -60,7 +60,7 @@ pub type SongCache = Cache<SongID, CacheSong>;
 type CURRENT_SONG = Arc<RwLock<Option<CurrentSong>>>;
 
 /// Type holding the current song
-pub type CurrentSong = SongMin;
+pub type CurrentSong = Song;
 
 /// Base for each instance
 pub struct Instance {
@@ -234,7 +234,7 @@ impl Instance {
     }
 
     /// Play song
-    pub fn play_track(&self, song: SongMin) -> Fallible<()> {
+    pub fn play_track(&self, song: Song) -> Fallible<()> {
         let mut c_song_w = self.current_song.write().expect("Can't lock current song!");
 
         let source = song.source.clone();
