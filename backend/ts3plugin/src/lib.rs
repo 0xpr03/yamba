@@ -283,7 +283,7 @@ impl Plugin for MyTsPlugin {
         let transport_handle = transport.handle(&rpc_host).unwrap();
         let client = BackendRPCClient::new(transport_handle);
         let client_mut_arc = Arc::new(Mutex::from(client));
-        let client_mut_heartbeat = client_mut_arc.clone();
+        let _client_mut_heartbeat = client_mut_arc.clone();
         let client_mut_self = client_mut_arc.clone();
 
         let (sender, receiver) = channel();
@@ -390,7 +390,7 @@ impl Plugin for MyTsPlugin {
                             .volume_lock(id, invoker_name, invoker_groups, true)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("Ok"));
                                 }
@@ -405,7 +405,7 @@ impl Plugin for MyTsPlugin {
                             .volume_lock(id, invoker_name, invoker_groups, false)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
@@ -419,7 +419,7 @@ impl Plugin for MyTsPlugin {
                                 .volume_set(id, invoker_name, invoker_groups, vol as f64 / 100.0)
                                 .call()
                             {
-                                Ok(res) => {
+                                Ok(_res) => {
                                     let _ = connection.send_message(format!("Ok"));
                                 }
                                 Err(e) => {
@@ -472,7 +472,7 @@ impl Plugin for MyTsPlugin {
                             .track_next(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
@@ -485,7 +485,7 @@ impl Plugin for MyTsPlugin {
                             .track_previous(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
@@ -498,7 +498,7 @@ impl Plugin for MyTsPlugin {
                             .track_resume(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
@@ -511,7 +511,7 @@ impl Plugin for MyTsPlugin {
                             .track_pause(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
@@ -524,7 +524,7 @@ impl Plugin for MyTsPlugin {
                             .track_stop(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
@@ -595,7 +595,7 @@ impl Plugin for MyTsPlugin {
                             .queue_clear(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
@@ -608,7 +608,7 @@ impl Plugin for MyTsPlugin {
                             .queue_lock(id, invoker_name, invoker_groups, true)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
@@ -621,7 +621,7 @@ impl Plugin for MyTsPlugin {
                             .queue_lock(id, invoker_name, invoker_groups, false)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
@@ -637,7 +637,7 @@ impl Plugin for MyTsPlugin {
                             .queue(id, invoker_name, invoker_groups, url)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
@@ -651,7 +651,7 @@ impl Plugin for MyTsPlugin {
                             .playlist_load(id, invoker_name, invoker_groups, playlist_name)
                             .call()
                         {
-                            Ok(res) => {
+                            Ok(_res) => {
                                 let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
