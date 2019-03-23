@@ -29,9 +29,9 @@ api_internal_bind_port = 1330
 api_internal_bind_ip = "127.0.0.1"
 # api server binding socket
 api_bind_port = 1338
-api_bind_ip = "127.0.0.1"
+api_bind_ip = "127.0.0.1" # safe default, use 0.0.0.0 only if you know noone can access from external
 # api callback host, daemon -> management
-api_callback_ip = "127.0.0.1" # safe default, use 0.0.0.0 only if you know noone can access from external
+api_callback_ip = "127.0.0.1" # safe default
 api_callback_port = 1336
 # entry max age for stream cache
 cache_lifetime_secs = 3600
