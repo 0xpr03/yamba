@@ -27,11 +27,15 @@ macro_rules! add_trait {
     }
 }
 
-add_trait! {
-                (GetId) for ParamVolume
-}
-add_trait! {
-                (GetId) for ParamQueue
+add_trait! {(GetId) for ParamVolume}
+add_trait! {(GetId) for ParamQueue}
+add_trait! {(GetId) for ParamDefault}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ParamDefault {
+	pub id: ID,
+	pub invoker_name: String,
+	pub invoker_groups: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

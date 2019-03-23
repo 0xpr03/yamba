@@ -160,7 +160,7 @@ pub fn create_server(
 	});
 	let inst_c = instances.clone();
 	io.add_method("track_next", move |data: Params| {
-		parse_input_instance(inst_c.clone(), data, |v: ParamQueue, inst| {
+		parse_input_instance(inst_c.clone(), data, |_v: ParamDefault, inst| {
 			match inst.play_next() {
 				Err(e) => Either::A(send_internal_server_error(e)),
 				Ok(_) => Either::B(send_ok()),
