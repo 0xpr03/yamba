@@ -79,6 +79,11 @@ fn send_internal_server_error(err: failure::Error) -> impl Future<Item = Value, 
 	.unwrap()))
 }
 
+/// Helper to send ok as 200 status
+fn send_ok() -> impl Future<Item = Value, Error = Error> {
+	result(Ok(serde_json::to_value(response_ignore()).unwrap()))
+}
+
 #[inline]
 fn response_ignore() -> DefaultResponse {
 	DefaultResponse {
@@ -153,9 +158,18 @@ pub fn create_server(
 			}
 		})
 	});
+	let inst_c = instances.clone();
+	io.add_method("track_next", move |data: Params| {
+		parse_input_instance(inst_c.clone(), data, |v: ParamQueue, inst| {
+			match inst.play_next() {
+				Err(e) => Either::A(send_internal_server_error(e)),
+				Ok(_) => Either::B(send_ok()),
+			}
+		})
+	});
 
 	let server = ServerBuilder::new(io)
-		.allowed_hosts(DomainsValidation::AllowOnly(vec![allowed_host.into()]))
+		//.allowed_hosts(DomainsValidation::AllowOnly(vec![allowed_host.into()]))
 		.rest_api(RestApi::Secure)
 		.start_http(bind_addr)?;
 

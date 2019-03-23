@@ -50,8 +50,17 @@ impl SecurityModule {
 impl<S> Middleware<S> for SecurityModule {
     fn start(&self, req: &HttpRequest<S>) -> Result<Started> {
         if let Some(remote) = req.connection_info().remote() {
-            if remote == self.ip {
+            if remote
+                .parse::<SocketAddr>()
+                .map(|v| v.ip().to_string() == self.ip)
+                .unwrap_or_else(|e| {
+                    warn!("Can't parse remote IP! {}", e);
+                    false
+                })
+            {
                 return Ok(Started::Done);
+            } else {
+                debug!("Remote: {} Own: {}", remote, self.ip);
             }
         }
         Ok(Started::Response(HttpResponse::Unauthorized().finish()))
@@ -65,7 +74,7 @@ fn callback_instance(
     debug!("Instance state change: {:?}", data);
     let inst = req.state().instances.read().expect("Can't lock instances!");
     if let Some(i) = inst.get(&data.id) {
-        i.set_state(data.into_inner().state);
+        i.set_instance_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
 }
@@ -76,7 +85,7 @@ fn callback_volume(
     debug!("Volume change: {:?}", data);
     let inst = req.state().instances.read().expect("Can't lock instances!");
     if let Some(i) = inst.get(&data.id) {
-        i.set_state(data.into_inner().state);
+        i.set_instance_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
 }
@@ -87,10 +96,7 @@ fn callback_playback(
     debug!("Playback change: {:?}", data);
     let inst = req.state().instances.read().expect("Can't lock instances!");
     if let Some(i) = inst.get(&data.id) {
-        match &data.state {
-            cb::Playstate::EndOfMedia => i.song_end(),
-            v => debug!("Playback change: {:?}", v),
-        }
+        i.set_playback_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
 }

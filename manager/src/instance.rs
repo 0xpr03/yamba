@@ -20,7 +20,8 @@ use futures::future::Future;
 use hashbrown::HashMap;
 use tokio::runtime::Runtime;
 use yamba_types::models::{
-    callback::InstanceState, DefaultResponse, InstanceLoadReq, InstanceStopReq, ResolveRequest,
+    callback::{InstanceState, Playstate},
+    DefaultResponse, InstanceLoadReq, InstanceStopReq, PlaybackUrlReq, ResolveRequest,
     ResolveTicketResponse, Song, Volume, VolumeSetReq, ID,
 };
 
@@ -41,6 +42,7 @@ pub struct Instance {
     playlist: SPlaylist,
     volume: RwLock<Volume>,
     state: AtomicUsize,
+    playstate: AtomicUsize,
     backend: Backend,
     model: InstanceLoadReq,
 }
@@ -75,6 +77,7 @@ impl Instance {
             state: AtomicUsize::new(InstanceState::Stopped as usize),
             backend,
             model,
+            playstate: AtomicUsize::new(Playstate::Stopped as usize),
         }
     }
 
@@ -151,12 +154,74 @@ impl Instance {
     }
 
     /// Set state, intended for backend callbacks
-    pub fn set_state(&self, state: InstanceState) {
+    pub fn set_instance_state(&self, state: InstanceState) {
         self.state.store(state as usize, Ordering::Relaxed);
     }
 
+    /// Set playback state, intended for backend callbacks
+    pub fn set_playback_state(&self, state: Playstate) {
+        self.playstate
+            .store(state.clone() as usize, Ordering::Relaxed);
+        match state {
+            Playstate::EndOfMedia => self.song_end(),
+            v => debug!("Playback change: {:?}", v),
+        }
+    }
+
     /// Handle end of current song
-    pub fn song_end(&self) {}
+    pub fn song_end(&self) {
+        if let Err(e) = self.play_next_int() {
+            warn!(
+                "Unable to play next song, instance {}! {}",
+                self.get_id(),
+                e
+            );
+        }
+    }
+
+    /// Play next track if nothing is played
+    pub fn check_playback(&self) {
+        let state = self.state.load(Ordering::Relaxed);
+        let playstate = self.playstate.load(Ordering::Relaxed);
+        debug!("State: {} Playstate: {}", state, playstate);
+        if state == InstanceState::Running as usize && playstate == Playstate::Stopped as usize {
+            if let Err(e) = self.play_next_int() {
+                warn!(
+                    "Unable to resume playback on instance {}! {}",
+                    self.get_id(),
+                    e
+                );
+            }
+        }
+    }
+
+    /// Play next track, supposed to add permission checks
+    pub fn play_next(&self) -> Fallible<()> {
+        self.play_next_int()
+    }
+
+    /// Play next track
+    /// Note: Currently only queue
+    fn play_next_int(&self) -> Fallible<()> {
+        if let Some(v) = self.playlist.get_next() {
+            let fut = self.backend.play_url(&PlaybackUrlReq {
+                id: self.get_id(),
+                song: v.clone(),
+            })?;
+
+            let id = self.get_id();
+
+            Backend::spawn_on_default({
+                fut.then(move |v| {
+                    if let Err(e) = v {
+                        warn!("Error on song playback start, instance {}! {}", id, e);
+                    }
+                    Ok(())
+                })
+            })?;
+        }
+        Ok(())
+    }
 
     pub fn get_id(&self) -> ID {
         self.id

@@ -130,6 +130,17 @@ impl Backend {
         Ok(fut)
     }
 
+    /// Start URL playback
+    pub fn play_url(
+        &self,
+        request: &models::PlaybackUrlReq,
+    ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
+        let fut = self
+            .get_request_base(&format!("http://{}/playback/url", self.addr), request, true)?
+            .and_then(|mut x| x.json::<models::DefaultResponse>());
+        Ok(fut)
+    }
+
     /// Resolve URL request
     pub fn resolve_url(
         &self,
@@ -181,11 +192,10 @@ impl Backend {
     where
         T: Serialize,
     {
-        let req = if post {
-            self.client.post(addr)
+        Ok(if post {
+            self.client.post(addr).json(data).send()
         } else {
-            self.client.get(addr)
-        };
-        Ok(req.json(data).send())
+            self.client.get(addr).query(data).send()
+        })
     }
 }

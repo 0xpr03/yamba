@@ -77,10 +77,12 @@ impl QueueTicket {
 
 impl Ticket for QueueTicket {
     fn handle(&self, instances: &Instances, songs: Vec<Song>) -> Fallible<()> {
-        let inst = instances.read().expect("Can't lock instances!");
-        inst.get(&self.instance).map(|v| {
-            v.add_to_queue(songs);
+        let inst_r = instances.read().expect("Can't lock instances!");
+        inst_r.get(&self.instance).map(|inst| {
+            inst.add_to_queue(songs);
+            inst.check_playback();
         });
+
         Ok(())
     }
 }
