@@ -60,7 +60,7 @@ fn main() -> Fallible<()> {
         .arg(
             Arg::with_name("callback")
                 .short("c")
-                .long("daemon")
+                .long("callback")
                 .value_name("IP:PORT")
                 .help("Set daemon callback bind to use")
                 .default_value("127.0.0.1:1336")
