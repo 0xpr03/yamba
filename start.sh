@@ -10,12 +10,9 @@ fi
 
 cd ..
 
-set -a
-source config/database.env
-source config/database_root.env
 set +a
 if getent group docker | grep -q $USER; then
-    time docker-compose up $1
+    time docker-compose up $1 --remove-orphans
 else
-    time sudo -E docker-compose up $1
+    time sudo -E docker-compose up $1 --remove-orphans
 fi

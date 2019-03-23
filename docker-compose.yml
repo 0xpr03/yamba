@@ -13,9 +13,3 @@ services:
       - ./backend/ts3client:/opt/ts3client
     env_file:
       - ./config/backend.env
-    environment:
-      yamba_db__host: "${YAMBA_DATABASE_HOST}"
-      yamba_db__port: "${YAMBA_DATABASE_PORT}"
-      yamba_db__user: "${YAMBA_DATABASE_USER}"
-      yamba_db__db: "${YAMBA_DATABASE_DATABASE}"
-      yamba_db__password: "${YAMBA_DATABASE_PASSWORD}"
