@@ -48,7 +48,8 @@
     <script>
         $("#tsForm").submit(function (e) {
             e.preventDefault();
-
+            $('#alert').hide();
+            $('#alert').empty();
             var form = $(this);
             var url = form.attr("action");
             $.ajax({
