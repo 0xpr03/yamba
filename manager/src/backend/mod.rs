@@ -135,9 +135,13 @@ impl Backend {
         &self,
         request: &models::ResolveRequest,
     ) -> Fallible<impl Future<Item = models::ResolveTicketResponse, Error = reqwest::Error>> {
+        trace!("Resolving url {}", request.url);
         let fut = self
-            .get_request_base(&format!("http://{}/resolve/url", self.addr), request, true)?
-            .and_then(|mut x| x.json::<models::ResolveTicketResponse>());
+            .get_request_base(&format!("http://{}/resolve/url", self.addr), request, false)?
+            .and_then(|mut x| {
+                debug!("Resolve response: {:?} {:?}", x, x.body());
+                x.json::<models::ResolveTicketResponse>()
+            });
         Ok(fut)
     }
 

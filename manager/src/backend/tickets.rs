@@ -49,6 +49,7 @@ impl TicketHandler {
     /// Handle ticket
     pub fn handle(&self, ticket: &TicketID, instances: &Instances, songs: Vec<Song>) {
         let mut data_w = self.data.write().expect("Can't lock tickets!");
+        debug!("Handling {}", ticket);
         match data_w.remove(ticket) {
             Some(v) => {
                 v.handle(instances, songs);

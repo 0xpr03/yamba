@@ -1,5 +1,5 @@
 [package]
-name = "yamba-backend"
+name = "yamba-daemon"
 version = "0.1.0"
 authors = ["Aron Heinecke <aron.heinecke@t-online.de>"]
 

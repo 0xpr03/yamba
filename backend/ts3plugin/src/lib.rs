@@ -243,7 +243,7 @@ impl Plugin for MyTsPlugin {
         }
 
         if status == ConnectStatus::ConnectionEstablished {
-            match connected(*ID.as_ref().unwrap()) {
+            match connected(*ID.as_ref().unwrap(), &api) {
                 Err(e) => {
                     api.log_or_print(
                         format!("Error trying to signal connected state to backend: {}", e),
@@ -703,9 +703,15 @@ impl Plugin for MyTsPlugin {
     }
 }
 
-fn connected(id: i32) -> Fallible<()> {
+fn connected(id: i32, api: &TsApi) -> Fallible<()> {
+    let host_internal = format!("http://{}/internal/started", *CALLBACK_INTERNAL);
+    api.log_or_print(
+        format!("Internal RPC Host: {}", host_internal),
+        PLUGIN_NAME_I,
+        LogLevel::Debug,
+    );
     match CLIENT
-        .post(&format!("http://{}/internal/started", *CALLBACK_INTERNAL))
+        .post(&host_internal)
         .json(&ConnectedRequest {
             id,
             pid: process::id(),

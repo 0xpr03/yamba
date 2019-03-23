@@ -52,7 +52,7 @@ pub fn start_server(
 
     runtime.spawn(
         ServiceBuilder::new()
-            .middleware(LogMiddleware::new("yamba_backend::api::internal"))
+            .middleware(LogMiddleware::new("yamba_daemon::api::internal"))
             .resource(InternalAPI {
                 instances,
                 heartbeat,

@@ -84,7 +84,7 @@ fn callback_volume(
 fn callback_playback(
     (data, req): (Json<cb::PlaystateResponse>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
-    debug!("Volume change: {:?}", data);
+    debug!("Playback change: {:?}", data);
     let inst = req.state().instances.read().expect("Can't lock instances!");
     if let Some(i) = inst.get(&data.id) {
         match &data.state {

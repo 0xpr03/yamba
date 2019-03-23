@@ -18,8 +18,8 @@
 use failure::Fallible;
 use http_r::{response::Response, status::StatusCode};
 use tokio::{net::TcpListener, runtime};
-use tower_web::view::Handlebars;
 use tower_web::*;
+use tower_web::{middleware::log::LogMiddleware, view::Handlebars};
 use yamba_types::models::callback::ResolveResponse;
 use yamba_types::models::*;
 
@@ -56,6 +56,7 @@ pub fn start_server(
     runtime.spawn(
         ServiceBuilder::new()
             .resource(ApiResource { instances, base })
+            .middleware(LogMiddleware::new("yamba_daemon::api::public"))
             .serializer(Handlebars::new())
             .serve(incoming),
     );

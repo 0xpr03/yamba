@@ -82,7 +82,7 @@ fn send_internal_server_error(err: failure::Error) -> impl Future<Item = Value, 
 #[inline]
 fn response_ignore() -> DefaultResponse {
 	DefaultResponse {
-		message: String::from("default"),
+		message: String::from(""),
 	}
 }
 
@@ -141,7 +141,7 @@ pub fn create_server(
 				Err(e) => Either::A(send_internal_server_error(e)),
 				Ok(val) => Either::B(
 					val.map_err(|e| {
-						warn!("Unable to set volume: {}", e);
+						warn!("Unable to queue url: {}", e);
 						Error {
 							data: None,
 							message: e.to_string(),
