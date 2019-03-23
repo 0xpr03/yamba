@@ -24,9 +24,9 @@ root:
 
 loggers:
   # Lower level for ourselfs
-  yamba_backend:
+  yamba_daemon:
     level: trace
   tower_web:
     level: warn
-  yamba_backend::api::internal:
+  yamba_daemon::api::internal:
     level: warn

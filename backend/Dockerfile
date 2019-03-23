@@ -58,7 +58,7 @@ RUN ~/.cargo/bin/cargo build
 # build daemon dependencies
 WORKDIR /opt/yamba/daemon
 COPY ./daemon/Cargo.* ./
-RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/yamba_backend*
+RUN ~/.cargo/bin/cargo build && rm ./src/*.rs ./target/debug/deps/yamba_daemon*
 
 # build ts3plugin dependencies
 WORKDIR /opt/yamba/ts3plugin
@@ -86,4 +86,4 @@ COPY ./entrypoint.sh ./entrypoint.sh
 RUN chmod 755 ./entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["/opt/yamba/daemon/target/debug/yamba-backend"]
+CMD ["/opt/yamba/daemon/target/debug/yamba-daemon"]
