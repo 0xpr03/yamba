@@ -84,6 +84,14 @@ fn send_ok() -> impl Future<Item = Value, Error = Error> {
 	result(Ok(serde_json::to_value(response_ignore()).unwrap()))
 }
 
+/// Helper to send ok as 200 status
+fn send_ok_custom<T>(val: T) -> impl Future<Item = Value, Error = Error>
+where
+	T: Serialize,
+{
+	result(Ok(serde_json::to_value(val).unwrap()))
+}
+
 #[inline]
 fn response_ignore() -> DefaultResponse {
 	DefaultResponse {
@@ -164,6 +172,15 @@ pub fn create_server(
 			match inst.play_next() {
 				Err(e) => Either::A(send_internal_server_error(e)),
 				Ok(_) => Either::B(send_ok()),
+			}
+		})
+	});
+	let inst_c = instances.clone();
+	io.add_method("volume_get", move |data: Params| {
+		parse_input_instance(inst_c.clone(), data, |_v: ParamDefault, inst| {
+			match inst.get_volume() {
+				Err(e) => Either::A(send_internal_server_error(e)),
+				Ok(v) => Either::B(send_ok_custom(VolumeResponse { volume: v })),
 			}
 		})
 	});

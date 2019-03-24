@@ -68,15 +68,11 @@ pub struct ErrorResponse {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TitleResponse {
-	pub allowed: bool,
-	pub message: String,
 	pub title: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct VolumeResponse {
-	pub allowed: bool,
-	pub message: String,
 	pub volume: Volume,
 }
 

@@ -112,6 +112,12 @@ impl Instance {
         })?)
     }
 
+    /// Return current volume
+    pub fn get_volume(&self) -> Fallible<Volume> {
+        let mut vol_r = self.volume.read().expect("Can't lock volume!");
+        Ok(vol_r.clone())
+    }
+
     /// Return stop future
     #[must_use = "Future doesn't do anything untill polled!"]
     pub fn stop(&self) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
