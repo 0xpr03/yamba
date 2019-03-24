@@ -196,6 +196,14 @@ pub fn create_server(
 			}
 		})
 	});
+	let inst_c = instances.clone();
+	io.add_method("queue_tracks", move |data: Params| {
+		parse_input_instance(inst_c.clone(), data, |v: ParamQueueTracks, inst| {
+			send_ok_custom(TitleListResponse {
+				tracklist: inst.get_upcoming_tracks(v.n),
+			})
+		})
+	});
 
 	let server = ServerBuilder::new(io)
 		//.allowed_hosts(DomainsValidation::AllowOnly(vec![allowed_host.into()]))

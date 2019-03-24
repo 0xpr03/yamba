@@ -81,6 +81,33 @@ impl Instance {
         }
     }
 
+    fn format_time(length: Option<u32>) -> String {
+        match length {
+            Some(v) => format!("{:02}:{:02}", v / 60, v % 60),
+            None => String::from("--:--"),
+        }
+    }
+
+    fn format_track(song: &Song) -> String {
+        let artist = song
+            .artist
+            .as_ref()
+            .map_or(String::new(), |a| format!(" - {}", a));
+        let length = Self::format_time(song.length);
+        format!("{} {} {}", song.name, artist, length)
+    }
+
+    /// Get upcoming tracks formated
+    pub fn get_upcoming_tracks(&self, amount: usize) -> Vec<String> {
+        let amount = if amount > 30 { 30 } else { amount };
+
+        self.playlist
+            .get_next_tracks(amount)
+            .iter()
+            .map(|v| Self::format_track(v))
+            .collect()
+    }
+
     /// Returns formated playback info
     pub fn get_formated_title(&self) -> Fallible<String> {
         debug!(
@@ -89,17 +116,12 @@ impl Instance {
             self.playlist.amount_upcoming()
         );
         match self.playstate.load(Ordering::Relaxed) {
-            x if x == (Playstate::Playing as usize) => Ok(self.playlist.get_current().map_or(
-                String::from("No current song! This is an error."),
-                |v| {
-                    debug!("{:?}", **v);
-                    let artist = v
-                        .artist
-                        .as_ref()
-                        .map_or(String::new(), |a| format!(" - {}", a));
-                    format!("{} {}", v.name, artist)
-                },
-            )),
+            x if x == (Playstate::Playing as usize) => Ok(self
+                .playlist
+                .get_current()
+                .map_or(String::from("No current song! This is an error."), |v| {
+                    Self::format_track(&v)
+                })),
             _ => Ok(String::from("--:--")),
         }
     }

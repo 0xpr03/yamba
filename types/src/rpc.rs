@@ -30,6 +30,7 @@ macro_rules! add_trait {
 add_trait! {(GetId) for ParamVolume}
 add_trait! {(GetId) for ParamQueue}
 add_trait! {(GetId) for ParamDefault}
+add_trait! {(GetId) for ParamQueueTracks}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ParamDefault {
@@ -52,6 +53,14 @@ pub struct ParamQueue {
 	pub invoker_name: String,
 	pub invoker_groups: String,
 	pub url: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ParamQueueTracks {
+	pub id: ID,
+	pub invoker_name: String,
+	pub invoker_groups: String,
+	pub n: usize,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -85,7 +94,5 @@ pub struct PlaylistResponse {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TitleListResponse {
-	pub allowed: bool,
-	pub message: String,
 	pub tracklist: Vec<String>,
 }

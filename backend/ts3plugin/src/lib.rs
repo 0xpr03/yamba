@@ -561,12 +561,7 @@ impl Plugin for MyTsPlugin {
                                 .call()
                             {
                                 Ok(res) => {
-                                    rpc_allowed = res.allowed;
-                                    rpc_message = res.message;
-                                    let tracks = res.tracklist;
-                                    if rpc_allowed {
-                                        print_tracks(connection, tracks);
-                                    }
+                                    print_tracks(connection, res.tracklist);
                                 }
                                 Err(e) => {
                                     is_rpc_error = true;
@@ -582,12 +577,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let tracks = res.tracklist;
-                                if rpc_allowed {
-                                    print_tracks(connection, tracks);
-                                }
+                                print_tracks(connection, res.tracklist);
                             }
                             Err(e) => {
                                 is_rpc_error = true;
