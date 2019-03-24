@@ -19,6 +19,7 @@ use failure::Fallible;
 use futures::sync::mpsc::Receiver;
 use futures::Stream;
 use gst::ResourceError;
+use gst_player::PlayerError;
 use tokio::runtime;
 
 use std::sync::{
@@ -445,6 +446,7 @@ pub fn create_playback_event_handler(
             PlayerEventType::PositionUpdated => (), // silence
             PlayerEventType::MediaInfoUpdated => (), // silence
             PlayerEventType::Error(e) => {
+                let mut retry = false;
                 if let Some(err) = e.kind::<ResourceError>() {
                     match err {
                         ResourceError::NotAuthorized | ResourceError::NotFound => {
@@ -452,15 +454,7 @@ pub fn create_playback_event_handler(
                                 "Unable to read resource:{:?} for instance {}",
                                 err, event.id
                             );
-                            if let Some(v) = instances
-                                .read()
-                                .expect("Can't read instance!")
-                                .get(&event.id)
-                            {
-                                if let Err(e) = v.force_song_retry() {
-                                    warn!("Couldn't restart playback: {}", e);
-                                }
-                            }
+                            retry = true;
                         }
                         v => warn!("Resource error {:?} for instance {}", v, event.id),
                     }
@@ -469,6 +463,23 @@ pub fn create_playback_event_handler(
                         "Internal playback error for instance {}\nDetails:{} \\Details",
                         event.id, e
                     );
+                    if e.is::<PlayerError>() {
+                        if e.to_string().contains("Forbidden (403)") {
+                            debug!("Arcane magic detected URL Forbidden error, retrying..");
+                            retry = true;
+                        }
+                    }
+                }
+                if retry {
+                    if let Some(v) = instances
+                        .read()
+                        .expect("Can't read instance!")
+                        .get(&event.id)
+                    {
+                        if let Err(e) = v.force_song_retry() {
+                            warn!("Couldn't restart playback: {}", e);
+                        }
+                    }
                 }
             }
         }
