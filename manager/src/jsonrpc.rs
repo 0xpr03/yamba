@@ -184,6 +184,18 @@ pub fn create_server(
 			}
 		})
 	});
+	let inst_c = instances.clone();
+	io.add_method("track_get", move |data: Params| {
+		parse_input_instance(inst_c.clone(), data, |_v: ParamDefault, inst| {
+			match inst.get_formated_title() {
+				Err(e) => Either::A(send_internal_server_error(e)),
+				Ok(v) => {
+					debug!("{}", v);
+					Either::B(send_ok_custom(TitleResponse { title: v }))
+				}
+			}
+		})
+	});
 
 	let server = ServerBuilder::new(io)
 		//.allowed_hosts(DomainsValidation::AllowOnly(vec![allowed_host.into()]))

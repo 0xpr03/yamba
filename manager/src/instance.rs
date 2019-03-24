@@ -81,6 +81,29 @@ impl Instance {
         }
     }
 
+    /// Returns formated playback info
+    pub fn get_formated_title(&self) -> Fallible<String> {
+        debug!(
+            "Playlist size: {} Upcoming: {}",
+            self.playlist.size(),
+            self.playlist.amount_upcoming()
+        );
+        match self.playstate.load(Ordering::Relaxed) {
+            x if x == (Playstate::Playing as usize) => Ok(self.playlist.get_current().map_or(
+                String::from("No current song! This is an error."),
+                |v| {
+                    debug!("{:?}", **v);
+                    let artist = v
+                        .artist
+                        .as_ref()
+                        .map_or(String::new(), |a| format!(" - {}", a));
+                    format!("{} {}", v.name, artist)
+                },
+            )),
+            _ => Ok(String::from("--:--")),
+        }
+    }
+
     /// Start instance, ignore outcome spawn on runtime
     pub fn start_with_rt(&mut self, rt: &mut Runtime) -> Fallible<()> {
         rt.spawn(self.start()?.map_err(|e| error!("{:?}", e)).map(|_| ()));
