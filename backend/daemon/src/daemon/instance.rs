@@ -161,8 +161,13 @@ impl Instance {
         let song_r = self.current_song.read().expect("Can't lock current song!");
         match *song_r {
             Some(ref v) => {
+                if self.get_error_retries() >= RETRY_MAX {
+                    return Err(InstanceErr::MaxRetries.into());
+                }
+                self.increate_error_retries();
                 let source = v.source.clone();
                 let songid = v.id.clone();
+                self.cache.delete(&songid);
                 let instances = self.instances.clone();
                 let cache = self.cache.clone();
                 let id = self.id.clone();
@@ -459,12 +464,13 @@ pub fn create_playback_event_handler(
                         v => warn!("Resource error {:?} for instance {}", v, event.id),
                     }
                 } else {
+                    let err_str = e.to_string();
                     warn!(
                         "Internal playback error for instance {}\nDetails:{} \\Details",
-                        event.id, e
+                        event.id, err_str
                     );
                     if e.is::<PlayerError>() {
-                        if e.to_string().contains("Forbidden (403)") {
+                        if err_str.contains("Forbidden (403)") {
                             debug!("Arcane magic detected URL Forbidden error, retrying..");
                             retry = true;
                         }
