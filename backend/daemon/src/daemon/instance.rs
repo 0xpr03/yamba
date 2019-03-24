@@ -18,9 +18,13 @@
 use failure::Fallible;
 use futures::sync::mpsc::Receiver;
 use futures::Stream;
+use gst::ResourceError;
 use tokio::runtime;
 
-use std::sync::{Arc, RwLock};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc, RwLock,
+};
 use std::thread;
 use std::time::Instant;
 
@@ -37,12 +41,18 @@ use SETTINGS;
 
 /// module containing a single instance
 
+const RETRY_MAX: usize = 3;
+
 #[derive(Fail, Debug, PartialEq)]
 pub enum InstanceErr {
     #[fail(display = "No Audio track for URL {}", _0)]
     NoAudioTrack(String),
     #[fail(display = "No YTDL result for URL {}", _0)]
     InvalidSource(String),
+    #[fail(display = "No current song, when one was expected")]
+    NoCurrentSong,
+    #[fail(display = "Max amount of error retries reached for song")]
+    MaxRetries,
 }
 
 /// Data provider for creation of instances
@@ -69,6 +79,7 @@ pub struct Instance {
     player: Player,
     ytdl: Arc<YtDL>,
     current_song: CURRENT_SONG,
+    error_retries: AtomicUsize,
     cache: SongCache,
     instances: WInstances,
     url_resolve: YTSender,
@@ -105,11 +116,27 @@ impl Instance {
             cache: base.get_cache().clone(),
             current_song: Arc::new(RwLock::new(None)),
             instances: base.get_weak_instances().clone(),
+            error_retries: AtomicUsize::new(0),
         };
 
         heartbeats.update(instance.get_id());
 
         instance
+    }
+
+    /// Reset error retry count for song
+    fn reset_error_retries(&self) {
+        self.error_retries.store(0, Ordering::Relaxed);
+    }
+
+    /// Increase amount of error retries for song
+    fn increate_error_retries(&self) {
+        self.error_retries.fetch_add(1, Ordering::SeqCst);
+    }
+
+    /// Get error retry count for song
+    fn get_error_retries(&self) -> usize {
+        self.error_retries.load(Ordering::Relaxed)
     }
 
     /// Resolve URL under this instances queue
@@ -126,6 +153,31 @@ impl Instance {
         *lock = None;
         // don't store to history, still in queue, no end-of-stream triggered
         self.player.stop();
+    }
+
+    /// Handle invalid cache entries
+    /// Re-resolves and restarts playback
+    fn force_song_retry(&self) -> Fallible<()> {
+        let song_r = self.current_song.read().expect("Can't lock current song!");
+        match *song_r {
+            Some(ref v) => {
+                let source = v.source.clone();
+                let songid = v.id.clone();
+                let instances = self.instances.clone();
+                let cache = self.cache.clone();
+                let id = self.id.clone();
+                let ytdl = self.ytdl.clone();
+                thread::spawn(move || {
+                    if let Err(e) =
+                        Instance::play_track_inner(instances, cache, id, ytdl, source, songid, true)
+                    {
+                        warn!("Error while retrying track! {}", e);
+                    }
+                });
+                Ok(())
+            }
+            None => Err(InstanceErr::MaxRetries.into()),
+        }
     }
 
     /// Handle end of stream event
@@ -245,7 +297,9 @@ impl Instance {
         let id = self.id.clone();
         let ytdl = self.ytdl.clone();
         thread::spawn(move || {
-            if let Err(e) = Instance::play_track_inner(instances, cache, id, ytdl, source, songid) {
+            if let Err(e) =
+                Instance::play_track_inner(instances, cache, id, ytdl, source, songid, false)
+            {
                 warn!("Error while resolving next track! {}", e);
             }
         });
@@ -272,6 +326,7 @@ impl Instance {
         ytdl: Arc<YtDL>,
         source: String,
         song_id: SongID,
+        retry: bool,
     ) -> Fallible<()> {
         let audio_url: String = if let Some(v) = cache.get(&song_id) {
             v
@@ -297,6 +352,9 @@ impl Instance {
         };
         let lock = instances.read().expect("Can't read instances!");
         if let Some(inst) = lock.get(&id) {
+            if !retry {
+                inst.reset_error_retries();
+            }
             inst.player.set_uri(audio_url.as_str());
         } else {
             warn!("Instance gone, ignoring playback resolver..");
@@ -386,7 +444,31 @@ pub fn create_playback_event_handler(
             PlayerEventType::PositionUpdated => (), // silence
             PlayerEventType::MediaInfoUpdated => (), // silence
             PlayerEventType::Error(e) => {
-                warn!("Internal playback error for instance {}:\n{}", event.id, e);
+                if let Some(err) = e.kind::<ResourceError>() {
+                    match err {
+                        ResourceError::NotAuthorized | ResourceError::NotFound => {
+                            info!(
+                                "Unable to read resource:{:?} for instance {}",
+                                err, event.id
+                            );
+                            if let Some(v) = instances
+                                .read()
+                                .expect("Can't read instance!")
+                                .get(&event.id)
+                            {
+                                if let Err(e) = v.force_song_retry() {
+                                    warn!("Couldn't restart playback: {}", e);
+                                }
+                            }
+                        }
+                        v => warn!("Resource error {:?} for instance {}", v, event.id),
+                    }
+                } else {
+                    warn!(
+                        "Internal playback error for instance {}\nDetails:{} \\Details",
+                        event.id, e
+                    );
+                }
             }
         }
         Ok(())
