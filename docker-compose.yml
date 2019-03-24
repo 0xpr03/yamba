@@ -13,3 +13,5 @@ services:
       - ./backend/ts3client:/opt/ts3client
     env_file:
       - ./config/backend.env
+    cap_add:
+      - SYS_NICE
