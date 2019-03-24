@@ -65,9 +65,23 @@ where
     pub fn new() -> Playlist<T> {
         Playlist {
             list: RwLock::new(Vec::new()),
-            current_pos: AtomicUsize::new(0),
-            last_id: AtomicUsize::new(0),
+            current_pos: AtomicUsize::new(usize::max_value()),
+            last_id: AtomicUsize::new(usize::max_value() - 1),
         }
+    }
+
+    /// Returns size of playlist
+    pub fn size(&self) -> usize {
+        let lst_r = self.list.read().expect("Can't lock list");
+        lst_r.len()
+    }
+
+    /// Returns amount of upcoming tracks
+    pub fn amount_upcoming(&self) -> usize {
+        let lst_r = self.list.read().expect("Can't lock list");
+        lst_r
+            .len()
+            .wrapping_sub(self.current_pos.load(Ordering::Relaxed))
     }
 
     /// (Re)Shuffle the playlist
@@ -123,9 +137,10 @@ where
 
     /// Get next track, updating current position
     pub fn get_next(&self) -> ItemReturn<T> {
-        let pos = self.current_pos.fetch_add(1, Ordering::SeqCst);
+        let old_pos = self.current_pos.fetch_add(1, Ordering::SeqCst);
+        self.last_id.store(old_pos, Ordering::Relaxed);
         let lst = self.list.read().expect("Can't lock list!");
-        self.get_item(pos)
+        self.get_item(old_pos.wrapping_add(1))
     }
 
     /// Get item at position
