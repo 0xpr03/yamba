@@ -176,7 +176,7 @@ impl Instance {
                 });
                 Ok(())
             }
-            None => Err(InstanceErr::MaxRetries.into()),
+            None => Err(InstanceErr::NoCurrentSong.into()),
         }
     }
 
