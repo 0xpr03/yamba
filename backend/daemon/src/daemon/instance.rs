@@ -210,10 +210,12 @@ impl Instance {
 
     pub fn set_volume(&self, v: f64) {
         self.player.set_volume(v);
-        callback::send_volume_change(&VolumeChange {
+        if let Err(e) = callback::send_volume_change(&VolumeChange {
             id: self.get_id(),
             volume: v,
-        });
+        }) {
+            info!("Couldn't send volume change {}", e);
+        }
     }
 
     pub fn get_volume(&self) -> f64 {
