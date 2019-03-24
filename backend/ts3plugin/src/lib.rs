@@ -156,6 +156,19 @@ const HELP: &str = r#"
 
 [i]Get[/i] [b]volume[/b]: [i]!volume[/i]
 [i]Set[/i] volume <vol>: [i]!volume[/i] <vol>
+
+Get [b]current track[/b]: [I]!playing[/I]
+[b]Enqueue[/b] <url> : [I]!queue[/I] <url>
+"#;
+
+/*
+const HELP: &str = r#"
+[b]YAMBA HELP[/b]
+
+[b]Help[/b]: !help
+
+[i]Get[/i] [b]volume[/b]: [i]!volume[/i]
+[i]Set[/i] volume <vol>: [i]!volume[/i] <vol>
 [i]Lock[/i] volume: [i]!lock volume[/i]
 [i]Unlock[/i] volume: [i]!unlock volume[/i]
 
@@ -174,6 +187,7 @@ Add a playlist (yt..) to playback queue.
 [b]Pause[/b] playback: [I]!pause[/I]
 [b]Stop[/b] playback: [I]!stop[/I]
 "#;
+*/
 
 /// Print tracks for queue lookahead
 pub fn print_tracks(connection: &ts3plugin::Connection, tracks: Vec<String>) {
@@ -436,13 +450,8 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let vol = res.volume;
-                                if rpc_allowed {
-                                    let _ = connection
-                                        .send_message(format!("{}", (vol * 100.0) as i32));
-                                }
+                                let _ = connection
+                                    .send_message(format!("{}", (res.volume * 100.0) as i32));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -455,12 +464,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let title = res.title;
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", title));
-                                }
+                                let _ = connection.send_message(res.title);
                             }
                             Err(e) => {
                                 is_rpc_error = true;
