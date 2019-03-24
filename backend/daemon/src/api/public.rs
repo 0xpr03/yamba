@@ -16,7 +16,7 @@
  */
 
 use failure::Fallible;
-use http_r::{response::Response, status::StatusCode};
+use http_r::status::StatusCode;
 use tokio::{net::TcpListener, runtime};
 use tower_web::*;
 use tower_web::{middleware::log::LogMiddleware, view::Handlebars};

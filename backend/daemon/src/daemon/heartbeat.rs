@@ -15,11 +15,10 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use concurrent_hashmap::{ConcHashMap, Entries};
+use concurrent_hashmap::ConcHashMap;
 
 use super::ID;
 
-use std::hash::BuildHasherDefault;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 

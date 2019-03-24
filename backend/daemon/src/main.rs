@@ -25,13 +25,10 @@ extern crate log4rs;
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
-extern crate config as config_rs;
-extern crate reqwest;
-#[macro_use]
-extern crate serde;
 extern crate atomic;
 extern crate chrono;
 extern crate concurrent_hashmap;
+extern crate config as config_rs;
 extern crate erased_serde;
 extern crate futures;
 extern crate glib;
@@ -44,7 +41,9 @@ extern crate libpulse_sys as pulse_sys;
 extern crate metrohash;
 extern crate mpmc_scheduler;
 extern crate owning_ref;
+extern crate reqwest;
 extern crate rusqlite;
+extern crate serde;
 extern crate serde_json;
 extern crate serde_urlencoded;
 extern crate sha2;

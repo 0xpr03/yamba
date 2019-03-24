@@ -19,7 +19,6 @@ mod heartbeat;
 pub mod instance;
 
 pub use self::heartbeat::HeartbeatMap;
-use concurrent_hashmap::ConcHashMap;
 use failure::Fallible;
 use futures::sync::mpsc;
 use futures::{future, Future, Stream};
@@ -34,7 +33,6 @@ use std::os::unix::process::CommandExt;
 use std::process::Command;
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, RwLock, Weak};
 use std::thread;
-use std::time::Instant;
 
 use self::instance::*;
 use api;

@@ -26,7 +26,6 @@ use std::sync::{
     Arc, RwLock,
 };
 use std::thread;
-use std::time::Instant;
 
 use api::callback;
 use audio::NullSink;
