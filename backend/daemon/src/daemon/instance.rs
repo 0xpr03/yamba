@@ -231,6 +231,10 @@ impl Instance {
         self.player.pause();
     }
 
+    pub fn get_playback_state(&self) -> Playstate {
+        playback_to_public_state(self.player.get_state())
+    }
+
     pub fn play(&self) {
         self.player.play();
     }
@@ -404,6 +408,15 @@ impl Teamspeak {
     }
 }
 
+#[inline(always)]
+fn playback_to_public_state(state: PlaybackState) -> Playstate {
+    match state {
+        PlaybackState::Playing => Playstate::Playing,
+        PlaybackState::Stopped => Playstate::Stopped,
+        PlaybackState::Paused => Playstate::Paused,
+    }
+}
+
 /// Register event handler for playback in daemon
 pub fn create_playback_event_handler(
     runtime: &mut runtime::Runtime,
@@ -441,11 +454,7 @@ pub fn create_playback_event_handler(
                     .expect("Can't read instance!")
                     .get(&event.id)
                 {
-                    v.send_playstate_change(match state {
-                        PlaybackState::Playing => Playstate::Playing,
-                        PlaybackState::Stopped => Playstate::Stopped,
-                        PlaybackState::Paused => Playstate::Paused,
-                    });
+                    v.send_playstate_change(playback_to_public_state(state));
                 }
             }
             PlayerEventType::PositionUpdated => (), // silence
