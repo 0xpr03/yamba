@@ -142,6 +142,11 @@ impl Instance {
         Ok(self.backend.create_instance(&self.model)?)
     }
 
+    /// Update volume, inteded for callbacks
+    pub fn cb_update_volume(&self, volume: Volume) {
+        debug!("Volume change: {}", volume);
+    }
+
     /// Return volume set future
     #[must_use = "Future doesn't do anything untill polled!"]
     pub fn set_volume(

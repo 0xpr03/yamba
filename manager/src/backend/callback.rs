@@ -80,12 +80,12 @@ fn callback_instance(
 }
 
 fn callback_volume(
-    (data, req): (Json<cb::InstanceStateResponse>, HttpRequest<CallbackState>),
+    (data, req): (Json<cb::VolumeChange>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
     debug!("Volume change: {:?}", data);
     let inst = req.state().instances.read().expect("Can't lock instances!");
     if let Some(i) = inst.get(&data.id) {
-        i.set_instance_state(data.into_inner().state);
+        i.cb_update_volume(data.into_inner().volume);
     }
     HttpResponse::Ok().json(true)
 }
