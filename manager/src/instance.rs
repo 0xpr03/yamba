@@ -210,12 +210,12 @@ impl Instance {
     }
 
     /// Set state, intended for backend callbacks
-    pub fn set_instance_state(&self, state: InstanceState) {
+    pub fn cb_set_instance_state(&self, state: InstanceState) {
         self.state.store(state as usize, Ordering::Relaxed);
     }
 
     /// Set playback state, intended for backend callbacks
-    pub fn set_playback_state(&self, state: Playstate) {
+    pub fn cb_set_playback_state(&self, state: Playstate) {
         self.playstate
             .store(state.clone() as usize, Ordering::Relaxed);
         match state {
@@ -225,7 +225,7 @@ impl Instance {
     }
 
     /// Handle end of current song
-    pub fn song_end(&self) {
+    fn song_end(&self) {
         if let Err(e) = self.play_next_int() {
             warn!(
                 "Unable to play next song, instance {}! {}",

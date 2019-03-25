@@ -74,7 +74,7 @@ fn callback_instance(
     debug!("Instance state change: {:?}", data);
     let inst = req.state().instances.read().expect("Can't lock instances!");
     if let Some(i) = inst.get(&data.id) {
-        i.set_instance_state(data.into_inner().state);
+        i.cb_set_instance_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
 }
@@ -96,7 +96,7 @@ fn callback_playback(
     debug!("Playback change: {:?}", data);
     let inst = req.state().instances.read().expect("Can't lock instances!");
     if let Some(i) = inst.get(&data.id) {
-        i.set_playback_state(data.into_inner().state);
+        i.cb_set_playback_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
 }
@@ -149,7 +149,7 @@ pub fn init_callback_server(
         let mut sys = System::new("callback_server");
         server::new(move || {
             App::with_state(state.clone())
-                .middleware(middleware::Logger::new("manager::api::backend"))
+                .middleware(middleware::Logger::new("manager::api::backend::callback"))
                 .middleware(SecurityModule::new(backend.addr.ip()))
                 .resource(cb::PATH_INSTANCE, |r| {
                     r.method(http::Method::POST)
