@@ -1,8 +1,0 @@
-*
-!index.php
-!bin
-!composer*
-!config
-!src
-!webroot
-!copyEnvVars.sh
