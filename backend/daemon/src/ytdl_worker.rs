@@ -18,7 +18,6 @@
 use failure::Fallible;
 use futures::{Future, Stream};
 use mpmc_scheduler as scheduler;
-use mysql::Pool;
 use tokio::runtime::Runtime;
 use tokio::timer::Interval;
 use tokio_threadpool::blocking;
@@ -29,23 +28,32 @@ use std::time::{Duration, Instant};
 
 use ytdl::YtDL;
 
-use db;
-use instance::{SongCache, ID};
-use models::SongMin;
+use daemon::instance::{SongCache, ID};
+use daemon::Instances;
+use yamba_types::models::Song;
 use SETTINGS;
 
 /// Worker for ytdl tasks
 
-pub type R = (YtRequest, RSongs);
-pub type YtRequest = Box<dyn Request + 'static + Send + Sync>;
-pub type RSongs = Fallible<Vec<SongMin>>;
-pub type Controller = scheduler::Controller<ID, YtRequest, R>;
-pub type YTSender = scheduler::Sender<YtRequest>;
+pub type R = (YTReqWrapped, RSongs);
+pub type YTReqWrapped = Box<dyn YTRequest + 'static + Send + Sync>;
+pub type RSongs = Fallible<Vec<Song>>;
+pub type Controller = scheduler::Controller<ID, YTReqWrapped, R>;
+pub type YTSender = scheduler::Sender<YTReqWrapped>;
 
-pub trait Request {
-    fn is_playlist(&self) -> bool;
+pub trait YTRequest {
+    /// Url to resolve
     fn url(&self) -> &str;
-    fn callback(&mut self, RSongs);
+    /// Callback, called after resolving of requested url with return value
+    /// instance calls should be done via the instance map passed
+    fn callback(&mut self, RSongs, Instances);
+    /// Turn YTRequest into wrapped to send to scheduler
+    fn wrap(self) -> YTReqWrapped
+    where
+        Self: std::marker::Sized + Send + Sync + 'static,
+    {
+        Box::new(self)
+    }
 }
 
 /// Update scheduler for ytdl
@@ -68,16 +76,15 @@ pub fn crate_yt_updater(runtime: &mut Runtime, ytdl: Arc<YtDL>) {
 pub fn crate_ytdl_scheduler(
     runtime: &mut Runtime,
     ytdl: Arc<YtDL>,
-    pool: Pool,
     cache: SongCache,
+    instances: Instances,
 ) -> Controller {
     let (controller, scheduler) = scheduler::Scheduler::new(
         SETTINGS.ytdl.workers as usize,
-        move |req: YtRequest| {
+        move |req: YTReqWrapped| {
             let ytdl_c = ytdl.clone();
             let start = Instant::now();
-            let result =
-                scheduler_retrieve(cache.clone(), &ytdl_c, &pool, req.is_playlist(), req.url());
+            let result = scheduler_retrieve(cache.clone(), &ytdl_c, req.url());
             let end = start.elapsed();
             debug!(
                 "Request {} took {}{:03}ms to process",
@@ -87,8 +94,9 @@ pub fn crate_ytdl_scheduler(
             );
             (req, result)
         },
-        Some(|(mut req, tracks): R| {
-            req.callback(tracks);
+        Some(move |(mut req, tracks): R| {
+            let instances_c = instances.clone();
+            req.callback(tracks, instances_c);
         }),
         false,
     );
@@ -98,21 +106,29 @@ pub fn crate_ytdl_scheduler(
 }
 
 /// Retrieve function for scheduler
-/// query ytdl, insert into db & update cache
+/// query ytdl, update cache
 /// returns all song IDs
-fn scheduler_retrieve(
-    cache: SongCache,
-    ytdl: &YtDL,
-    pool: &Pool,
-    playlist: bool,
-    url: &str,
-) -> RSongs {
-    let tracks = if playlist {
-        ytdl.get_playlist_info(url)?
-    } else {
-        vec![ytdl.get_url_info(url)?]
-    };
-    let tracks = db::insert_tracks(Some(cache), tracks, &pool)?;
+fn scheduler_retrieve(cache: SongCache, ytdl: &YtDL, url: &str) -> RSongs {
+    // check DB & cache
+    // also works with playlists as playlists are not expected to
+    // be a source URL entry in the database
+    // TODO: handle caching via song ID
 
-    Ok(tracks)
+    let tracks = ytdl.get_url_info(url)?;
+    Ok(tracks
+        .into_iter()
+        .filter_map(|t| {
+            let min_song = match t.best_audio_format(SETTINGS.ytdl.min_audio_bitrate) {
+                Some(v) => v.url.clone(),
+                None => {
+                    warn!("No audio track for {}", t.webpage_url);
+                    return None;
+                }
+            };
+
+            let song: Song = t.into();
+            cache.upsert(song.id.clone(), min_song);
+            Some(song)
+        })
+        .collect())
 }

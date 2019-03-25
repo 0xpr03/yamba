@@ -1,0 +1,22 @@
+[package]
+name = "yamba_types"
+version = "0.3.0"
+authors = ["Aron Heinecke <aron.heinecke@t-online.de>"]
+edition = "2018"
+license = "GPL-3.0-or-later"
+
+[features]
+default = ["rest"]
+# Add tower-rs Extract/Response
+tower = ["tower-web"]
+# Add Track support, should only be required for daemon
+track = ["metrohash"]
+# Rest models in models
+rest = []
+# Json RPC types
+rpc = []
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+tower-web = { optional = true, version = "0"}
+metrohash = { optional = true, version = "1" }

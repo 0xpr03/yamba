@@ -110,6 +110,11 @@ where
         );
     }
 
+    /// Remove entry
+    pub fn delete(&self, key: &K) {
+        self.map.remove(key);
+    }
+
     /// Get entry in cache, checking it's age, copying the value
     pub fn get(&self, key: &K) -> Option<V> {
         match self.map.find(key) {

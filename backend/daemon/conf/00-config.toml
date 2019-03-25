@@ -21,40 +21,39 @@
 
 [main]
 user_agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:55.0) Gecko/20100101 Firefox/55.0"
+# ts jsonrpc callback address
+api_jsonrpc_port = 1337
+api_jsonrpc_ip = "127.0.0.1"
 # rpc server binding socket
-rpc_bind_port = 1337
-rpc_bind_ip = "127.0.0.1"
+api_internal_bind_port = 1330
+api_internal_bind_ip = "127.0.0.1"
 # api server binding socket
 api_bind_port = 1338
-api_bind_ip = "127.0.0.1"
-# api callback data, daemon to frontend
-api_callback_ip = "127.0.0.1" # safe default, use 0.0.0.0 only if you know noone can access from external
-api_callback_port = "82"
+api_bind_ip = "127.0.0.1" # safe default, use 0.0.0.0 only if you know noone can access from external
+# api callback host, daemon -> management
+api_callback_ip = "127.0.0.1" # safe default
+api_callback_port = 1336
 # entry max age for stream cache
 cache_lifetime_secs = 3600
 
-
-[db]
-port = 3306
-user = "yamba"
-use_password = false
-password = "password"
-db = "yamba"
-host = "127.0.0.1"
-# retry db connection on startup, seconds
-retry_time=60
+# secrets for authorization
+# on callback
+api_callback_secret = "change me"
+# incoming api requests
+api_secret = "change me"
 
 [ytdl]
 # amount of concurrent ytdl workers
 workers = 4
 # max amount of backlog requests per instance / web interface
 # any additional will get dropped
+# round up to next 2^n
 instance_backlog_max = 32
 dir="ytdl"
 # intervall for updates in hours
 update_intervall=12
 # for version checking
-version_source="https://rg3.github.io/youtube-dl/update/versions.json"
+version_source="https://ytdl-org.github.io/youtube-dl/update/versions.json"
 # key in version map for current
 version_key = "latest"
 # download

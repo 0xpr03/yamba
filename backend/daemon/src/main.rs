@@ -25,21 +25,12 @@ extern crate log4rs;
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
-extern crate config as config_rs;
-extern crate reqwest;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate futures;
-extern crate hyper;
-extern crate jsonrpc_lite;
-#[macro_use]
-extern crate serde_json;
-extern crate arraydeque;
 extern crate atomic;
 extern crate chrono;
 extern crate concurrent_hashmap;
+extern crate config as config_rs;
 extern crate erased_serde;
+extern crate futures;
 extern crate glib;
 extern crate gstreamer as gst;
 extern crate gstreamer_player as gst_player;
@@ -49,14 +40,20 @@ extern crate libpulse_glib_binding as pglib;
 extern crate libpulse_sys as pulse_sys;
 extern crate metrohash;
 extern crate mpmc_scheduler;
-extern crate mysql;
 extern crate owning_ref;
+extern crate reqwest;
 extern crate rusqlite;
+extern crate serde;
+extern crate serde_json;
 extern crate serde_urlencoded;
 extern crate sha2;
 extern crate tokio;
 extern crate tokio_signal;
 extern crate tokio_threadpool;
+#[macro_use]
+extern crate tower_web;
+extern crate http as http_r;
+extern crate yamba_types;
 
 use std::alloc::System;
 
@@ -68,12 +65,8 @@ mod audio;
 mod cache;
 mod config;
 mod daemon;
-mod db;
 mod http;
-mod instance;
-mod models;
 mod playback;
-mod rpc;
 mod ts;
 mod ytdl;
 mod ytdl_worker;
@@ -140,43 +133,15 @@ fn main() -> Fallible<()> {
                         .help("media url"),
                 ),
         )
-        .subcommand(
-            SubCommand::with_name("test-ts")
-                .about("Test ts instance start, for test use")
-                .arg(
-                    Arg::with_name("host")
-                        .short("h")
-                        .required(true)
-                        .takes_value(true)
-                        .help("host address"),
-                )
-                .arg(
-                    Arg::with_name("port")
-                        .short("p")
-                        .required(false)
-                        .takes_value(true)
-                        .help("port address"),
-                )
-                .arg(
-                    Arg::with_name("cid")
-                        .long("cid")
-                        .required(false)
-                        .takes_value(true)
-                        .help("channel id"),
-                )
-                .arg(
-                    Arg::with_name("clear-instances")
-                        .long("clear-instances")
-                        .required(false)
-                        .takes_value(false)
-                        .help("Clear all previous instances"),
-                ),
-        )
         .get_matches();
 
     info!(
-        "RPC Binding: {}:{}",
-        SETTINGS.main.rpc_bind_ip, SETTINGS.main.rpc_bind_port
+        "API Internal Binding: {}:{}",
+        SETTINGS.main.api_internal_bind_ip, SETTINGS.main.api_internal_bind_port
+    );
+    info!(
+        "API Public Binding: {}:{}",
+        SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port
     );
 
     match app.subcommand() {
@@ -268,41 +233,6 @@ fn main() -> Fallible<()> {
             }
             info!("Finished");
         }
-        ("test-ts", Some(sub_m)) => {
-            info!("Testing ts instance start");
-            info!(
-                "Folder: {} Exec: {}",
-                SETTINGS.ts.dir, SETTINGS.ts.start_binary
-            );
-            let addr = sub_m.value_of("host").unwrap();
-            let port = sub_m.value_of("port").map(|v| v.parse::<u16>().unwrap());
-            let cid = sub_m.value_of("cid").map(|v| v.parse::<i32>().unwrap());
-            let clear_instances = sub_m.is_present("clear-instances");
-
-            let settings = models::TSSettings {
-                id: 1,
-                host: addr.to_string(),
-                port,
-                identity: "".to_string(),
-                cid,
-                name: "YAMBA_Test_Instance".to_string(),
-                password: None,
-                autostart: true,
-            };
-
-            let pool = db::init_pool_timeout()?;
-
-            if clear_instances {
-                info!("Clearing previous instances!");
-                db::clear_instances(&pool)?;
-            }
-
-            db::upsert_ts_instance(&settings, &pool)?;
-
-            check_runtime()?;
-            daemon::start_runtime()?;
-            info!("Test ended");
-        }
         (_, _) => {
             warn!("No params, entering daemon mode");
             check_runtime()?;
@@ -313,15 +243,9 @@ fn main() -> Fallible<()> {
     Ok(())
 }
 
+/// Check runtime relevant config values
 fn check_runtime() -> Fallible<()> {
-    if let Err(e) = rpc::check_config() {
-        error!("Invalid config for rpc daemon, aborting: {}", e);
-        return Err(e);
-    }
-
-    if let Err(e) = api::check_config() {
-        error!("Invalid config for api daemon, aborting: {}", e);
-    }
+    api::check_runtime()?;
     Ok(())
 }
 

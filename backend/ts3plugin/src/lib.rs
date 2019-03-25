@@ -15,75 +15,103 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+extern crate serde;
 extern crate ts3plugin;
+#[macro_use]
+extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate jsonrpc_client_core;
+extern crate failure;
 extern crate jsonrpc_client_http;
 extern crate regex;
+extern crate reqwest;
+#[macro_use]
+extern crate failure_derive;
+extern crate yamba_types;
 
+mod models;
+
+use models::*;
+
+use failure::Fallible;
 use jsonrpc_client_http::HttpTransport;
 use regex::*;
+use ts3plugin::TsApi;
+use ts3plugin::*;
+use yamba_types::rpc::*;
+
 use std::env;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::process;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
-use ts3plugin::TsApi;
-use ts3plugin::*;
+
+#[derive(Fail, Debug)]
+pub enum APIErr {
+    #[fail(display = "Request response not successfull {}", _0)]
+    NoSuccess(&'static str),
+    #[fail(display = "Error performing request {}", _0)]
+    RequestError(#[cause] reqwest::Error),
+}
 
 jsonrpc_client!(
     #[derive(Debug)]
     pub struct BackendRPCClient {
-    // Call when connected
-    pub fn connected(&mut self, id: i32, process: u32) -> RpcRequest<bool>;
-    // Return: message
-    pub fn heartbeat(&mut self, id : i32) -> RpcRequest<(String)>;
 
     // Return: allowed, message, Volume [0 - 100]
-    pub fn volume_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, f64)>;
+    pub fn volume_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<VolumeResponse>;
     // Return: allowed, message, success
-    pub fn volume_set(&mut self, id : i32, invokerName : String, invokerGroups : String, volume : f64) -> RpcRequest<(bool, String, bool)>;
+    pub fn volume_set(&mut self, id : i32, invoker_name : String, invoker_groups : String, volume : f64) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn volume_lock(&mut self, id : i32, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
+    pub fn volume_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
 
     // Return: allowed, message, title
-    pub fn track_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
+    pub fn track_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<TitleResponse>;
     // Return: allowed, message, success
-    pub fn track_next(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_next(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn track_previous(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_previous(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn track_resume(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_resume(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn track_pause(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_pause(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn track_stop(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn track_stop(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
 
     // Return: allowed, message, name
-    pub fn playlist_get(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, String)>;
-    // n <= 0: return all tracks
+    pub fn playlist_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<PlaylistResponse>;
     // n > 0: return the next n tracks
+    // n <= 0 isn't allowed
     // Return: allowed, message, tracklist
-    pub fn queue_tracks(&mut self, id : i32, invokerName : String, invokerGroups : String, n : i32) -> RpcRequest<(bool, String, Vec<String>)>;
+    pub fn queue_tracks(&mut self, id : i32, invoker_name : String, invoker_groups : String, n : i32) -> RpcRequest<TitleListResponse>;
     // Return: allowed, message, success
-    pub fn queue_clear(&mut self, id : i32, invokerName : String, invokerGroups : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn queue_clear(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn queue_lock(&mut self, id : i32, invokerName : String, invokerGroups : String, lock : bool) -> RpcRequest<(bool, String, bool)>;
+    pub fn queue_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn playlist_queue(&mut self, id : i32, invokerName : String, invokerGroups : String, url : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn queue(&mut self, id : i32, invoker_name : String, invoker_groups : String, url : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
-    pub fn playlist_load(&mut self, id : i32, invokerName : String, invokerGroups : String, playlist_name : String) -> RpcRequest<(bool, String, bool)>;
+    pub fn playlist_load(&mut self, id : i32, invoker_name : String, invoker_groups : String, playlist_name : String) -> RpcRequest<DefaultResponse>;
+
+    // debug, halt bot
+    pub fn halt(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
 });
 
 lazy_static! {
-    static ref PORT: u16 = env::var("CALLBACK_YAMBA")
-        .unwrap_or("1337".to_string())
-        .parse::<u16>()
-        .unwrap_or(1337);
+    static ref CLIENT: reqwest::Client = reqwest::Client::new();
+    static ref ADDRESS: SocketAddr = env::var("CALLBACK_YAMBA")
+        .unwrap_or("127.0.0.1:1337".to_string())
+        .parse::<SocketAddr>()
+        .unwrap_or(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1337));
+    static ref CALLBACK_INTERNAL: SocketAddr = env::var("CALLBACK_YAMBA_INTERNAL")
+        .unwrap_or("127.0.0.1:1330".to_string())
+        .parse::<SocketAddr>()
+        .unwrap();
     pub static ref ID: Option<i32> = env::var("ID_YAMBA")
         .unwrap_or("".to_string())
         .parse::<i32>()
@@ -92,7 +120,7 @@ lazy_static! {
     pub static ref R_IGNORE: Regex =
         Regex::new(r"^((Sorry, I didn't get that... Have you tried !help yet)|(RPC call failed)|(n not parseable))")
             .unwrap();
-    pub static ref R_HELP: Regex = Regex::new(r"^((\?)|(!h(e?lp)?))").unwrap();
+    pub static ref R_HELP: Regex = Regex::new(r"^((\?)|(!help))").unwrap();
     pub static ref R_VOL_LOCK: Regex = Regex::new(r"^(!l(o?ck)?( )?v(ol(ume)?)?)").unwrap();
     pub static ref R_VOL_UNLOCK: Regex = Regex::new(r"^(!un?l(o?ck)?( )?v(ol(ume)?)?)").unwrap();
     pub static ref R_VOL_SET: Regex = Regex::new(r"^(!v(ol(ume)?)? (\d*))").unwrap();
@@ -106,22 +134,34 @@ lazy_static! {
     pub static ref R_PLAYLIST_GET: Regex = Regex::new(r"^!((playlist)|(plst))").unwrap();
     pub static ref R_PLAYLIST_TRACKS_5: Regex = Regex::new(r"^!t((rx)|(racks))?").unwrap();
     pub static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^!t((rx)|(racks))? (\d*)").unwrap();
-    pub static ref R_QUEUE_TRACKS_ALL: Regex = Regex::new(r"^!t((rx)|(racks))? a(ll)?").unwrap();
     pub static ref R_QUEUE_CLEAR: Regex = Regex::new("^!c(lear)?").unwrap();
     pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck)?( )?p((laylist)|(lst))").unwrap();
     pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!un?l(o?ck)?( )?p((laylist)|(lst))").unwrap();
     pub static ref R_ENQUEUE: Regex = Regex::new(r"^!q(ueue)? ([^ ]+)").unwrap();
     pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^!pl(oa)?d (.+)").unwrap();
+    pub static ref R_HALT: Regex = Regex::new(r"^!halt").unwrap();
 }
 
 #[derive(Debug)]
 struct MyTsPlugin {
     killer: Sender<()>,
-    rpc_host: String,
     client_mut: Arc<Mutex<BackendRPCClient<jsonrpc_client_http::HttpHandle>>>,
 }
 
 const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
+const HELP: &str = r#"
+[b]YAMBA HELP[/b]
+
+[b]Help[/b]: !help
+
+[i]Get[/i] [b]volume[/b]: [i]!volume[/i]
+[i]Set[/i] volume <vol>: [i]!volume[/i] <vol>
+
+Get [b]current track[/b]: [I]!playing[/I]
+[b]Enqueue[/b] <url> : [I]!queue[/I] <url>
+"#;
+
+/*
 const HELP: &str = r#"
 [b]YAMBA HELP[/b]
 
@@ -134,6 +174,8 @@ const HELP: &str = r#"
 
 Get [b]current track[/b]: [I]!playing[/I]
 [b]Enqueue[/b] <url> : [I]!queue[/I] <url>
+Get [b]next X tracks[/b]: [I]!tracks[/I] <amount>
+Defaults to 5 if amount not provided
 Adds track to playback queue.
 [b]Load playlist[/b] <playlist>: [I]!lpload [/I]<playlist>
 Load playlist with specified name into queue
@@ -145,19 +187,21 @@ Add a playlist (yt..) to playback queue.
 [b]Pause[/b] playback: [I]!pause[/I]
 [b]Stop[/b] playback: [I]!stop[/I]
 "#;
+*/
 
-pub fn print_tracks(connection: &ts3plugin::Connection, mut tracks: Vec<String>) {
-    let mut message = String::from("");
-    while let Some(track) = tracks.pop() {
+/// Print tracks for queue lookahead
+pub fn print_tracks(connection: &ts3plugin::Connection, tracks: Vec<String>) {
+    let mut message = String::from("Upcoming tracks:\n");
+    tracks.iter().for_each(|track| {
         if message.len() + track.len() + 1 >= 1024 {
-            let _ = connection.send_message(format!("{}", message));
-            message = String::from(format!("{}\n", track));
-        } else {
-            message = String::from(format!("{}{}\n", message, track));
+            let _ = connection.send_message(message.as_str());
+            message = String::from("Upcoming tracks:\n");
         }
-    }
+        message.push_str(track);
+        message.push_str("\n");
+    });
     if message.len() > 0 {
-        let _ = connection.send_message(format!("{}", message));
+        let _ = connection.send_message(message.as_str());
     }
 }
 
@@ -213,15 +257,7 @@ impl Plugin for MyTsPlugin {
         }
 
         if status == ConnectStatus::ConnectionEstablished {
-            let mut rpc_api = self.client_mut.lock().unwrap();
-            let pid = process::id();
-            api.log_or_print(format!("PID: {}", pid), PLUGIN_NAME_I, LogLevel::Error);
-            match rpc_api.connected(*ID.as_ref().unwrap(), pid).call() {
-                Ok(v) => api.log_or_print(
-                    format!("Connected response: {}", v),
-                    PLUGIN_NAME_I,
-                    LogLevel::Debug,
-                ),
+            match connected(*ID.as_ref().unwrap(), &api) {
                 Err(e) => {
                     api.log_or_print(
                         format!("Error trying to signal connected state to backend: {}", e),
@@ -237,15 +273,21 @@ impl Plugin for MyTsPlugin {
                         ),
                     }
                 }
-            } // if we don't get this through, we're not gonna receive any audio
+                Ok(_) => api.log_or_print(format!("Send connected"), PLUGIN_NAME_I, LogLevel::Info),
+            }
         }
     }
 
     fn new(api: &mut TsApi) -> Result<Box<MyTsPlugin>, InitError> {
         api.log_or_print("Initializing ", PLUGIN_NAME_I, LogLevel::Debug);
 
-        let rpc_host: String;
-        rpc_host = format!("http://localhost:{}/", PORT.to_string());
+        let rpc_host: String = format!("http://{}", ADDRESS.to_string());
+
+        api.log_or_print(
+            format!("RPC Host: {}", rpc_host),
+            PLUGIN_NAME_I,
+            LogLevel::Debug,
+        );
 
         if ID.is_none() {
             return Err(InitError::Failure);
@@ -255,7 +297,7 @@ impl Plugin for MyTsPlugin {
         let transport_handle = transport.handle(&rpc_host).unwrap();
         let client = BackendRPCClient::new(transport_handle);
         let client_mut_arc = Arc::new(Mutex::from(client));
-        let client_mut_heartbeat = client_mut_arc.clone();
+        let _client_mut_heartbeat = client_mut_arc.clone();
         let client_mut_self = client_mut_arc.clone();
 
         let (sender, receiver) = channel();
@@ -264,22 +306,20 @@ impl Plugin for MyTsPlugin {
             let mut failed_heartbeats = 0;
             if let Some(id) = id_copy {
                 while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
-                    if let Ok(mut client_lock) = client_mut_heartbeat.lock() {
-                        match client_lock.heartbeat(id).call() {
-                            Ok(_) => {
-                                failed_heartbeats = 0;
-                            }
-                            Err(e) => {
-                                failed_heartbeats += 1;
-                                TsApi::static_log_or_print(
-                                    format!(
-                                        "Backend server did not respond {} times!\nReason {}",
-                                        failed_heartbeats, e
-                                    ),
-                                    PLUGIN_NAME_I,
-                                    LogLevel::Warning,
-                                );
-                            }
+                    match heartbeat(id) {
+                        Ok(_) => {
+                            failed_heartbeats = 0;
+                        }
+                        Err(e) => {
+                            failed_heartbeats += 1;
+                            TsApi::static_log_or_print(
+                                format!(
+                                    "Backend server did not respond {} times!\nReason {}",
+                                    failed_heartbeats, e
+                                ),
+                                PLUGIN_NAME_I,
+                                LogLevel::Warning,
+                            );
                         }
                     }
                 }
@@ -294,7 +334,6 @@ impl Plugin for MyTsPlugin {
 
         let me = MyTsPlugin {
             killer: sender,
-            rpc_host: rpc_host,
             client_mut: client_mut_self,
         };
 
@@ -365,12 +404,9 @@ impl Plugin for MyTsPlugin {
                             .volume_lock(id, invoker_name, invoker_groups, true)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
+                            Ok(_res) => {
                                 if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
+                                    let _ = connection.send_message(format!("Ok"));
                                 }
                             }
                             Err(e) => {
@@ -383,13 +419,8 @@ impl Plugin for MyTsPlugin {
                             .volume_lock(id, invoker_name, invoker_groups, false)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -402,13 +433,8 @@ impl Plugin for MyTsPlugin {
                                 .volume_set(id, invoker_name, invoker_groups, vol as f64 / 100.0)
                                 .call()
                             {
-                                Ok(res) => {
-                                    rpc_allowed = res.0;
-                                    rpc_message = res.1;
-                                    let success = if res.2 { "Ok" } else { "Failure" };
-                                    if rpc_allowed {
-                                        let _ = connection.send_message(format!("{}", success));
-                                    }
+                                Ok(_res) => {
+                                    let _ = connection.send_message(format!("Ok"));
                                 }
                                 Err(e) => {
                                     is_rpc_error = true;
@@ -424,13 +450,8 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let vol = res.2;
-                                if rpc_allowed {
-                                    let _ = connection
-                                        .send_message(format!("{}", (vol * 100.0) as i32));
-                                }
+                                let _ = connection
+                                    .send_message(format!("{}", (res.volume * 100.0) as i32));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -443,12 +464,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let title = res.2;
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", title));
-                                }
+                                let _ = connection.send_message(res.title);
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -460,13 +476,8 @@ impl Plugin for MyTsPlugin {
                             .track_next(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -478,13 +489,8 @@ impl Plugin for MyTsPlugin {
                             .track_previous(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -496,13 +502,8 @@ impl Plugin for MyTsPlugin {
                             .track_resume(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -514,13 +515,8 @@ impl Plugin for MyTsPlugin {
                             .track_pause(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -532,13 +528,8 @@ impl Plugin for MyTsPlugin {
                             .track_stop(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -551,29 +542,11 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let name = res.2;
+                                rpc_allowed = res.allowed;
+                                rpc_message = res.message;
+                                let name = res.name;
                                 if rpc_allowed {
                                     let _ = connection.send_message(format!("{}", name));
-                                }
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_QUEUE_TRACKS_ALL.is_match(&message) {
-                        match client_lock
-                            .queue_tracks(id, invoker_name, invoker_groups, -1)
-                            .call()
-                        {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let tracks = res.2;
-                                if rpc_allowed {
-                                    print_tracks(connection, tracks);
                                 }
                             }
                             Err(e) => {
@@ -588,12 +561,7 @@ impl Plugin for MyTsPlugin {
                                 .call()
                             {
                                 Ok(res) => {
-                                    rpc_allowed = res.0;
-                                    rpc_message = res.1;
-                                    let tracks = res.2;
-                                    if rpc_allowed {
-                                        print_tracks(connection, tracks);
-                                    }
+                                    print_tracks(connection, res.tracklist);
                                 }
                                 Err(e) => {
                                     is_rpc_error = true;
@@ -609,12 +577,7 @@ impl Plugin for MyTsPlugin {
                             .call()
                         {
                             Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let tracks = res.2;
-                                if rpc_allowed {
-                                    print_tracks(connection, tracks);
-                                }
+                                print_tracks(connection, res.tracklist);
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -626,13 +589,8 @@ impl Plugin for MyTsPlugin {
                             .queue_clear(id, invoker_name, invoker_groups)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -644,13 +602,8 @@ impl Plugin for MyTsPlugin {
                             .queue_lock(id, invoker_name, invoker_groups, true)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -662,13 +615,8 @@ impl Plugin for MyTsPlugin {
                             .queue_lock(id, invoker_name, invoker_groups, false)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -680,16 +628,11 @@ impl Plugin for MyTsPlugin {
                             .replace("[URL]", "")
                             .replace("[/URL]", "");
                         match client_lock
-                            .playlist_queue(id, invoker_name, invoker_groups, url)
+                            .queue(id, invoker_name, invoker_groups, url)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -702,13 +645,8 @@ impl Plugin for MyTsPlugin {
                             .playlist_load(id, invoker_name, invoker_groups, playlist_name)
                             .call()
                         {
-                            Ok(res) => {
-                                rpc_allowed = res.0;
-                                rpc_message = res.1;
-                                let success = if res.2 { "Ok" } else { "Failure" };
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", success));
-                                }
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
                             }
                             Err(e) => {
                                 is_rpc_error = true;
@@ -716,6 +654,21 @@ impl Plugin for MyTsPlugin {
                             }
                         }
                     } else {
+                        #[cfg(massif)]
+                        {
+                            if R_HALT.is_match(&message) {
+                                match client_lock.halt(id, invoker_name, invoker_groups).call() {
+                                    Ok(res) => {
+                                        let _ = connection.send_message(format!("Ok"));
+                                    }
+                                    Err(e) => {
+                                        is_rpc_error = true;
+                                        rpc_error = e;
+                                    }
+                                }
+                            }
+                        }
+
                         if match target {
                             MessageReceiver::Connection(_) => true,
                             _ => false,
@@ -729,6 +682,7 @@ impl Plugin for MyTsPlugin {
                     if is_rpc_error {
                         let _ = connection
                             .send_message(format!("RPC call failed\nReason: {}", rpc_error));
+                        println!("Error on JSONRPC: {:?}", rpc_error);
                     } else if !rpc_allowed {
                         let _ = connection
                             .send_message(format!("Action not allowed!\nReason: {}", rpc_message));
@@ -743,4 +697,69 @@ impl Plugin for MyTsPlugin {
     }
 }
 
+fn connected(id: i32, api: &TsApi) -> Fallible<()> {
+    let host_internal = format!("http://{}/internal/started", *CALLBACK_INTERNAL);
+    api.log_or_print(
+        format!("Internal RPC Host: {}", host_internal),
+        PLUGIN_NAME_I,
+        LogLevel::Debug,
+    );
+    match CLIENT
+        .post(&host_internal)
+        .json(&ConnectedRequest {
+            id,
+            pid: process::id(),
+        })
+        .send()
+        .and_then(|mut v| v.json::<ConnectedResponse>())
+    {
+        Ok(v) => {
+            if v.success {
+                Ok(())
+            } else {
+                Err(APIErr::NoSuccess("No success during connect-callback").into())
+            }
+        }
+        Err(e) => Err(APIErr::RequestError(e).into()),
+    }
+}
+
+/// run heartbeat command
+fn heartbeat(id: i32) -> Fallible<()> {
+    match CLIENT
+        .post(&format!("http://{}/internal/heartbeat", *CALLBACK_INTERNAL))
+        .json(&HeartbeatRequest { id })
+        .send()
+        .and_then(|mut v| v.json::<HeartbeatResponse>())
+    {
+        Err(e) => Err(APIErr::RequestError(e).into()),
+        Ok(v) => {
+            if v.success {
+                Ok(())
+            } else {
+                Err(APIErr::NoSuccess("No success during heartbeat").into())
+            }
+        }
+    }
+}
+
 create_plugin!(MyTsPlugin);
+
+#[cfg(test)]
+mod testing {
+    use super::*;
+    use std::collections::HashMap;
+    use std::process;
+    #[test]
+    fn test_connected() {
+        let pid = process::id();
+
+        let mut response = reqwest::Client::new()
+            .post("http://127.0.0.1:1330/internal/started")
+            .json(&ConnectedRequest { id: 1, pid })
+            .send()
+            .unwrap();
+        println!("{:?}", response);
+        println!("{:?}", response.text());
+    }
+}

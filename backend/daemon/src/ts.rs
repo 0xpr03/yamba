@@ -20,7 +20,7 @@ use serde_urlencoded;
 
 use std::env;
 use std::fs::{remove_dir_all, DirBuilder};
-use std::io;
+use std::io::{self, ErrorKind};
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
@@ -32,11 +32,13 @@ use std::env::current_dir;
 
 use rusqlite::{self, Connection};
 
-use models::TSSettings;
+use daemon::instance::ID;
+use yamba_types::models::TSSettings;
 use SETTINGS;
 
 /// TS Instance
 
+const TS_ENV_CALLBACK_INTERNAL: &'static str = "CALLBACK_YAMBA_INTERNAL";
 const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
 const TS_ENV_ID: &'static str = "ID_YAMBA";
 const TS_SETTINGS_FILE: &'static str = "settings.db";
@@ -58,19 +60,32 @@ pub enum TSInstanceErr {
 
 impl Drop for TSInstance {
     fn drop(&mut self) {
-        match self.is_running() {
-            Ok(true) | Err(_) => {
-                // ignore error, otherwise run only if alive
-                if let Err(e) = TSInstance::kill_by_ppid(&self.process.id()) {
-                    warn!("Couldn't kill instance by ppid: {}", e);
-                }
+        //
+        let kill = match self.is_running() {
+            Ok(true) => true,
+            Err(_) => {
+                warn!("Can't check xvfb state!");
+                true
+            }
+            Ok(false) => false,
+        };
+        // ignore error, otherwise run only if alive
+        if kill {
+            info!("xvfb Running, killing");
 
+            // pkill all childs of xvfb-run TODO: killing only ts should be enough (we're also killing xvfb currently)
+            if let Err(e) = TSInstance::kill_by_ppid(&self.process.id()) {
+                warn!("Couldn't kill ts instance by ppid: {}", e);
+            }
+            // we expect xvfb-run to return when xvfb/ts dies
+            if let Err(e_wait) = TSInstance::wait_for_child_timeout(5000, &mut self.process) {
+                // otherwise we just kill xvfb-run also
+                warn!("Xvfb not finished, killing.. {}", e_wait);
                 match self.kill() {
                     Ok(()) => (),
-                    Err(e) => warn!("Couldn't kill instance on cleanup {}", e),
+                    Err(e) => warn!("Couldn't kill xvfb instance on cleanup {}", e),
                 }
             }
-            _ => (),
         }
     }
 }
@@ -78,15 +93,22 @@ impl Drop for TSInstance {
 /// TS Instance, kills itself on drop
 #[derive(Debug)]
 pub struct TSInstance {
-    id: i32,
     process: Child,
 }
 
 impl TSInstance {
     /// Create a new instance controller
     /// Created from TSSettings model
+    /// callback_host_interal is for daemon <-> ts communication
     /// rpc port is for callbacks used by the yamba plugin
-    pub fn spawn(settings: &TSSettings, rpc_port: &u16) -> Fallible<TSInstance> {
+    pub fn spawn(
+        settings: &TSSettings,
+        id: &ID,
+        callback_host_internal: &str,
+        callback_port_internal: &u16,
+        callback_host: &str,
+        callback_port: &u16,
+    ) -> Fallible<TSInstance> {
         let mut params = Vec::new();
         if let Some(v) = settings.port {
             params.push(("port".to_owned(), v.to_string()));
@@ -110,7 +132,7 @@ impl TSInstance {
             env::var("LD_LIBRARY_PATH").unwrap_or("".to_string())
         );
 
-        let path_config = current_dir()?.join("ts").join(format!("{}", settings.id));
+        let path_config = current_dir()?.join("ts").join(format!("{}", id));
 
         if path_config.exists() && SETTINGS.ts.clear_config {
             remove_dir_all(&path_config).map_err(|e| TSInstanceErr::ConfigCreationIOError(e))?;
@@ -130,8 +152,15 @@ impl TSInstance {
             .env("KDEDIR", "")
             .env("KDEDIRS", "")
             .env("TS3_CONFIG_DIR", path_config.to_string_lossy().into_owned())
-            .env(TS_ENV_ID, settings.id.to_string())
-            .env(TS_ENV_CALLBACK, rpc_port.to_string())
+            .env(TS_ENV_ID, id.to_string())
+            .env(
+                TS_ENV_CALLBACK_INTERNAL,
+                format!("{}:{}", callback_host_internal, callback_port_internal),
+            )
+            .env(
+                TS_ENV_CALLBACK,
+                format!("{}:{}", callback_host, callback_port),
+            )
             .args(&["--auto-servernum", "--server-args=-screen 0 640x480x24:32"])
             .arg(path_binary.to_string_lossy().to_mut())
             .args(&SETTINGS.ts.additional_args_binary)
@@ -162,7 +191,6 @@ impl TSInstance {
         }
 
         Ok(TSInstance {
-            id: settings.id.clone(), // TODO decide for non copy solution
             process: cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?,
         })
     }
@@ -174,7 +202,7 @@ impl TSInstance {
             .arg(ppid.to_string())
             .output()?;
         trace!(
-            "pkill status: {} stderr: {:?}",
+            "ts pkill status: {} stderr: {:?}",
             output.status,
             output.stderr
         );
@@ -274,7 +302,14 @@ impl TSInstance {
     }
 
     pub fn kill(&mut self) -> Fallible<()> {
-        Ok(self.process.kill()?)
+        match self.process.kill() {
+            Err(ref e) if e.kind() == ErrorKind::InvalidInput => trace!("Xvfb already dead"),
+            Err(e) => return Err(e.into()),
+            Ok(_) => (),
+        }
+
+        TSInstance::wait_for_child_timeout(5000, &mut self.process)?;
+        Ok(())
     }
 
     pub fn is_running(&mut self) -> Fallible<bool> {

@@ -3,7 +3,7 @@
 CREATE TABLE `titles` (
   `id` CHAR(32) NOT NULL,
   `name` VARCHAR(250) NOT NULL,
-  `source` VARCHAR(255) NOT NULL,
+  `source` VARCHAR(2083) NOT NULL,
   `last_used` DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
   `downloaded` BIT NOT NULL,
   `keep` BIT DEFAULT 0 NOT NULL,

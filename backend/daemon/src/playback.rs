@@ -16,19 +16,16 @@
  */
 
 use failure::Fallible;
-use futures::sync::mpsc::{Receiver, Sender};
-use futures::Stream;
+use futures::sync::mpsc::Sender;
 use glib::FlagsClass;
 use gst;
 use gst::prelude::*;
 use gst_player::{self, Cast};
-use tokio::runtime;
 
 use std::path::Path;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
-use daemon::Instances;
-use instance::ID;
+use daemon::instance::ID;
 
 /// Playback abstraction
 
@@ -39,7 +36,7 @@ pub struct Position {
     pub seconds: u64,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PlaybackState {
     Stopped,
     Paused,
@@ -47,7 +44,7 @@ pub enum PlaybackState {
 }
 
 /// Player event types
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum PlayerEventType {
     UriLoaded,
     MediaInfoUpdated,
@@ -59,7 +56,7 @@ pub enum PlayerEventType {
 }
 
 /// Player event
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct PlayerEvent {
     pub id: ID,
     pub event_type: PlayerEventType,
@@ -80,11 +77,7 @@ pub struct Player {
     player: gst_player::Player,
     pulsesink: gst::Element,
     volume: RwLock<f64>,
-    /*// player name
-    name: String,
-    // ID of player
-    id: Arc<i32>,*/
-    state: RwLock<PlaybackState>,
+    state: Arc<RwLock<PlaybackState>>,
 }
 
 unsafe impl Send for Player {}
@@ -95,10 +88,8 @@ pub type PlaybackSender = Sender<PlayerEvent>;
 
 impl Player {
     /// Create new Player with given instance
-    pub fn new<T: Into<ID>>(events: PlaybackSender, id: T, volume: f64) -> Fallible<Player> {
+    pub fn new(events: PlaybackSender, id: ID, volume: f64) -> Fallible<Player> {
         debug!("player init");
-
-        let id = id.into(); // share it across all events
 
         let dispatcher = gst_player::PlayerGMainContextSignalDispatcher::new(None);
         let player = gst_player::Player::new(
@@ -110,7 +101,7 @@ impl Player {
         let mut config = player.get_config();
         config.set_position_update_interval(250);
 
-        let name = Player::get_name_by_id(&*id);
+        let name = Player::get_name_by_id(&id);
 
         config.set_name(&name);
         config.set_position_update_interval(250);
@@ -190,6 +181,9 @@ impl Player {
 
         let events_clone = events.clone();
         let id_clone = id.clone();
+
+        let state_store = Arc::new(RwLock::new(PlaybackState::Stopped));
+        let state_clone = state_store.clone();
         player.connect_state_changed(move |_, state| {
             let mut events = events_clone.clone();
             debug!("state changed: {:?}", state);
@@ -201,6 +195,7 @@ impl Player {
             };
             if let Some(s) = state {
                 let id = id_clone.clone();
+                *state_clone.write().expect("Can't read state store") = s.clone();
                 events
                     .try_send(PlayerEvent {
                         id,
@@ -241,7 +236,7 @@ impl Player {
             player,
             pulsesink,
             volume: RwLock::new(volume),
-            state: RwLock::new(PlaybackState::Stopped),
+            state: state_store,
         })
     }
 
@@ -321,6 +316,16 @@ impl Player {
         *self.state.read().expect("Can't read player state") == PlaybackState::Paused
     }
 
+    /// Whether player is currently playing
+    pub fn is_playing(&self) -> bool {
+        *self.state.read().expect("Can't read player state") == PlaybackState::Playing
+    }
+
+    /// Get playback state
+    pub fn get_state(&self) -> PlaybackState {
+        self.state.read().expect("Can't read player state!").clone()
+    }
+
     /// Set pulse device for player
     pub fn set_pulse_device(&self, device: &str) -> Fallible<()> {
         self.pulsesink
@@ -334,60 +339,6 @@ impl Player {
     }
 }
 
-/// Register event handler for playback in daemon
-pub fn create_playback_server(
-    runtime: &mut runtime::Runtime,
-    tx: Receiver<PlayerEvent>,
-    instances: Instances,
-) -> Fallible<()> {
-    let stream = tx.for_each(move |event| {
-        match event.event_type {
-            PlayerEventType::UriLoaded => {
-                trace!("URI loaded for {}", event.id);
-                let instances_r = instances.read().expect("Can't read instance!");
-                if let Some(v) = instances_r.get(&event.id) {
-                    v.player.play();
-                }
-            }
-            PlayerEventType::VolumeChanged(v) => {
-                trace!("Volume changed to {} for {}", v, event.id);
-            }
-            PlayerEventType::EndOfStream => {
-                trace!("End of stream for {}", event.id);
-                if let Some(v) = instances
-                    .read()
-                    .expect("Can't read instance!")
-                    .get(&event.id)
-                {
-                    v.end_of_stream();
-                } else {
-                    debug!("Instance not found {}", event.id);
-                }
-            }
-            PlayerEventType::StateChanged(state) => {
-                trace!("State changed for {}: {:?}", event.id, state);
-                if let Some(v) = instances
-                    .read()
-                    .expect("Can't read instance!")
-                    .get(&event.id)
-                {
-                    *v.player.state.write().unwrap() = state;
-                }
-            }
-            PlayerEventType::PositionUpdated => (), // silence
-            PlayerEventType::MediaInfoUpdated => (), // silence
-            PlayerEventType::Error(e) => {
-                warn!("Internal playback error for instance {}:\n{}", event.id, e);
-            }
-        }
-        Ok(())
-    });
-
-    runtime.spawn(stream);
-    debug!("Running ");
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -395,14 +346,12 @@ mod tests {
     use futures::sync::mpsc;
     use futures::Stream;
     use gst;
-    use std::sync::Arc;
     use std::thread;
     use std::time::Duration;
     use tokio::runtime::Runtime;
 
     lazy_static! {
-        // simplify downloader, perform startup_test just once, this also tests it on the fly
-        static ref TEST_ID: Arc<i32> = Arc::new(-1);
+        static ref TEST_ID: i32 = -1;
     }
 
     #[test]

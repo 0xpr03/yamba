@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Yamba Daemon Backend</title>
+</head>
+
+<body>
+  <h1>Yamba Backend Daemon</h1>
+  Instances:
+  <ul style="list-style-type:disc;">
+    {{#each instances}}
+    <li>ID:{{id}}:{{inst_type}} Playing:{{playing}} {{#if playing}}{{playback_info}} {{/if}}V:{{volume}}
+    </li>
+    {{/each}}
+  </ul>
+</body>
+
+</html>

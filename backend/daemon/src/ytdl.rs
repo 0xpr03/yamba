@@ -17,13 +17,13 @@
 
 use std::env::current_dir;
 use std::fs::{remove_file, rename, set_permissions, DirBuilder, File};
-use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader, ErrorKind, Read};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, RwLock};
 use std::thread;
+use yamba_types::track::Track;
 
 use failure::{Fallible, ResultExt};
 use serde_json;
@@ -48,160 +48,6 @@ lazy_static! {
     static ref LOCK: Arc<RwLock<()>> = Arc::new(RwLock::new(()));
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Track {
-    pub title: String,
-    pub id: String,
-    pub extractor: String,
-    pub duration: Option<f64>,
-    pub formats: Vec<Format>,
-    pub protocol: Option<String>,
-    pub webpage_url: String,
-    pub artist: Option<String>,
-    pub uploader: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Format {
-    pub filesize: Option<i64>,
-    pub format: String,
-    pub abr: Option<i64>,
-    // audio bit rate
-    pub format_id: String,
-    pub url: String,
-    pub protocol: Option<String>,
-    pub vcodec: Option<String>,
-    pub acodec: Option<String>,
-    // audio codec
-    pub http_headers: HttpHeaders,
-}
-
-impl Hash for Track {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.title.hash(state);
-        self.extractor.hash(state);
-    }
-}
-
-impl Track {
-    /// Takes the artist of this track
-    /// Can be uploader/artist
-    pub fn take_artist(&mut self) -> Option<String> {
-        if let Some(v) = self.artist.take() {
-            return Some(v);
-        } else if let Some(v) = self.uploader.take() {
-            return Some(v);
-        }
-        None
-    }
-
-    /// Duration as u32
-    pub fn duration_as_u32(&self) -> Option<u32> {
-        if let Some(v) = self.duration {
-            Some(v as u32)
-        } else {
-            None
-        }
-    }
-
-    /// Returns best audio format
-    pub fn best_audio_format(&self) -> Option<&Format> {
-        let track_audio = self.best_audio_only_format();
-        let track_mixed = self.best_mixed_audio_format();
-
-        if let Some(audio_track) = track_audio {
-            if let Some(mixed_track) = track_mixed {
-                let abr_audio = audio_track
-                    .abr
-                    .expect("No audio bitrate in audio-only track!");
-                if abr_audio >= mixed_track.abr.unwrap()
-                    || abr_audio >= SETTINGS.ytdl.min_audio_bitrate
-                {
-                    return Some(audio_track);
-                } else {
-                    return Some(mixed_track);
-                }
-            } else {
-                track_mixed
-            }
-        } else {
-            trace!("Using fallback track..");
-            self.formats.get(0)
-        }
-    }
-
-    /// Returns bests audio format with video
-    pub fn best_mixed_audio_format(&self) -> Option<&Format> {
-        Track::filter_best_audio_format(self.mixed_only_formats())
-    }
-
-    /// Returns format with best audio bitrate from input
-    pub fn filter_best_audio_format(formats: Vec<&Format>) -> Option<&Format> {
-        let mut max_bitrate: i64 = -1;
-        let mut max_format: Option<&Format> = None;
-
-        formats.into_iter().for_each(|format| {
-            if let Some(bitrate) = format.abr {
-                if max_bitrate < bitrate {
-                    max_bitrate = bitrate;
-                    max_format = Option::Some(format);
-                }
-            }
-        });
-        max_format
-    }
-
-    /// Returns best only-audio format
-    pub fn best_audio_only_format(&self) -> Option<&Format> {
-        Track::filter_best_audio_format(self.audio_only_formats())
-    }
-
-    /// Return audio+video formats
-    pub fn mixed_only_formats(&self) -> Vec<&Format> {
-        self.formats
-            .iter()
-            .filter(|f| f.has_audio() && f.has_video())
-            .collect()
-    }
-
-    /// Return audio only formats
-    pub fn audio_only_formats(&self) -> Vec<&Format> {
-        self.formats.iter().filter(|f| f.is_audio_only()).collect()
-    }
-}
-
-impl Format {
-    pub fn has_audio(&self) -> bool {
-        match self.acodec {
-            Some(ref ac) => ac != "none",
-            None => false,
-        }
-    }
-    pub fn has_video(&self) -> bool {
-        match self.vcodec {
-            Some(ref vc) => vc != "none",
-            None => false,
-        }
-    }
-    pub fn is_audio_only(&self) -> bool {
-        !self.has_video() && self.has_audio()
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct HttpHeaders {
-    #[serde(rename = "Accept-Charset")]
-    pub accept_charset: String,
-    #[serde(rename = "Accept-Language")]
-    pub accept_language: String,
-    #[serde(rename = "Accept-Encoding")]
-    pub accept_encoding: String,
-    #[serde(rename = "Accept")]
-    pub accept: String,
-    #[serde(rename = "User-Agent")]
-    pub user_agent: String,
-}
-
 #[derive(Fail, Debug)]
 pub enum YtDLErr {
     #[fail(display = "Pipe error processing ytdl output {}", _0)]
@@ -222,9 +68,10 @@ pub struct Version {
     sha256: String,
 }
 
+#[derive(Clone)]
 pub struct YtDL {
     // base dir from which ytdl is called
-    base: PathBuf,
+    base: Arc<PathBuf>,
 }
 
 impl YtDL {
@@ -239,32 +86,19 @@ impl YtDL {
             path = path_w.join(&SETTINGS.ytdl.dir);
         }
         DirBuilder::new().recursive(true).create(&path)?;
-        Ok(YtDL { base: path })
-    }
-
-    /// Get url info
-    pub fn get_url_info(&self, url: &str) -> Fallible<Track> {
-        let _guard = LOCK.read().unwrap();
-        let result = self
-            .cmd_base()
-            .arg("-j")
-            .arg("--no-playlist")
-            .arg(url)
-            .output()?;
-        let stderr = String::from_utf8_lossy(&result.stderr);
-        let stdout = String::from_utf8_lossy(&result.stdout);
-        debug!("stderr: {}", stderr);
-        println!("stdout: {}", stdout);
-        Ok(serde_json::from_str(&stdout)?)
+        Ok(YtDL {
+            base: Arc::new(path),
+        })
     }
 
     /// Get playlist info
-    pub fn get_playlist_info(&self, url: &str) -> Fallible<Vec<Track>> {
+    /// If url is no track, then only one track is returned
+    pub fn get_url_info(&self, url: &str) -> Fallible<Vec<Track>> {
         let _guard = LOCK.read().unwrap();
         let mut child = self
             .cmd_base()
             .arg("-j")
-            .arg("--yes-playlist")
+            .arg("--no-playlist")
             .arg(url)
             .stdin(Stdio::null())
             .stderr(Stdio::piped())
@@ -291,10 +125,17 @@ impl YtDL {
             .map(|res| Ok(serde_json::from_str(&(res?))?))
             .collect::<Fallible<Vec<Track>>>()?;
 
+        child.wait()?;
+
         match stderr_worker_handle.join() {
-            Ok(Ok(v)) => {
-                if v.len() > 0 {
-                    return Err(YtDLErr::ResponseError(format!("stderr: {}", v)).into());
+            Ok(Ok(stderr)) => {
+                // don't abort if some tracks fail (playlist..)
+                if stderr.len() > 0 {
+                    if tracks.len() == 0 {
+                        return Err(YtDLErr::ResponseError(format!("stderr: {}", stderr)).into());
+                    } else {
+                        warn!("Stderr from ytdl: {}", stderr);
+                    }
                 }
             }
             Ok(Err(e)) => return Err(e),
@@ -354,8 +195,9 @@ impl YtDL {
     /// create command base
     fn cmd_base(&self) -> Command {
         let mut cmd = Command::new(self.get_exec_path());
-        cmd.current_dir(&self.base);
-        cmd.arg("--no-warnings");
+        cmd.current_dir(self.base.as_path());
+        cmd.arg("--no-warnings"); // no warnings
+        cmd.arg("-i"); // no abort on errors for url (single tracks in playlist)
         cmd
     }
 
@@ -491,7 +333,7 @@ mod test {
         // simplify downloader, perform startup_test just once, this also tests it on the fly
         static ref DOWNLOADER: Arc<YtDL> = {
             let downloader = YtDL::new().unwrap();
-            // assert!(downloader.startup_test());
+            assert!(downloader.startup_test());
             Arc::new(downloader)
         };
     }
@@ -502,6 +344,9 @@ mod test {
         let output = DOWNLOADER
             .get_url_info("https://www.youtube.com/watch?v=Es44QTJmuZ0")
             .unwrap();
+
+        let output = &output[0];
+
         assert_eq!(Some(259.0), output.duration);
         assert_eq!(
             "HD SMPTE Color Bars & Tones 1920x1080 Test Pattern Jazz",
@@ -535,17 +380,29 @@ mod test {
         }
     }
 
+    // yt streams aren't permanent..
+    // thus we can't permanently test against this
+    #[test]
+    #[ignore]
+    fn test_stream_youtube() {
+        let output = DOWNLOADER
+            .get_url_info("https://www.youtube.com/watch?v=oI3GdbsbDxk")
+            .expect("can't get yt stream");
+
+        let output = &output[0];
+
+        assert_eq!(Some(0.0), output.duration, "failed for yt stream duration");
+        assert_eq!(Some("m3u8".into()), output.protocol);
+    }
+
     #[test]
     fn test_stream_info() {
         let output = DOWNLOADER
-            .get_url_info("https://www.youtube.com/watch?v=8XjDmVzqVUc")
-            .expect("can't get yt stream");
-        assert_eq!(Some(0.0), output.duration, "failed for yt stream duration");
-        assert_eq!(Some("m3u8".into()), output.protocol);
-
-        let output = DOWNLOADER
             .get_url_info("http://yp.shoutcast.com/sbin/tunein-station.m3u?id=1796249")
             .expect("can't get sc stream");
+
+        let output = &output[0];
+
         assert_eq!(
             None, output.duration,
             "failed for shoutcast stream duration"
@@ -560,13 +417,27 @@ mod test {
                 "https://soundcloud.com/djsusumu/alan-walker-faded-susumu-melbourne-bounce-edit",
             )
             .unwrap();
+
+        let output = &output[0];
+
         assert_eq!(Some(144.0), output.duration);
         assert_eq!(Some("https".into()), output.protocol);
     }
 
     #[test]
-    fn test_yt_playlist_info() {
-        let output = DOWNLOADER.get_playlist_info("https://www.youtube.com/watch?v=kYdrd4Kspxg&list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6&index=2&t=0s").unwrap();
+    fn test_yt_playlist_info_track() {
+        let output = DOWNLOADER.get_url_info("https://www.youtube.com/watch?v=kYdrd4Kspxg&list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6&index=2&t=0s").unwrap();
+        println!("{:?}", output);
+        assert_eq!(1, output.len());
+    }
+
+    #[test]
+    fn test_yt_playlist_info_playlist() {
+        let output = DOWNLOADER
+            .get_url_info(
+                "https://www.youtube.com/playlist?list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6",
+            )
+            .unwrap();
         println!("{:?}", output);
         assert_eq!(8, output.len());
     }

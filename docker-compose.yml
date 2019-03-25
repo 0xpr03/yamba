@@ -3,36 +3,6 @@
 version: '3'
 
 services:
-  database:
-    container_name: database
-    image: mariadb:10.3.10-bionic
-    restart: always
-    ports:
-      - 3306:3306
-    volumes:
-      - ./dbInit:/docker-entrypoint-initdb.d
-#      - ./database:/var/lib/mysql
-    env_file:
-      - ./config/database.env
-      - ./config/database_root.env
-    environment:
-      MYSQL_DATABASE: "${YAMBA_DATABASE_DATABASE}"
-      MYSQL_USER: "${YAMBA_DATABASE_USER}"
-      MYSQL_PASSWORD: "${YAMBA_DATABASE_PASSWORD}"
-      MYSQL_ROOT_PASSWORD: "${YAMBA_DATABASE_ROOT_PASSWORD}"
-
-  frontend:
-    container_name: frontend
-    build: ./frontend
-    ports:
-      - 9000:80
-#    volumes:
-#      - ./frontend/public_html:/var/www/html
-    env_file:
-      - ./config/frontend.env
-      - ./config/database.env
-      - ./config/database_root.env
-
   backend:
     container_name: backend
     build: ./backend
@@ -43,9 +13,5 @@ services:
       - ./backend/ts3client:/opt/ts3client
     env_file:
       - ./config/backend.env
-    environment:
-      yamba_db__host: "${YAMBA_DATABASE_HOST}"
-      yamba_db__port: "${YAMBA_DATABASE_PORT}"
-      yamba_db__user: "${YAMBA_DATABASE_USER}"
-      yamba_db__db: "${YAMBA_DATABASE_DATABASE}"
-      yamba_db__password: "${YAMBA_DATABASE_PASSWORD}"
+    cap_add:
+      - SYS_NICE
