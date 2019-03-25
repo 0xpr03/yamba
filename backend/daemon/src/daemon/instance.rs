@@ -408,6 +408,7 @@ impl Teamspeak {
     }
 }
 
+/// Convert PlaybackState from Player to PlayerState from Types
 #[inline(always)]
 fn playback_to_public_state(state: PlaybackState) -> Playstate {
     match state {
