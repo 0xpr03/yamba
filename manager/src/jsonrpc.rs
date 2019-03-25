@@ -26,6 +26,7 @@ use jsonrpc_core::*;
 use jsonrpc_http_server::*;
 use owning_ref::OwningRef;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use serde_json;
 use yamba_types::rpc::*;
 
@@ -33,6 +34,31 @@ use std::net::SocketAddr;
 use std::sync::RwLockReadGuard;
 
 use crate::instance::{Instance, Instances};
+
+// macro_rules! rpc {
+//     $( $x:expr,$type:ident,$io:expr,$ ) => {
+//         {
+//             $io.add_method($x, move |data: Params| {
+// 			parse_input_instance(inst_c.clone(), data, |v: $type, inst| {
+// 				match inst.set_volume(v.volume) {
+// 					Err(e) => Either::A(send_internal_server_error(e)),
+// 					Ok(val) => Either::B(
+// 						val.map_err(|e| {
+// 							warn!("Unable to set volume: {}", e);
+// 							Error {
+// 								data: None,
+// 								message: e.to_string(),
+// 								code: error::ErrorCode::InternalError,
+// 							}
+// 						})
+// 						.map(|_| serde_json::to_value(response_ignore()).unwrap()),
+// 					),
+// 				}
+// 			})
+// 		});
+//         }
+//     };
+// }
 
 /// Parse input and call fn on success
 fn parse_input<T, F, D>(data: Params, foo: F) -> impl Future<Item = Value, Error = Error>
@@ -68,6 +94,20 @@ where
 		}
 	})
 }
+
+/// Helper method to add rpc
+// fn add_rpc<T, F, D>(io: &mut IoHandler, instances: Instances, foo: F, method: &str)
+// where
+// 	F: Fn(T, InstanceRef) -> D + Send + Sync + 'static,
+// 	T: DeserializeOwned + 'static + GetId + Send,
+// 	D: Future<Item = Value, Error = Error> + Send + 'static,
+// {
+// 	let inst_c = instances.clone();
+// 	io.add_method(method, move |data: Params| {
+// 		let inst_b = inst_c.clone();
+// 		parse_input_instance(inst_b, data, |v: T, inst| foo(v, inst))
+// 	});
+// }
 
 /// Helper to send failure as 500 status
 fn send_internal_server_error(err: failure::Error) -> impl Future<Item = Value, Error = Error> {
