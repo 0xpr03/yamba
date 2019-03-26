@@ -144,7 +144,8 @@ impl Instance {
 
     /// Update volume, inteded for callbacks
     pub fn cb_update_volume(&self, volume: Volume) {
-        debug!("Volume change: {}", volume);
+        let mut vol_w = self.volume.write().expect("Can't lock volume!");
+        *vol_w = volume;
     }
 
     /// Return volume set future
@@ -153,9 +154,6 @@ impl Instance {
         &self,
         v: Volume,
     ) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
-        let mut vol_w = self.volume.write().expect("Can't lock volume!");
-        *vol_w = v.clone();
-        drop(vol_w);
         Ok(self.backend.set_volume(&VolumeSetReq {
             id: self.get_id(),
             volume: v,
