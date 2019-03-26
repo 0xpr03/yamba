@@ -50,6 +50,6 @@ http = "0.1"
 tower-web = "0.3"
 
 [dependencies.yamba_types]
-path = "../../types"
+path = "../types"
 version = "0"
 features = ["track","tower"]

@@ -51,7 +51,7 @@ RUN USER=root ~/.cargo/bin/cargo new --lib --vcs none ts3plugin
 RUN USER=root ~/.cargo/bin/cargo new --bin --vcs none daemon
 
 # types
-WORKDIR /opt/types
+WORKDIR /opt/yamba/types
 COPY ./types ./
 RUN ~/.cargo/bin/cargo build
 

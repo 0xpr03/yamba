@@ -29,7 +29,7 @@ git = "https://github.com/0xpr03/rust-ts3plugin"
 branch = "master"
 
 [dependencies.yamba_types]
-path = "../../types"
+path = "../types"
 version = "0"
 default-features = false
 features = ["rpc"]
