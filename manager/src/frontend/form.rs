@@ -22,12 +22,32 @@ use yamba_types::ID;
 #[derive(Debug, Deserialize)]
 pub struct TSCreate {
     pub host: String,
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub port: Option<u16>,
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub cid: Option<i32>,
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub password: Option<String>,
     pub id: ID,
     pub name: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::*;
+    use serde_urlencoded;
+    #[test]
+    fn parse_form() {
+        let _v: TSCreate = serde_json::from_str(r#" {"id":1, "name":"myYAMBAInstance", "host":"ek.proctet.net", "password":"", "port":null, "cid":5369 }"#).unwrap();
+
+        let v = serde_urlencoded::from_str::<TSCreate>(
+            r#"id=1&name=myYAMBAInstance&host=ek.proctet.net&password=&port=&cid=5369"#,
+        );
+        if let Err(ref e) = v {
+            println!("{}", e);
+        }
+
+        v.unwrap();
+    }
 }

@@ -30,13 +30,13 @@
                 <div class="input-group-prepend">
                     <span class="input-group-text" id="basic-addon1">Port</span>
                 </div>
-                <input type="text" name="port" class="form-control" aria-describedby="basic-addon1">
+                <input type="number" name="port" class="form-control" aria-describedby="basic-addon1">
             </div>
             <div class="input-group mb-3">
                 <div class="input-group-prepend">
                     <span class="input-group-text" id="basic-addon1">cID</span>
                 </div>
-                <input type="text" name="cid" class="form-control" aria-describedby="basic-addon1">
+                <input type="number" name="cid" class="form-control" aria-describedby="basic-addon1">
             </div>
             <input type="submit" value="Create & Run" class="btn btn-primary btn-lg">
         </form>
@@ -48,6 +48,12 @@
     <script>
         $("#tsForm").submit(function (e) {
             e.preventDefault();
+            $(this)
+                .find('input')
+                .filter(function () {
+                    return !this.value;
+                })
+                .prop('name', '');
             $('#alert').hide();
             $('#alert').empty();
             var form = $(this);

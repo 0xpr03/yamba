@@ -28,3 +28,6 @@ actix = "0.7"
 version = "0"
 path = "../backend/types"
 features = ["rest","rpc"]
+
+[dev-dependencies]
+serde_urlencoded = "0.5"
