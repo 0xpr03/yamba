@@ -82,17 +82,9 @@ pub fn handle_create_ts(
                             .content_type("text/plain")
                             .body(format!("Error during start {:?}", e)),
                     },
-                    Ok(_response) => {
-                        // if response.success {
-                        HttpResponse::Ok()
-                            .content_type("text/plain")
-                            .body(format!("Started instance."))
-                        // } else {
-                        //     HttpResponse::InternalServerError()
-                        //         .content_type("text/plain")
-                        //         .body(format!("Error during start {:?}", response.msg))
-                        // }
-                    }
+                    Ok(_response) => HttpResponse::Ok()
+                        .content_type("text/plain")
+                        .body(format!("Started instance.")),
                 }))
             })),
             Err(e) => Either::B(result(Ok(HttpResponse::InternalServerError()

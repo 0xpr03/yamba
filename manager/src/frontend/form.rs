@@ -35,7 +35,7 @@ pub struct TSCreate {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::*;
+    use serde_json;
     use serde_urlencoded;
     #[test]
     fn parse_form() {
