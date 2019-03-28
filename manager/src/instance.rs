@@ -15,10 +15,10 @@
  *  limitations under the License.
  */
 
+use actix::{registry::SystemService, spawn};
 use failure::Fallible;
 use futures::future::Future;
 use hashbrown::HashMap;
-use tokio::runtime::Runtime;
 use yamba_types::models::{
     callback::{InstanceState, Playstate},
     DefaultResponse, InstanceLoadReq, InstanceStopReq, PlaybackUrlReq, ResolveRequest,
@@ -31,6 +31,7 @@ use std::sync::{
 };
 
 use crate::backend::Backend;
+use crate::frontend;
 use crate::playlist::Playlist;
 
 pub type Instances = Arc<RwLock<HashMap<ID, Instance>>>;
@@ -70,6 +71,12 @@ pub fn create_instances() -> Instances {
 #[allow(unused)]
 impl Instance {
     pub fn new(id: ID, backend: Backend, model: InstanceLoadReq) -> Instance {
+        spawn(
+            frontend::WSServer::from_registry()
+                .send(frontend::InstanceCreated { id: id.clone() })
+                .map_err(|e| warn!("WS-Server error: {}", e)),
+        );
+
         Instance {
             id,
             playlist: SPlaylist::new(),
@@ -127,8 +134,8 @@ impl Instance {
     }
 
     /// Start instance, ignore outcome spawn on runtime
-    pub fn start_with_rt(&mut self, rt: &mut Runtime) -> Fallible<()> {
-        rt.spawn(self.start()?.map_err(|e| error!("{:?}", e)).map(|_| ()));
+    pub fn start_with_rt(&mut self) -> Fallible<()> {
+        spawn(self.start()?.map_err(|e| error!("{:?}", e)).map(|_| ()));
         Ok(())
     }
 

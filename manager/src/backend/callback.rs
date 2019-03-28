@@ -115,17 +115,6 @@ fn callback_resolve(
     HttpResponse::Ok().json(true)
 }
 
-/// Guard that automatically shuts down the server on drop
-pub struct ShutdownGuard {
-    sender: mpsc::Sender<usize>,
-}
-
-impl Drop for ShutdownGuard {
-    fn drop(&mut self) {
-        let _ = self.sender.try_send(1);
-    }
-}
-
 #[derive(Clone)]
 struct CallbackState {
     backend: Backend,
@@ -138,53 +127,45 @@ pub fn init_callback_server(
     instances: Instances,
     callback_server: SocketAddr,
     _tickets: super::TicketHandler,
-) -> Fallible<ShutdownGuard> {
+) -> Fallible<()> {
     let state = CallbackState {
         backend: backend.clone(),
         instances,
     };
+    server::new(move || {
+        App::with_state(state.clone())
+            .middleware(middleware::Logger::new("manager::api::backend::callback"))
+            .middleware(SecurityModule::new(backend.addr.ip()))
+            .resource(cb::PATH_INSTANCE, |r| {
+                r.method(http::Method::POST)
+                    .with_config(callback_instance, |((cfg, _),)| {
+                        cfg.limit(4096);
+                    })
+            })
+            .resource(cb::PATH_VOLUME, |r| {
+                r.method(http::Method::POST)
+                    .with_config(callback_volume, |((cfg, _),)| {
+                        cfg.limit(4096);
+                    })
+            })
+            .resource(cb::PATH_PLAYBACK, |r| {
+                r.method(http::Method::POST)
+                    .with_config(callback_playback, |((cfg, _),)| {
+                        cfg.limit(4096);
+                    })
+            })
+            .resource(cb::PATH_RESOLVE, |r| {
+                r.method(http::Method::POST)
+                    .with_config(callback_resolve, |((cfg, _),)| {
+                        cfg.limit(256096);
+                    })
+            })
+    })
+    .bind(callback_server)
+    .map_err(|e| ServerErr::BindFailed(e))
+    .unwrap()
+    .shutdown_timeout(1)
+    .start();
 
-    let (tx, rx) = mpsc::channel(1);
-    thread::spawn(move || {
-        let mut sys = System::new("callback_server");
-        server::new(move || {
-            App::with_state(state.clone())
-                .middleware(middleware::Logger::new("manager::api::backend::callback"))
-                .middleware(SecurityModule::new(backend.addr.ip()))
-                .resource(cb::PATH_INSTANCE, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_instance, |((cfg, _),)| {
-                            cfg.limit(4096);
-                        })
-                })
-                .resource(cb::PATH_VOLUME, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_volume, |((cfg, _),)| {
-                            cfg.limit(4096);
-                        })
-                })
-                .resource(cb::PATH_PLAYBACK, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_playback, |((cfg, _),)| {
-                            cfg.limit(4096);
-                        })
-                })
-                .resource(cb::PATH_RESOLVE, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_resolve, |((cfg, _),)| {
-                            cfg.limit(256096);
-                        })
-                })
-        })
-        .bind(callback_server)
-        .map_err(|e| ServerErr::BindFailed(e))
-        .unwrap()
-        .shutdown_timeout(1)
-        .run();
-
-        sys.block_on(rx.into_future().map(|_| println!("received shutdown")))
-            .unwrap();
-    });
-
-    Ok(ShutdownGuard { sender: tx })
+    Ok(())
 }

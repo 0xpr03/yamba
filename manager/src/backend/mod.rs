@@ -18,11 +18,11 @@
 pub mod callback;
 pub mod tickets;
 
+use actix::spawn;
 use failure::Fallible;
 use futures::future::Future;
 use reqwest::{self, header, r#async::*};
 use serde::Serialize;
-use tokio::executor::{DefaultExecutor, Executor, SpawnError};
 use yamba_types::models;
 
 use std::fmt::Debug;
@@ -31,12 +31,6 @@ use std::net::SocketAddr;
 use self::tickets::TicketHandler;
 
 use crate::instance::Instances;
-
-#[derive(Fail, Debug)]
-pub enum BackendErr {
-    #[fail(display = "Failed to execute future {}", _0)]
-    ExcecutionFailed(#[cause] SpawnError),
-}
 
 #[derive(Clone)]
 pub struct Backend {
@@ -52,7 +46,7 @@ impl Backend {
         instances: Instances,
         api_secret: &str,
         callback_bind: SocketAddr,
-    ) -> Fallible<(Backend, callback::ShutdownGuard)> {
+    ) -> Fallible<Backend> {
         let mut headers = header::HeaderMap::new();
         headers.insert(
             header::USER_AGENT,
@@ -72,7 +66,7 @@ impl Backend {
         let shutdown_guard =
             callback::init_callback_server(backend.clone(), instances, callback_bind, tickets)?;
 
-        Ok((backend, shutdown_guard))
+        Ok(backend)
     }
 
     /// Returns ticket handler
@@ -85,9 +79,7 @@ impl Backend {
     where
         T: Future<Item = (), Error = ()> + Send + 'static,
     {
-        DefaultExecutor::current()
-            .spawn(Box::new(fut))
-            .map_err(|v| BackendErr::ExcecutionFailed(v))?;
+        spawn(fut);
         Ok(())
     }
 
@@ -98,13 +90,11 @@ impl Backend {
         V: Debug,
         E: Debug,
     {
-        DefaultExecutor::current()
-            .spawn(Box::new(
-                fut.map(|x| trace!("Request response: {:?}", x))
-                    .map(|_| ())
-                    .map_err(|err| warn!("Error sending api request: {:?}", err)),
-            ))
-            .map_err(|v| BackendErr::ExcecutionFailed(v))?;
+        spawn(
+            fut.map(|x| trace!("Request response: {:?}", x))
+                .map(|_| ())
+                .map_err(|err| warn!("Error sending api request: {:?}", err)),
+        );
         Ok(())
     }
 

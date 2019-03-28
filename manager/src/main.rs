@@ -21,10 +21,10 @@ use clap::{App, Arg, ArgMatches};
 use failure::Fallible;
 #[macro_use]
 extern crate log;
+use actix::System;
 use env_logger::{self, Env};
 use futures::future::Future;
 use futures::stream::Stream;
-use tokio::runtime::Runtime;
 use tokio_signal;
 use yamba_types::models::{InstanceLoadReq, InstanceType, TSSettings};
 
@@ -124,11 +124,11 @@ fn main() -> Fallible<()> {
     let addr_callback_bind: SocketAddr = matches.value_of("callback").unwrap().parse()?;
     let api_secret = matches.value_of("api_secret").unwrap();
 
+    let mut sys = System::new("manager");
+
     let instances = instance::create_instances();
 
-    let mut runtime = Runtime::new()?;
-
-    let (backend, _shutdown_guard) = backend::Backend::new(
+    let backend = backend::Backend::new(
         addr_daemon,
         instances.clone(),
         api_secret,
@@ -141,17 +141,16 @@ fn main() -> Fallible<()> {
         instances.clone(),
     )?;
 
-    match create_instance_cmd(&backend, &instances, &matches, &mut runtime) {
+    match create_instance_cmd(&backend, &instances, &matches) {
         Err(e) => error!("Error during test-cmd handling: {}", e),
         Ok(_) => (),
     }
 
-    let _shutdown_guard_frontend =
-        frontend::init_frontend_server(&instances, &backend, addr_frontend)?;
+    frontend::init_frontend_server(instances.clone(), backend.clone(), addr_frontend)?;
 
     let ctrl_c = tokio_signal::ctrl_c().flatten_stream().into_future();
 
-    match runtime.block_on(ctrl_c) {
+    match sys.block_on(ctrl_c) {
         Err(_e) => {
             // first tuple element conains error, but is neither display nor debug..
             error!("Error in signal handler");
@@ -159,8 +158,6 @@ fn main() -> Fallible<()> {
         }
         Ok(_) => (),
     };
-
-    drop(_shutdown_guard);
     Ok(())
 }
 
@@ -169,7 +166,6 @@ fn create_instance_cmd(
     backend: &backend::Backend,
     instances: &instance::Instances,
     args: &ArgMatches,
-    rt: &mut Runtime,
 ) -> Fallible<()> {
     if let Some(addr) = args.value_of("ts") {
         let _pw = args.value_of("pw");
@@ -199,7 +195,7 @@ fn create_instance_cmd(
         inst_w.insert(1, instance::Instance::new(1, backend.clone(), model));
 
         let inst = inst_w.get_mut(&1).expect("Invalid identifier ?");
-        inst.start_with_rt(rt)?;
+        inst.start_with_rt()?;
     }
 
     Ok(())
