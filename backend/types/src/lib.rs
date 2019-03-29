@@ -27,6 +27,9 @@ pub mod models;
 pub mod rpc;
 #[cfg(feature = "track")]
 pub mod track;
+#[cfg(feature = "message")]
+#[macro_use]
+extern crate actix;
 
 pub type ID = i32;
 

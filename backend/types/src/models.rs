@@ -60,6 +60,7 @@ pub struct PlaybackUrlReq {
 /// Volume set data
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Extract))]
+#[cfg_attr(feature = "message", derive(Message))]
 pub struct VolumeSetReq {
     pub id: ID,
     pub volume: Volume,
@@ -217,6 +218,7 @@ pub mod callback {
     }
 
     #[derive(Debug, Serialize, Deserialize)]
+    #[cfg_attr(feature = "message", derive(Message))]
     pub struct PlaystateResponse {
         pub state: Playstate,
         pub id: ID,
