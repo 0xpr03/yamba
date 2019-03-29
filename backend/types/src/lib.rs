@@ -30,6 +30,7 @@ pub mod track;
 
 pub type ID = i32;
 
+#[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ErrorCodes {
     NONE = 0,
