@@ -153,6 +153,14 @@ impl Instance {
     pub fn cb_update_volume(&self, volume: Volume) {
         let mut vol_w = self.volume.write().expect("Can't lock volume!");
         *vol_w = volume;
+        spawn(
+            frontend::WSServer::from_registry()
+                .send(VolumeSetReq {
+                    id: self.get_id(),
+                    volume: volume.clone(),
+                })
+                .map_err(|e| warn!("WS-Server error: {}", e)),
+        );
     }
 
     /// Return volume set future

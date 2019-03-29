@@ -2,10 +2,12 @@ use actix::prelude::*;
 use actix::{registry::SystemService, *};
 use actix_web::{ws, Error, HttpRequest, HttpResponse};
 use rand::{self, rngs::ThreadRng, Rng};
-use yamba_types::models::ID;
+use serde::Serialize;
+use yamba_types::models::{self, ID};
 
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
+use std::sync::Arc;
 
 use super::*;
 
@@ -15,6 +17,20 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub type WSState = Addr<WSServer>;
+
+#[derive(Fail, Debug)]
+pub enum WsErr {
+    #[fail(display = "Can't send msg to unknown instance {}", _0)]
+    InvalidInstance(ID),
+}
+
+#[derive(Message,Serialize)]
+pub enum Message {
+    VolumeChange(models::VolumeSetReq),
+    InstancePlayback(models::callback::PlaystateResponse),
+    InstanceCreated(ID),
+
+}
 
 struct WsSession {
     /// unique session id
@@ -26,10 +42,20 @@ struct WsSession {
     instance: ID,
 }
 
-impl Handler<Message> for WsSession {
+/// Raw Message of a String which allows seriializing once and sending to multiple recipients
+#[derive(Message,Clone)]
+pub struct RawMessage(pub Arc<String>);
+
+impl RawMessage {
+    pub fn new(msg: &Message) -> RawMessage {
+        RawMessage(Arc::new(serde_json::to_string(msg).unwrap()))
+    }
+}
+
+impl Handler<RawMessage> for WsSession {
     type Result = ();
 
-    fn handle(&mut self, msg: Message, ctx: &mut Self::Context) {
+    fn handle(&mut self, msg: RawMessage, ctx: &mut Self::Context) {
         ctx.text(msg.0);
     }
 }
@@ -143,12 +169,11 @@ pub fn ws_route(req: &HttpRequest<FrState>) -> Result<HttpResponse, Error> {
     )
 }
 
-#[derive(Message)]
-pub struct Message(pub String);
+
 
 /// WebsocketServer - holds all connected clients
 pub struct WSServer {
-    sessions: HashMap<usize, Recipient<Message>>,
+    sessions: HashMap<usize, Recipient<RawMessage>>,
     instances: HashMap<ID, HashSet<usize>>,
     rng: ThreadRng,
 }
@@ -158,25 +183,31 @@ impl Supervised for WSServer {}
 
 impl WSServer {
     /// Send message to all clients for an instance
-    fn send_message(&self, instance: &ID, message: &str, skip_id: usize) {
+    fn send_message(&self, instance: &ID, message: &Message, skip_id: usize) -> Fallible<()> {
         if let Some(sessions) = self.instances.get(instance) {
+            let msg = RawMessage::new(message);
             for id in sessions {
                 debug!("Evaluating to {}", id);
                 if *id != skip_id {
                     debug!("Sending to {}", id);
                     if let Some(addr) = self.sessions.get(id) {
-                        let _ = addr.do_send(Message(message.to_owned()));
+                        let _ = addr.do_send(msg.clone());
                     }
                 }
             }
+
+            Ok(())
+        } else {
+            Err(WsErr::InvalidInstance(instance.clone()).into())
         }
     }
 
     /// Send global message to all clients
-    fn send_global_message(&self, message: &str) {
+    fn send_global_message(&self, message: &Message)
+    {
         for (id, client) in self.sessions.iter() {
             debug!("Sending to {:?}", id);
-            let _ = client.do_send(Message(message.to_owned()));
+            let _ = client.do_send(RawMessage::new(message));
         }
     }
 }
@@ -205,7 +236,7 @@ impl Actor for WSServer {
 #[derive(Message)]
 #[rtype(usize)]
 pub struct Connect {
-    pub addr: Recipient<Message>,
+    pub addr: Recipient<RawMessage>,
 }
 
 impl Handler<Connect> for WSServer {
@@ -213,9 +244,6 @@ impl Handler<Connect> for WSServer {
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
         println!("Someone joined");
-
-        // notify all users in same room
-        self.send_message(&1, "Someone joined", 0);
 
         // register session with random id
         let id = self.rng.gen::<usize>();
@@ -244,7 +272,18 @@ impl Handler<InstanceCreated> for WSServer {
         self.instances.insert(msg.id, HashSet::new());
 
         // send message to other users
-        self.send_global_message("Instance created");
+        self.send_global_message(&Message::InstanceCreated(msg.id));
+    }
+}
+
+/// Internal: Send instance volume change
+impl Handler<models::VolumeSetReq> for WSServer {
+    type Result = ();
+
+    fn handle(&mut self, msg: models::VolumeSetReq, _: &mut Context<Self>) {
+        debug!("Volume changed {}", msg.id);
+
+        self.send_message(&msg.id.clone(), &Message::VolumeChange(msg), 0);
     }
 }
 
@@ -269,10 +308,6 @@ impl Handler<Disconnect> for WSServer {
                     instances.push(id.to_owned());
                 }
             }
-        }
-        // send message to other users
-        for instance in instances {
-            self.send_message(&instance, "Someone disconnected", 0);
         }
     }
 }
@@ -299,16 +334,11 @@ impl Handler<Use> for WSServer {
                 instances.push(n.to_owned());
             }
         }
-        // send message to other users
-        for instance in instances {
-            self.send_message(&instance, "Someone disconnected", 0);
-        }
 
         if self.instances.get_mut(&instance).is_none() {
             //TODO: handle invalid instance
             // self.instances.insert(name.clone(), HashSet::new());
         }
-        self.send_message(&instance, "Someone connected", id);
         self.instances.get_mut(&instance).unwrap().insert(id);
     }
 }

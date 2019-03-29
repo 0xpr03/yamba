@@ -26,7 +26,7 @@ actix = "0.7"
 [dependencies.yamba_types]
 version = "0"
 path = "../backend/types"
-features = ["rest","rpc"]
+features = ["rest","rpc","message"]
 
 [dev-dependencies]
 serde_urlencoded = "0.5"
