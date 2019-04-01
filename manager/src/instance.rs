@@ -22,9 +22,8 @@ use futures::future::Future;
 use hashbrown::HashMap;
 use owning_ref::OwningRef;
 use yamba_types::models::{
-    callback::{InstanceState, Playstate},
-    DefaultResponse, InstanceLoadReq, InstanceStopReq, PlaybackUrlReq, ResolveRequest,
-    ResolveTicketResponse, Song, TimeMS, Volume, VolumeSetReq, ID,
+    callback::{InstanceState, Playstate, PlaystateResponse},
+    *,
 };
 
 use std::ops::Deref;
@@ -296,8 +295,16 @@ impl Instance {
             .store(state.clone() as usize, Ordering::Relaxed);
         match state {
             Playstate::EndOfMedia => self.song_end(),
-            v => debug!("Playback change: {:?}", v),
+            ref v => debug!("Playback change: {:?}", v),
         }
+        spawn(
+            frontend::WSServer::from_registry()
+                .send(PlaystateResponse {
+                    id: self.get_id(),
+                    state: state,
+                })
+                .map_err(|e| warn!("WS-Server error: {}", e)),
+        );
     }
 
     /// Handle end of current song

@@ -16,7 +16,9 @@
  */
 
 use super::*;
-use actix::System;
+use crate::frontend;
+
+use actix::SystemService;
 use actix_web::{
     error::Result,
     http,
@@ -114,8 +116,12 @@ fn callback_resolve(
 fn callback_position(
     (data, req): (Json<cb::TrackPositionUpdate>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
-    debug!("Position callback: {:?}", data);
     req.state().instances.set_pos(data.id, data.position_ms);
+    spawn(
+        frontend::WSServer::from_registry()
+            .send(data.into_inner())
+            .map_err(|e| warn!("WS-Server error: {}", e)),
+    );
     HttpResponse::Ok().json(true)
 }
 

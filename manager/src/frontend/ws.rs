@@ -1,13 +1,30 @@
+/*
+ *  YAMBA manager
+ *  Copyright (C) 2019 Aron Heinecke
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 use actix::prelude::*;
-use actix::{registry::SystemService, *};
+use actix::registry::SystemService;
 use actix_web::{ws, Error, HttpRequest, HttpResponse};
 use rand::{self, rngs::ThreadRng, Rng};
 use serde::Serialize;
 use yamba_types::models::{self, ID};
 
 use std::collections::{HashMap, HashSet};
-use std::time::{Duration, Instant};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use super::*;
 
@@ -16,20 +33,23 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
-pub type WSState = Addr<WSServer>;
-
 #[derive(Fail, Debug)]
 pub enum WsErr {
     #[fail(display = "Can't send msg to unknown instance {}", _0)]
     InvalidInstance(ID),
 }
 
-#[derive(Message,Serialize)]
+#[derive(Message, Serialize)]
 pub enum Message {
     VolumeChange(models::VolumeSetReq),
     InstancePlayback(models::callback::PlaystateResponse),
     InstanceCreated(ID),
+    PositionUpdate(models::callback::TrackPositionUpdate),
+}
 
+#[derive(Serialize)]
+pub enum ClientMessage {
+    VolumeCHange(models::VolumeSetReq),
 }
 
 struct WsSession {
@@ -43,7 +63,7 @@ struct WsSession {
 }
 
 /// Raw Message of a String which allows seriializing once and sending to multiple recipients
-#[derive(Message,Clone)]
+#[derive(Message, Clone)]
 pub struct RawMessage(pub Arc<String>);
 
 impl RawMessage {
@@ -82,7 +102,8 @@ impl Actor for WsSession {
             .wait(ctx);
     }
 
-    fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
+    fn stopping(&mut self, _ctx: &mut Self::Context) -> Running {
+        // TODO: remove client from internal state ?
         WSServer::from_registry().do_send(Disconnect { id: self.id });
         Running::Stop
     }
@@ -135,7 +156,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
                     // })
                 }
             }
-            ws::Message::Binary(bin) => println!("Unexpected binary"),
+            ws::Message::Binary(_) => warn!("Unexpected binary"),
             ws::Message::Close(_) => {
                 ctx.stop();
             }
@@ -169,8 +190,6 @@ pub fn ws_route(req: &HttpRequest<FrState>) -> Result<HttpResponse, Error> {
     )
 }
 
-
-
 /// WebsocketServer - holds all connected clients
 pub struct WSServer {
     sessions: HashMap<usize, Recipient<RawMessage>>,
@@ -203,8 +222,7 @@ impl WSServer {
     }
 
     /// Send global message to all clients
-    fn send_global_message(&self, message: &Message)
-    {
+    fn send_global_message(&self, message: &Message) {
         for (id, client) in self.sessions.iter() {
             debug!("Sending to {:?}", id);
             let _ = client.do_send(RawMessage::new(message));
@@ -284,6 +302,28 @@ impl Handler<models::VolumeSetReq> for WSServer {
         debug!("Volume changed {}", msg.id);
 
         self.send_message(&msg.id.clone(), &Message::VolumeChange(msg), 0);
+    }
+}
+
+/// Internal, Send instance track position update
+impl Handler<models::callback::TrackPositionUpdate> for WSServer {
+    type Result = ();
+
+    fn handle(&mut self, msg: models::callback::TrackPositionUpdate, _: &mut Context<Self>) {
+        debug!("Volume changed {}", msg.id);
+
+        self.send_message(&msg.id.clone(), &Message::PositionUpdate(msg), 0);
+    }
+}
+
+/// Internal, Send instance playback state
+impl Handler<models::callback::PlaystateResponse> for WSServer {
+    type Result = ();
+
+    fn handle(&mut self, msg: models::callback::PlaystateResponse, _: &mut Context<Self>) {
+        debug!("Volume changed {}", msg.id);
+
+        self.send_message(&msg.id.clone(), &Message::InstancePlayback(msg), 0);
     }
 }
 
