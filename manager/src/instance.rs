@@ -137,22 +137,23 @@ impl Instance {
         }
     }
 
-    fn format_time(length: Option<TimeMS>) -> String {
+    /// Format time from seconds!
+    fn format_time(length: Option<u32>) -> String {
         match length {
             Some(v) => format!("{:02}:{:02}", v / 60, v % 60),
             None => String::from("--:--"),
         }
     }
 
+    /// Format track to human readable display
     fn format_track(song: &Song, position: Option<TimeMS>) -> String {
         let artist = song
             .artist
             .as_ref()
             .map_or(String::new(), |a| format!(" - {}", a));
-        let pos = if position.is_some() {
-            format!("{}/", Self::format_time(position))
-        } else {
-            String::new()
+        let pos = match position {
+            Some(v) => format!("{} / ", Self::format_time(Some(v / 1000))),
+            None => String::new(),
         };
         let length = Self::format_time(song.length);
         format!("{} {} {}{}", song.name, artist, pos, length)
