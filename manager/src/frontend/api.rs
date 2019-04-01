@@ -65,7 +65,7 @@ pub fn handle_create_ts(
             }),
         };
 
-        let instance = Instance::new(params.id, state.backend.clone(), model);
+        let instance = Instance::new(params.id, state.backend.clone(), &state.instances, model);
 
         inst_w.insert(params.id, instance);
 

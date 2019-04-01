@@ -24,13 +24,13 @@ use owning_ref::OwningRef;
 use yamba_types::models::{
     callback::{InstanceState, Playstate},
     DefaultResponse, InstanceLoadReq, InstanceStopReq, PlaybackUrlReq, ResolveRequest,
-    ResolveTicketResponse, Song, Volume, VolumeSetReq, ID,
+    ResolveTicketResponse, Song, TimeMS, Volume, VolumeSetReq, ID,
 };
 
 use std::ops::Deref;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
-    Arc, RwLock, RwLockReadGuard,
+    Arc, RwLock, RwLockReadGuard, Weak,
 };
 
 use crate::backend::Backend;
@@ -41,12 +41,12 @@ use crate::playlist::Playlist;
 #[derive(Clone)]
 pub struct Instances {
     ins: Arc<RwLock<HashMap<ID, Instance>>>,
-    pos_cache: Arc<CHashMap<ID, u64>>,
+    pos_cache: Arc<CHashMap<ID, TimeMS>>,
 }
 
 impl Deref for Instances {
     type Target = RwLock<HashMap<ID, Instance>>;
-
+    /// Access inner instances
     fn deref(&self) -> &RwLock<HashMap<ID, Instance>> {
         &self.ins
     }
@@ -55,6 +55,7 @@ impl Deref for Instances {
 type InstanceRef<'a> = OwningRef<RwLockReadGuard<'a, HashMap<ID, Instance>>, Instance>;
 
 impl Instances {
+    /// Get read-ref to instance
     pub fn read<'a>(&'a self, id: &ID) -> Option<InstanceRef<'a>> {
         let instances_r = self.ins.read().expect("Can't read instance!");
         OwningRef::new(instances_r)
@@ -64,11 +65,20 @@ impl Instances {
             })
             .ok()
     }
+    /// New Instances-Instance
     pub fn new() -> Instances {
         Instances {
             ins: Arc::new(RwLock::new(HashMap::new())),
             pos_cache: Arc::new(CHashMap::new()),
         }
+    }
+    /// Returns playback position
+    pub fn get_pos(&self, id: &ID) -> Option<TimeMS> {
+        self.pos_cache.get(id).map(|v| v.clone())
+    }
+    /// Set (new) position for instance
+    pub fn set_pos(&self, id: ID, pos: TimeMS) {
+        self.pos_cache.insert(id, pos);
     }
 }
 
@@ -82,6 +92,7 @@ pub struct Instance {
     playstate: AtomicUsize,
     backend: Backend,
     model: InstanceLoadReq,
+    position: Weak<CHashMap<ID, TimeMS>>,
 }
 
 impl Drop for Instance {
@@ -102,7 +113,12 @@ impl Drop for Instance {
 
 #[allow(unused)]
 impl Instance {
-    pub fn new(id: ID, backend: Backend, model: InstanceLoadReq) -> Instance {
+    pub fn new(
+        id: ID,
+        backend: Backend,
+        instances: &Instances,
+        model: InstanceLoadReq,
+    ) -> Instance {
         spawn(
             frontend::WSServer::from_registry()
                 .send(frontend::InstanceCreated { id: id.clone() })
@@ -117,23 +133,29 @@ impl Instance {
             backend,
             model,
             playstate: AtomicUsize::new(Playstate::Stopped as usize),
+            position: Arc::downgrade(&instances.pos_cache),
         }
     }
 
-    fn format_time(length: Option<u32>) -> String {
+    fn format_time(length: Option<TimeMS>) -> String {
         match length {
             Some(v) => format!("{:02}:{:02}", v / 60, v % 60),
             None => String::from("--:--"),
         }
     }
 
-    fn format_track(song: &Song) -> String {
+    fn format_track(song: &Song, position: Option<TimeMS>) -> String {
         let artist = song
             .artist
             .as_ref()
             .map_or(String::new(), |a| format!(" - {}", a));
+        let pos = if position.is_some() {
+            format!("{}/", Self::format_time(position))
+        } else {
+            String::new()
+        };
         let length = Self::format_time(song.length);
-        format!("{} {} {}", song.name, artist, length)
+        format!("{} {} {}{}", song.name, artist, pos, length)
     }
 
     /// Get upcoming tracks formated
@@ -143,8 +165,16 @@ impl Instance {
         self.playlist
             .get_next_tracks(amount)
             .iter()
-            .map(|v| Self::format_track(v))
+            .map(|v| Self::format_track(v, None))
             .collect()
+    }
+
+    /// Get playback position for current title in instance
+    pub fn get_pos(&self) -> Option<TimeMS> {
+        match self.position.upgrade() {
+            Some(v) => v.get(&self.id).map(|v| v.clone()),
+            None => None,
+        }
     }
 
     /// Returns formated playback info
@@ -159,7 +189,7 @@ impl Instance {
                 .playlist
                 .get_current()
                 .map_or(String::from("No current song! This is an error."), |v| {
-                    Self::format_track(&v)
+                    Self::format_track(&v, self.get_pos())
                 })),
             _ => Ok(String::from("--:--")),
         }

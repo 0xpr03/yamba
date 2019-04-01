@@ -192,7 +192,10 @@ fn create_instance_cmd(
         };
 
         let mut inst_w = instances.write().expect("Can't lock instances!");
-        inst_w.insert(1, instance::Instance::new(1, backend.clone(), model));
+        inst_w.insert(
+            1,
+            instance::Instance::new(1, backend.clone(), &instances, model),
+        );
 
         let inst = inst_w.get_mut(&1).expect("Invalid identifier ?");
         inst.start_with_rt()?;

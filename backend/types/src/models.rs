@@ -35,6 +35,8 @@ pub type CacheSong = String;
 /// Resolver ticket
 pub type Ticket = usize;
 
+pub use crate::TimeMS;
+
 #[cfg(feature = "track")]
 impl From<Track> for Song {
     fn from(mut track: Track) -> Self {
@@ -102,7 +104,7 @@ pub struct Song {
     pub source: String,
     pub artist: Option<String>,
     /// Length in seconds
-    pub length: Option<u32>,
+    pub length: Option<TimeMS>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -222,7 +224,7 @@ pub mod callback {
     #[derive(Debug, Serialize, Deserialize)]
     #[cfg_attr(feature = "message", derive(Message))]
     pub struct TrackPositionUpdate {
-        pub position_ms: u64,
+        pub position_ms: TimeMS,
         pub id: ID,
     }
 

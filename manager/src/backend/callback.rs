@@ -112,6 +112,14 @@ fn callback_resolve(
     HttpResponse::Ok().json(true)
 }
 
+fn callback_position(
+    (data, req): (Json<cb::TrackPositionUpdate>, HttpRequest<CallbackState>),
+) -> HttpResponse {
+    debug!("Position callback: {:?}", data);
+    req.state().instances.set_pos(data.id, data.position_ms);
+    HttpResponse::Ok().json(true)
+}
+
 #[derive(Clone)]
 struct CallbackState {
     backend: Backend,
@@ -155,6 +163,12 @@ pub fn init_callback_server(
                 r.method(http::Method::POST)
                     .with_config(callback_resolve, |((cfg, _),)| {
                         cfg.limit(256096);
+                    })
+            })
+            .resource(cb::PATH_POSITION, |r| {
+                r.method(http::Method::POST)
+                    .with_config(callback_position, |((cfg, _),)| {
+                        cfg.limit(4096);
                     })
             })
     })

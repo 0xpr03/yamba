@@ -329,7 +329,7 @@ impl Instance {
     }
 
     /// Send position change
-    fn send_position_update(id: ID, position_ms: u64) {
+    fn send_position_update(id: ID, position_ms: u32) {
         if let Err(e) =
             callback::send_track_position_update(&TrackPositionUpdate { id, position_ms })
         {
@@ -470,7 +470,7 @@ pub fn create_playback_event_handler(
             PlayerEventType::PositionUpdated(time) => {
                 trace!("Position update for {}", event.id);
                 if let Some(time) = time.mseconds() {
-                    Instance::send_position_update(event.id, time);
+                    Instance::send_position_update(event.id, time as u32);
                 }
             }
             PlayerEventType::MediaInfoUpdated => (), // silence

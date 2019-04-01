@@ -45,3 +45,6 @@ pub enum ErrorCodes {
 
 /// Volume it 0 to 1.0 (you can go above but that's undefined)
 pub type Volume = f64;
+
+/// Time unit
+pub type TimeMS = u32;
