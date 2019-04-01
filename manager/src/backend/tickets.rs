@@ -77,8 +77,7 @@ impl QueueTicket {
 
 impl Ticket for QueueTicket {
     fn handle(&self, instances: &Instances, songs: Vec<Song>) -> Fallible<()> {
-        let inst_r = instances.read().expect("Can't lock instances!");
-        inst_r.get(&self.instance).map(|inst| {
+        instances.read(&self.instance).map(|inst| {
             inst.add_to_queue(songs);
             inst.check_playback();
         });

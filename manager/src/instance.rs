@@ -16,25 +16,61 @@
  */
 
 use actix::{registry::SystemService, spawn};
+use chashmap::CHashMap;
 use failure::Fallible;
 use futures::future::Future;
 use hashbrown::HashMap;
+use owning_ref::OwningRef;
 use yamba_types::models::{
     callback::{InstanceState, Playstate},
     DefaultResponse, InstanceLoadReq, InstanceStopReq, PlaybackUrlReq, ResolveRequest,
     ResolveTicketResponse, Song, Volume, VolumeSetReq, ID,
 };
 
+use std::ops::Deref;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
-    Arc, RwLock,
+    Arc, RwLock, RwLockReadGuard,
 };
 
 use crate::backend::Backend;
 use crate::frontend;
 use crate::playlist::Playlist;
 
-pub type Instances = Arc<RwLock<HashMap<ID, Instance>>>;
+//pub type Instances = Arc<RwLock<HashMap<ID, Instance>>>;
+#[derive(Clone)]
+pub struct Instances {
+    ins: Arc<RwLock<HashMap<ID, Instance>>>,
+    pos_cache: Arc<CHashMap<ID, u64>>,
+}
+
+impl Deref for Instances {
+    type Target = RwLock<HashMap<ID, Instance>>;
+
+    fn deref(&self) -> &RwLock<HashMap<ID, Instance>> {
+        &self.ins
+    }
+}
+
+type InstanceRef<'a> = OwningRef<RwLockReadGuard<'a, HashMap<ID, Instance>>, Instance>;
+
+impl Instances {
+    pub fn read<'a>(&'a self, id: &ID) -> Option<InstanceRef<'a>> {
+        let instances_r = self.ins.read().expect("Can't read instance!");
+        OwningRef::new(instances_r)
+            .try_map(|i| match i.get(id) {
+                Some(v) => Ok(v),
+                None => Err(()),
+            })
+            .ok()
+    }
+    pub fn new() -> Instances {
+        Instances {
+            ins: Arc::new(RwLock::new(HashMap::new())),
+            pos_cache: Arc::new(CHashMap::new()),
+        }
+    }
+}
 
 pub type SPlaylist = Playlist<Song>;
 
@@ -62,10 +98,6 @@ impl Drop for Instance {
             Err(e) => warn!("Can't auto-kill instance: {}", e),
         }
     }
-}
-
-pub fn create_instances() -> Instances {
-    Arc::new(RwLock::new(HashMap::new()))
 }
 
 #[allow(unused)]

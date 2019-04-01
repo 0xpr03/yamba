@@ -126,7 +126,7 @@ fn main() -> Fallible<()> {
 
     let mut sys = System::new("manager");
 
-    let instances = instance::create_instances();
+    let instances = instance::Instances::new();
 
     let backend = backend::Backend::new(
         addr_daemon,

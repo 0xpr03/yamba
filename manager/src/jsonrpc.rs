@@ -84,14 +84,12 @@ where
 	T: DeserializeOwned + 'static + GetId + Send,
 	D: Future<Item = Value, Error = Error> + Send,
 {
-	parse_input(data, move |v: T| {
-		match get_instance_by_id(&instances, &v.get_id()) {
-			Some(i) => Either::A(foo(v, i)),
-			None => Either::B(result(Ok(serde_json::to_value(response_invalid_instance(
-				&v.get_id(),
-			))
-			.unwrap()))),
-		}
+	parse_input(data, move |v: T| match instances.read(&v.get_id()) {
+		Some(i) => Either::A(foo(v, i)),
+		None => Either::B(result(Ok(serde_json::to_value(response_invalid_instance(
+			&v.get_id(),
+		))
+		.unwrap()))),
 	})
 }
 
@@ -147,18 +145,6 @@ fn response_invalid_instance(id: &ID) -> DefaultResponse {
 }
 
 type InstanceRef<'a> = OwningRef<RwLockReadGuard<'a, HashMap<i32, Instance>>, Instance>;
-
-/// Get instance by ID
-/// Returns instance & guard
-fn get_instance_by_id<'a>(instances: &'a Instances, instance_id: &ID) -> Option<InstanceRef<'a>> {
-	let instances_r = instances.read().expect("Can't read instance!");
-	OwningRef::new(instances_r)
-		.try_map(|i| match i.get(instance_id) {
-			Some(v) => Ok(v),
-			None => Err(()),
-		})
-		.ok()
-}
 
 /// Create jsonrpc server for handling chat cmds
 pub fn create_server(

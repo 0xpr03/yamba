@@ -72,8 +72,7 @@ fn callback_instance(
     (data, req): (Json<cb::InstanceStateResponse>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
     debug!("Instance state change: {:?}", data);
-    let inst = req.state().instances.read().expect("Can't lock instances!");
-    if let Some(i) = inst.get(&data.id) {
+    if let Some(i) = req.state().instances.read(&data.id) {
         i.cb_set_instance_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
@@ -83,8 +82,7 @@ fn callback_volume(
     (data, req): (Json<cb::VolumeChange>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
     debug!("Volume change: {:?}", data);
-    let inst = req.state().instances.read().expect("Can't lock instances!");
-    if let Some(i) = inst.get(&data.id) {
+    if let Some(i) = req.state().instances.read(&data.id) {
         i.cb_update_volume(data.into_inner().volume);
     }
     HttpResponse::Ok().json(true)
@@ -94,8 +92,7 @@ fn callback_playback(
     (data, req): (Json<cb::PlaystateResponse>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
     debug!("Playback change: {:?}", data);
-    let inst = req.state().instances.read().expect("Can't lock instances!");
-    if let Some(i) = inst.get(&data.id) {
+    if let Some(i) = req.state().instances.read(&data.id) {
         i.cb_set_playback_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
