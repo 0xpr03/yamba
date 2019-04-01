@@ -328,6 +328,15 @@ impl Instance {
         }
     }
 
+    /// Send position change
+    fn send_position_update(id: ID, position_ms: u64) {
+        if let Err(e) =
+            callback::send_track_position_update(&TrackPositionUpdate { id, position_ms })
+        {
+            error!("Can't send playback state change: {}", e);
+        }
+    }
+
     /// Inner function, blocking
     /// Resolves the playback URI
     fn play_track_inner(
@@ -458,7 +467,12 @@ pub fn create_playback_event_handler(
                     v.send_playstate_change(playback_to_public_state(state));
                 }
             }
-            PlayerEventType::PositionUpdated => (), // silence
+            PlayerEventType::PositionUpdated(time) => {
+                trace!("Position update for {}", event.id);
+                if let Some(time) = time.mseconds() {
+                    Instance::send_position_update(event.id, time);
+                }
+            }
             PlayerEventType::MediaInfoUpdated => (), // silence
             PlayerEventType::Error(e) => {
                 let mut retry = false;

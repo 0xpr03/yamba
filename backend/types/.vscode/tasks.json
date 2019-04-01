@@ -23,7 +23,11 @@
             ],
             "problemMatcher": [
                 "$rustc"
-            ]
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
             "type": "cargo",

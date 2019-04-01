@@ -1,6 +1,6 @@
 [package]
 name = "yamba_types"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Aron Heinecke <aron.heinecke@t-online.de>"]
 edition = "2018"
 license = "GPL-3.0-or-later"

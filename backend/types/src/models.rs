@@ -203,6 +203,8 @@ pub mod callback {
     pub const PATH_SONG: &'static str = "/callback/song";
     /// Full path for callback
     pub const PATH_VOLUME: &'static str = "/callback/volume";
+    /// Full path for callback
+    pub const PATH_POSITION: &'static str = "/callback/position";
 
     #[derive(Debug, Serialize, Deserialize)]
     pub struct InstanceStateResponse {
@@ -215,6 +217,13 @@ pub mod callback {
         Started = 1,
         Running = 2,
         Stopped = 0,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    #[cfg_attr(feature = "message", derive(Message))]
+    pub struct TrackPositionUpdate {
+        pub position_ms: u64,
+        pub id: ID,
     }
 
     #[derive(Debug, Serialize, Deserialize)]

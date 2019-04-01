@@ -48,7 +48,7 @@ pub enum PlaybackState {
 pub enum PlayerEventType {
     UriLoaded,
     MediaInfoUpdated,
-    PositionUpdated,
+    PositionUpdated(gst::ClockTime),
     EndOfStream,
     StateChanged(PlaybackState),
     VolumeChanged(f64),
@@ -97,9 +97,9 @@ impl Player {
             Some(&dispatcher.upcast::<gst_player::PlayerSignalDispatcher>()),
         );
 
-        // Get position updates every 250ms.
+        // Get position updates every 1000ms.
         let mut config = player.get_config();
-        config.set_position_update_interval(250);
+        config.set_position_update_interval(1000);
 
         let name = Player::get_name_by_id(&id);
 
@@ -168,13 +168,13 @@ impl Player {
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_position_updated(move |_, _| {
+        player.connect_position_updated(move |_, time| {
             let mut events = events_clone.clone();
             let id = id_clone.clone();
             events
                 .try_send(PlayerEvent {
                     id,
-                    event_type: PlayerEventType::PositionUpdated,
+                    event_type: PlayerEventType::PositionUpdated(time),
                 })
                 .unwrap();
         });
@@ -384,7 +384,7 @@ mod tests {
         sender
             .try_send(PlayerEvent {
                 id: TEST_ID.clone(),
-                event_type: PlayerEventType::PositionUpdated,
+                event_type: PlayerEventType::PositionUpdated(gst::ClockTime::from_mseconds(1000)),
             })
             .unwrap();
         loop {
@@ -398,7 +398,9 @@ mod tests {
             sender
                 .try_send(PlayerEvent {
                     id: TEST_ID.clone(),
-                    event_type: PlayerEventType::PositionUpdated,
+                    event_type: PlayerEventType::PositionUpdated(gst::ClockTime::from_mseconds(
+                        1000,
+                    )),
                 })
                 .unwrap();
         }

@@ -205,9 +205,8 @@ fn main() -> Fallible<()> {
                         let player = player_c.clone();
                         trace!("Event: {:?}", event);
                         match event.event_type {
-                            PlayerEventType::PositionUpdated => {
-                                let player_l = player.lock().unwrap();
-                                debug!("Position: {}", player_l.get_position_ms());
+                            PlayerEventType::PositionUpdated(time) => {
+                                debug!("Position: {}", time);
                                 //player.set_volume(f64::from(player.get_position()) / 1000.0);
                             }
                             PlayerEventType::EndOfStream
