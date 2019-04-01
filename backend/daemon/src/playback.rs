@@ -97,14 +97,14 @@ impl Player {
             Some(&dispatcher.upcast::<gst_player::PlayerSignalDispatcher>()),
         );
 
-        // Get position updates every 1000ms.
         let mut config = player.get_config();
-        config.set_position_update_interval(1000);
 
         let name = Player::get_name_by_id(&id);
 
         config.set_name(&name);
-        config.set_position_update_interval(250);
+
+        // Get position updates every 1000ms.
+        config.set_position_update_interval(1000);
         player.set_config(config).unwrap();
 
         let playbin = player.get_pipeline();
