@@ -17,12 +17,9 @@
 
 use crate::backend::Backend;
 use crate::instance::Instances;
-use actix::{Arbiter, System};
 use actix_web::{fs, http, middleware, server, App};
 use failure::Fallible;
-use futures::{sync::mpsc, Future, Stream};
 use std::net::SocketAddr;
-use std::thread;
 
 pub use ws::{InstanceCreated, WSServer};
 
@@ -40,17 +37,6 @@ pub struct FrState {
 pub enum ServerErr {
     #[fail(display = "Failed to bind callback server {}", _0)]
     BindFailed(#[cause] std::io::Error),
-}
-
-/// Guard that automatically shuts down the server on drop
-pub struct ShutdownGuard {
-    sender: mpsc::Sender<usize>,
-}
-
-impl Drop for ShutdownGuard {
-    fn drop(&mut self) {
-        let _ = self.sender.try_send(1);
-    }
 }
 
 pub fn init_frontend_server(

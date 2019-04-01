@@ -22,7 +22,6 @@ use rayon::iter::*;
 
 use std::cmp::PartialEq;
 use std::ops::Deref;
-use std::ops::Index;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::vec::Vec;

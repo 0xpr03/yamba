@@ -24,10 +24,9 @@ use actix_web::{
     server, App, HttpRequest, HttpResponse, Json,
 };
 use failure::Fallible;
-use futures::{sync::mpsc, Future, Stream};
-use std::net::IpAddr;
-use std::thread;
 use yamba_types::models::callback as cb;
+
+use std::net::IpAddr;
 
 #[derive(Fail, Debug)]
 pub enum ServerErr {

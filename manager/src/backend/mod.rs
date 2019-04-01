@@ -63,8 +63,7 @@ impl Backend {
             tickets: tickets.clone(),
         };
 
-        let shutdown_guard =
-            callback::init_callback_server(backend.clone(), instances, callback_bind, tickets)?;
+        callback::init_callback_server(backend.clone(), instances, callback_bind, tickets)?;
 
         Ok(backend)
     }

@@ -52,7 +52,9 @@ impl TicketHandler {
         debug!("Handling {}", ticket);
         match data_w.remove(ticket) {
             Some(v) => {
-                v.handle(instances, songs);
+                if let Err(e) = v.handle(instances, songs) {
+                    warn!("Error on handling ticket: {}", e);
+                }
             }
             None => warn!("Ticket unknown: {} {:?}!", ticket, songs),
         }
