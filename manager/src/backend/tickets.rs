@@ -87,10 +87,3 @@ impl Ticket for QueueTicket {
         Ok(())
     }
 }
-
-/*
-pub struct ResolveTicket {
-    id: TicketID,
-    playlist: Option<i32>,
-}
-*/

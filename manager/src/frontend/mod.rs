@@ -39,6 +39,7 @@ pub enum ServerErr {
     BindFailed(#[cause] std::io::Error),
 }
 
+/// Init frontend server + websockets
 pub fn init_frontend_server(
     instances: Instances,
     backend: Backend,

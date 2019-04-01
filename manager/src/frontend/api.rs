@@ -26,6 +26,7 @@ use yamba_types::models::{InstanceLoadReq, InstanceType, TSSettings};
 use super::*;
 use crate::instance::Instance;
 
+/// Create TS Instance
 pub fn handle_create_ts(
     (state, params): (State<FrState>, Form<super::form::TSCreate>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
