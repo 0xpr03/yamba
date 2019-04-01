@@ -5,6 +5,9 @@ authors = ["Aron Heinecke <aron.heinecke@t-online.de>"]
 edition = "2018"
 license = "LGPL-3.0-or-later"
 
+[profile.release]
+lto = true
+
 [dependencies]
 clap = "2"
 jsonrpc-http-server = "10"
