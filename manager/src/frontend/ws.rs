@@ -33,6 +33,15 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// Print warning on error in send_message
+macro_rules! warn_log {
+    ($x:expr) => {
+        if let Err(e) = $x {
+            warn!("Can't push to WS: {}", e);
+        }
+    };
+}
+
 #[derive(Fail, Debug)]
 pub enum WsErr {
     #[fail(display = "Can't send msg to unknown instance {}", _0)]
@@ -206,9 +215,7 @@ impl WSServer {
         if let Some(sessions) = self.instances.get(instance) {
             let msg = RawMessage::new(message);
             for id in sessions {
-                debug!("Evaluating to {}", id);
                 if *id != skip_id {
-                    debug!("Sending to {}", id);
                     if let Some(addr) = self.sessions.get(id) {
                         let _ = addr.do_send(msg.clone());
                     }
@@ -299,9 +306,9 @@ impl Handler<models::VolumeSetReq> for WSServer {
     type Result = ();
 
     fn handle(&mut self, msg: models::VolumeSetReq, _: &mut Context<Self>) {
-        debug!("Volume changed {}", msg.id);
+        debug!("Volume changed on {}", msg.id);
 
-        self.send_message(&msg.id.clone(), &Message::VolumeChange(msg), 0);
+        warn_log!(self.send_message(&msg.id.clone(), &Message::VolumeChange(msg), 0));
     }
 }
 
@@ -310,9 +317,9 @@ impl Handler<models::callback::TrackPositionUpdate> for WSServer {
     type Result = ();
 
     fn handle(&mut self, msg: models::callback::TrackPositionUpdate, _: &mut Context<Self>) {
-        debug!("Volume changed {}", msg.id);
+        trace!("Position changed on {}", msg.id);
 
-        self.send_message(&msg.id.clone(), &Message::PositionUpdate(msg), 0);
+        warn_log!(self.send_message(&msg.id.clone(), &Message::PositionUpdate(msg), 0));
     }
 }
 
@@ -323,10 +330,11 @@ impl Handler<models::callback::PlaystateResponse> for WSServer {
     fn handle(&mut self, msg: models::callback::PlaystateResponse, _: &mut Context<Self>) {
         debug!("Volume changed {}", msg.id);
 
-        self.send_message(&msg.id.clone(), &Message::InstancePlayback(msg), 0);
+        warn_log!(self.send_message(&msg.id.clone(), &Message::InstancePlayback(msg), 0));
     }
 }
 
+/// Client Disconnect
 #[derive(Message)]
 pub struct Disconnect {
     pub id: usize,
