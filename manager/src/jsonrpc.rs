@@ -15,6 +15,10 @@
  *  limitations under the License.
  */
 
+use actix_web::{
+	error::ErrorInternalServerError, middleware, App, Error as WebError, HttpRequest, HttpResponse,
+	Json,
+};
 use failure::Fallible;
 use futures::{
 	future::{result, Either},
@@ -22,8 +26,7 @@ use futures::{
 };
 use hashbrown::HashMap;
 use jsonrpc_core::types::error::{self, Error};
-use jsonrpc_core::*;
-use jsonrpc_http_server::*;
+use jsonrpc_core::{types::Request, *};
 use owning_ref::OwningRef;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -31,34 +34,10 @@ use serde_json;
 use yamba_types::rpc::*;
 
 use std::net::SocketAddr;
-use std::sync::RwLockReadGuard;
+use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, RwLockReadGuard};
 
 use crate::instance::{Instance, Instances};
-
-// macro_rules! rpc {
-//     $( $x:expr,$type:ident,$io:expr,$ ) => {
-//         {
-//             $io.add_method($x, move |data: Params| {
-// 			parse_input_instance(inst_c.clone(), data, |v: $type, inst| {
-// 				match inst.set_volume(v.volume) {
-// 					Err(e) => Either::A(send_internal_server_error(e)),
-// 					Ok(val) => Either::B(
-// 						val.map_err(|e| {
-// 							warn!("Unable to set volume: {}", e);
-// 							Error {
-// 								data: None,
-// 								message: e.to_string(),
-// 								code: error::ErrorCode::InternalError,
-// 							}
-// 						})
-// 						.map(|_| serde_json::to_value(response_ignore()).unwrap()),
-// 					),
-// 				}
-// 			})
-// 		});
-//         }
-//     };
-// }
 
 /// Parse input and call fn on success
 fn parse_input<T, F, D>(data: Params, foo: F) -> impl Future<Item = Value, Error = Error>
@@ -92,20 +71,6 @@ where
 		.unwrap()))),
 	})
 }
-
-/// Helper method to add rpc
-// fn add_rpc<T, F, D>(io: &mut IoHandler, instances: Instances, foo: F, method: &str)
-// where
-// 	F: Fn(T, InstanceRef) -> D + Send + Sync + 'static,
-// 	T: DeserializeOwned + 'static + GetId + Send,
-// 	D: Future<Item = Value, Error = Error> + Send + 'static,
-// {
-// 	let inst_c = instances.clone();
-// 	io.add_method(method, move |data: Params| {
-// 		let inst_b = inst_c.clone();
-// 		parse_input_instance(inst_b, data, |v: T, inst| foo(v, inst))
-// 	});
-// }
 
 /// Helper to send failure as 500 status
 fn send_internal_server_error(err: failure::Error) -> impl Future<Item = Value, Error = Error> {
@@ -146,12 +111,33 @@ fn response_invalid_instance(id: &ID) -> DefaultResponse {
 
 type InstanceRef<'a> = OwningRef<RwLockReadGuard<'a, HashMap<i32, Instance>>, Instance>;
 
+type JsonrpcState = Arc<IoHandler>;
+
+/// Handle jsonrpc-core IOHandler stuff in actix
+/// Based on https://github.com/paritytech/jsonrpc/blob/9360dc86e9c02e65e858ee7816c5ce6e04f18aef/http/src/handler.rs#L415
+fn jsonrpc_websocket_bridge(
+	(data, req): (Json<Request>, HttpRequest<JsonrpcState>),
+) -> impl Future<Item = HttpResponse, Error = WebError> {
+	req.state()
+		.handle_rpc_request(data.into_inner())
+		.map(|res| match res {
+			Some(v) => HttpResponse::Ok().json(v),
+			e => {
+				error!("Invalid response for request: {:?}", e);
+				HttpResponse::InternalServerError().finish()
+			}
+		})
+		.map_err(|_| {
+			ErrorInternalServerError("()-Error route in jsonrpc-actix bridge! Should never happen.")
+		})
+}
+
 /// Create jsonrpc server for handling chat cmds
 pub fn create_server(
 	bind_addr: &SocketAddr,
 	allowed_host: &str,
 	instances: Instances,
-) -> Fallible<Server> {
+) -> Fallible<()> {
 	let mut io = IoHandler::new();
 
 	let inst_c = instances.clone();
@@ -231,10 +217,23 @@ pub fn create_server(
 		})
 	});
 
-	let server = ServerBuilder::new(io)
-		//.allowed_hosts(DomainsValidation::AllowOnly(vec![allowed_host.into()]))
-		.rest_api(RestApi::Secure)
-		.start_http(bind_addr)?;
+	let state: JsonrpcState = Arc::new(io);
 
-	Ok(server)
+	actix_web::server::new(move || {
+		let json_only = actix_web::pred::Header("Content-Type", "application/json");
+		actix_web::App::with_state(state.clone())
+			.middleware(middleware::Logger::new("manager::api::jsonrpc"))
+			.resource("/", |r| {
+				r.post()
+					.filter(json_only)
+					.with_async(jsonrpc_websocket_bridge)
+			})
+			.boxed()
+	})
+	.bind(bind_addr)
+	.unwrap()
+	.shutdown_timeout(1)
+	.start();
+
+	Ok(())
 }

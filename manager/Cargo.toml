@@ -10,7 +10,7 @@ lto = true
 
 [dependencies]
 clap = "2"
-jsonrpc-http-server = "10"
+jsonrpc-core = "10"
 failure = "0.1"
 owning_ref = "0.4"
 rand = "0"
