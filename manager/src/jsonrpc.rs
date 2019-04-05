@@ -216,6 +216,13 @@ pub fn create_server(
 			})
 		})
 	});
+	let inst_c = instances.clone();
+	io.add_method("playback_random", move |data: Params| {
+		parse_input_instance(inst_c.clone(), data, |_: ParamDefault, inst| {
+			inst.shuffle();
+			send_ok()
+		})
+	});
 
 	let state: JsonrpcState = Arc::new(io);
 

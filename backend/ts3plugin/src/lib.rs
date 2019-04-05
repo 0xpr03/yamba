@@ -82,6 +82,9 @@ jsonrpc_client!(
     pub fn track_pause(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
     // Return: allowed, message, success
     pub fn track_stop(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
+    // Return allowed, message
+    pub fn playback_random(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
+
 
     // Return: allowed, message, name
     pub fn playlist_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<PlaylistResponse>;
@@ -128,7 +131,8 @@ lazy_static! {
     pub static ref R_TRACK_GET: Regex = Regex::new(r"^!playing").unwrap();
     pub static ref R_TRACK_NEXT: Regex = Regex::new(r"^((!n(e?xt)?)|(>>))").unwrap();
     pub static ref R_TRACK_PREVIOUS: Regex = Regex::new(r"^((!(prv)|(previous))|<<)").unwrap();
-    pub static ref R_TRACK_RESUME: Regex = Regex::new(r"^((!r(es(ume)?)?)|>)").unwrap();
+    pub static ref R_TRACK_RESUME: Regex = Regex::new(r"^((!r(es(ume)?)?)|>)$").unwrap();
+    pub static ref R_RANDOM: Regex = Regex::new(r"^!random").unwrap();
     pub static ref R_TRACK_PAUSE: Regex = Regex::new(r"^((!pause)|(\|\|))").unwrap();
     pub static ref R_TRACK_STOP: Regex = Regex::new(r"^!s(to?p)?").unwrap();
     pub static ref R_PLAYLIST_GET: Regex = Regex::new(r"^!((playlist)|(plst))").unwrap();
@@ -156,6 +160,8 @@ const HELP: &str = r#"
 
 [i]Get[/i] [b]volume[/b]: [i]!volume[/i]
 [i]Set[/i] volume <vol>: [i]!volume[/i] <vol>
+
+[i]Randomize[/i] queue: [i]!random[/i]
 
 Get [b]current track[/b]: [I]!playing[/I]
 [b]Enqueue[/b] <url> : [I]!queue[/I] <url>
@@ -643,6 +649,20 @@ impl Plugin for MyTsPlugin {
                         let playlist_name = String::from(&R_VOL_SET.captures(&message).unwrap()[4]);
                         match client_lock
                             .playlist_load(id, invoker_name, invoker_groups, playlist_name)
+                            .call()
+                        {
+                            Ok(_res) => {
+                                let _ = connection.send_message(format!("Ok"));
+                            }
+                            Err(e) => {
+                                is_rpc_error = true;
+                                rpc_error = e;
+                            }
+                        }
+                    } else if R_RANDOM.is_match(&message) {
+                        println!("Randomize..");
+                        match client_lock
+                            .playback_random(id, invoker_name, invoker_groups)
                             .call()
                         {
                             Ok(_res) => {

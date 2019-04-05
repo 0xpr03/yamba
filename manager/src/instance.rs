@@ -144,6 +144,11 @@ impl Instance {
         }
     }
 
+    /// Randomize playlist
+    pub fn shuffle(&self) {
+        self.playlist.shuffle();
+    }
+
     /// Format track to human readable display
     fn format_track(song: &Song, position: Option<TimeMS>) -> String {
         let artist = song
