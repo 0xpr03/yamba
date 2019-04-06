@@ -95,19 +95,18 @@ where
     /// (Re)Shuffle the playlist
     pub fn shuffle(&self) {
         let mut lst_w = self.list.write().expect("Can't lock list!");
-        let mut pos = self.get_pos_mut();
-        let item_id = lst_w.get(*pos).map(|v| v.id);
-        (*lst_w).shuffle(&mut thread_rng());
+        let mut pos = *self.get_pos();
+        let length = lst_w.len();
 
-        if let Some(item_id) = item_id {
-            let (pos_new, _) = (*lst_w)
-                .par_iter()
-                .enumerate()
-                .find_any(|&(_, v)| v.id == item_id) // expect no overlapping items
-                .unwrap();
-
-            *pos = pos_new;
+        // non-playing playlist
+        if pos > length {
+            pos = 0;
+        } else {
+            // don't randomize current playback position
+            pos += 1;
         }
+        let mut upcoming = &mut lst_w[pos..length];
+        upcoming.shuffle(&mut thread_rng());
     }
 
     /// Returns next n tracks
@@ -210,6 +209,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
     #[test]
     fn get_next_test() {
         let playlist = Playlist::new();
@@ -234,6 +234,36 @@ mod tests {
     }
 
     #[test]
+    fn shuffle() {
+        let playlist = Playlist::new();
+        playlist.shuffle();
+        // add 5 items
+        let vec: Vec<_> = (0..5).collect();
+        let mut set = HashSet::new();
+        for val in vec.iter() {
+            assert!(set.insert(val.clone()));
+        }
+
+        playlist.push(vec);
+        // get first
+        assert_eq!(0, **playlist.get_next().unwrap());
+        assert!(set.remove(&0));
+        playlist.shuffle();
+        // current still first..
+        assert_eq!(0, **playlist.get_current().unwrap());
+        for _ in 0..4 {
+            // go forard, shuffle again..
+            // make sure the right values are still inside
+            let val = playlist.get_next().unwrap();
+            assert!(set.remove(&**val));
+            drop(val); // shuffle will block otherwise
+            playlist.shuffle();
+        }
+        assert!(playlist.get_next().is_none());
+        assert!(set.is_empty());
+    }
+
+    #[test]
     fn init() {
         let playlist = Playlist::new();
         assert!(
@@ -244,6 +274,7 @@ mod tests {
             playlist.get_current().is_none(),
             "get_current on empty list should be none"
         );
+        playlist.shuffle();
         assert_eq!(true, playlist.get_next_tracks(1).is_empty());
         let vec: Vec<_> = (0..5).collect();
         playlist.push(vec);
