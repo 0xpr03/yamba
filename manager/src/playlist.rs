@@ -18,11 +18,10 @@
 use owning_ref::OwningRef;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use rayon::iter::*;
 
 use std::cmp::PartialEq;
 use std::ops::Deref;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::vec::Vec;
 

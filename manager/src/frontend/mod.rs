@@ -56,7 +56,7 @@ pub fn init_frontend_server(
                 r.method(http::Method::POST)
                     .with_async(api::handle_create_ts)
             })
-            .resource("/ws/", |r| r.route().f(ws::ws_route))
+            .resource("/ws", |r| r.route().f(ws::ws_route))
             .handler("/static", fs::StaticFiles::new("./static").unwrap())
             .handler(
                 "/",
