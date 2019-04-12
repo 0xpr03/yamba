@@ -18,6 +18,7 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -99,6 +100,11 @@ public class AuthConfig extends WebSecurityConfigurerAdapter {
 		return source;
 	}
 
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
+
 	@EventListener(ApplicationReadyEvent.class)
 	public void initRootUser() {
 		final String rootUsername = "root";
@@ -116,7 +122,7 @@ public class AuthConfig extends WebSecurityConfigurerAdapter {
 					(short) 0,
 					rootUsername,
 					true,
-					new BCryptPasswordEncoder().encode(randomPassword),
+					passwordEncoder().encode(randomPassword),
 					Timestamp.valueOf(LocalDateTime.now())
 			));
 
