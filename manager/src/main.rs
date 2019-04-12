@@ -35,6 +35,7 @@ mod frontend;
 mod instance;
 mod jsonrpc;
 mod playlist;
+mod security;
 
 #[derive(Fail, Debug)]
 pub enum ParamErr {
@@ -135,11 +136,7 @@ fn main() -> Fallible<()> {
         addr_callback_bind,
     )?;
 
-    let _server = jsonrpc::create_server(
-        &addr_jsonrpc,
-        &addr_daemon.ip().to_string(),
-        instances.clone(),
-    )?;
+    let _server = jsonrpc::create_server(&addr_jsonrpc, addr_daemon.ip(), instances.clone())?;
 
     match create_instance_cmd(&backend, &instances, &matches) {
         Err(e) => error!("Error during test-cmd handling: {}", e),

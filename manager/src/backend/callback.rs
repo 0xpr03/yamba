@@ -17,6 +17,7 @@
 
 use super::*;
 use crate::frontend;
+use crate::security::SecurityModule;
 
 use actix::SystemService;
 use actix_web::{
@@ -34,38 +35,6 @@ use std::net::IpAddr;
 pub enum ServerErr {
     #[fail(display = "Failed to bind callback server {}", _0)]
     BindFailed(#[cause] std::io::Error),
-}
-
-struct SecurityModule {
-    ip: String,
-}
-
-impl SecurityModule {
-    pub fn new(addr: IpAddr) -> SecurityModule {
-        SecurityModule {
-            ip: addr.to_string(),
-        }
-    }
-}
-
-impl<S> Middleware<S> for SecurityModule {
-    fn start(&self, req: &HttpRequest<S>) -> Result<Started> {
-        if let Some(remote) = req.connection_info().remote() {
-            if remote
-                .parse::<SocketAddr>()
-                .map(|v| v.ip().to_string() == self.ip)
-                .unwrap_or_else(|e| {
-                    warn!("Can't parse remote IP! {}", e);
-                    false
-                })
-            {
-                return Ok(Started::Done);
-            } else {
-                debug!("Remote: {} Own: {}", remote, self.ip);
-            }
-        }
-        Ok(Started::Response(HttpResponse::Unauthorized().finish()))
-    }
 }
 
 /// Handle instance callback

@@ -33,11 +33,12 @@ use serde::Serialize;
 use serde_json;
 use yamba_types::rpc::*;
 
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLockReadGuard};
 
 use crate::instance::{Instance, Instances};
+use crate::security::SecurityModule;
 
 /// Parse input and call fn on success
 fn parse_input<T, F, D>(data: Params, foo: F) -> impl Future<Item = Value, Error = Error>
@@ -135,7 +136,7 @@ fn jsonrpc_websocket_bridge(
 /// Create jsonrpc server for handling chat cmds
 pub fn create_server(
 	bind_addr: &SocketAddr,
-	allowed_host: &str,
+	allowed_host: IpAddr,
 	instances: Instances,
 ) -> Fallible<()> {
 	let mut io = IoHandler::new();
@@ -230,6 +231,7 @@ pub fn create_server(
 		let json_only = actix_web::pred::Header("Content-Type", "application/json");
 		actix_web::App::with_state(state.clone())
 			.middleware(middleware::Logger::new("manager::api::jsonrpc"))
+			.middleware(SecurityModule::new(allowed_host))
 			.resource("/", |r| {
 				r.post()
 					.filter(json_only)
