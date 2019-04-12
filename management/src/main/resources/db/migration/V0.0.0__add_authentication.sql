@@ -2,7 +2,7 @@ CREATE TABLE users
 (
   id       SMALLSERIAL                         NOT NULL,
   username VARCHAR(255) UNIQUE                 NOT NULL,
-  enabled  BOOLEAN   DEFAULT TRUE              NOT NULL,
+  enabled  BOOLEAN   DEFAULT FALSE              NOT NULL,
   password CHAR(60)                            NOT NULL,
   created  TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
