@@ -7,6 +7,7 @@ package tech.yamba.db.jooq.tables.pojos;
 import java.io.Serializable;
 
 import javax.annotation.Generated;
+import javax.validation.constraints.Size;
 
 
 /**
@@ -22,7 +23,7 @@ import javax.annotation.Generated;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Group implements Serializable {
 
-    private static final long serialVersionUID = 322590992;
+    private static final long serialVersionUID = 822426163;
 
     private Short  id;
     private String name;
@@ -51,6 +52,7 @@ public class Group implements Serializable {
         return this;
     }
 
+    @Size(max = 255)
     public String getName() {
         return this.name;
     }

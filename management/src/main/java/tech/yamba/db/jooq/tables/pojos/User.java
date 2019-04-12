@@ -8,6 +8,8 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 import javax.annotation.Generated;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 
 /**
@@ -23,7 +25,7 @@ import javax.annotation.Generated;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class User implements Serializable {
 
-    private static final long serialVersionUID = -390472913;
+    private static final long serialVersionUID = -933466680;
 
     private Short     id;
     private String    username;
@@ -64,6 +66,8 @@ public class User implements Serializable {
         return this;
     }
 
+    @NotNull
+    @Size(max = 255)
     public String getUsername() {
         return this.username;
     }
@@ -82,6 +86,8 @@ public class User implements Serializable {
         return this;
     }
 
+    @NotNull
+    @Size(max = 60)
     public String getPassword() {
         return this.password;
     }

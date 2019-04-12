@@ -5,6 +5,7 @@ package tech.yamba.db.jooq.tables.records;
 
 
 import javax.annotation.Generated;
+import javax.validation.constraints.NotNull;
 
 import org.jooq.Field;
 import org.jooq.Record2;
@@ -27,7 +28,7 @@ import tech.yamba.db.jooq.tables.GroupMembers;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class GroupMembersRecord extends UpdatableRecordImpl<GroupMembersRecord> implements Record2<Short, Short> {
 
-    private static final long serialVersionUID = -745297800;
+    private static final long serialVersionUID = 1276182669;
 
     /**
      * Setter for <code>public.group_members.user_id</code>.
@@ -40,6 +41,7 @@ public class GroupMembersRecord extends UpdatableRecordImpl<GroupMembersRecord> 
     /**
      * Getter for <code>public.group_members.user_id</code>.
      */
+    @NotNull
     public Short getUserId() {
         return (Short) get(0);
     }
@@ -55,6 +57,7 @@ public class GroupMembersRecord extends UpdatableRecordImpl<GroupMembersRecord> 
     /**
      * Getter for <code>public.group_members.group_id</code>.
      */
+    @NotNull
     public Short getGroupId() {
         return (Short) get(1);
     }
