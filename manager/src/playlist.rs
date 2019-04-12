@@ -29,9 +29,8 @@ use std::vec::Vec;
 /// Playlist for generic type of title
 pub struct Playlist<T> {
     list: RwLock<Vec<Item<T>>>,
-    current_pos: RwLock<usize>,
+    current_pos: RwLock<Option<usize>>,
     last_item_id: AtomicUsize,
-    first_item: AtomicBool,
 }
 
 /// Item in playlist, wrapper for position
@@ -66,9 +65,8 @@ where
     pub fn new() -> Playlist<T> {
         Playlist {
             list: RwLock::new(Vec::new()),
-            current_pos: RwLock::new(usize::max_value()),
+            current_pos: RwLock::new(Option::None),
             last_item_id: AtomicUsize::new(0),
-            first_item: AtomicBool::new(true),
         }
     }
 
@@ -78,11 +76,20 @@ where
         lst_r.len()
     }
 
-    fn get_pos<'a>(&'a self) -> RwLockReadGuard<'a, usize> {
+    fn get_pos<'a>(&'a self) -> OwningRef<RwLockReadGuard<'a, Option<usize>>, usize> {
+        OwningRef::new(self.current_pos.read().expect("Can't lock position!")).map(|o| match o {
+            Some(v) => v,
+            None => &0,
+        })
+    }
+
+    /// Get exact position
+    fn get_pos_exact<'a>(&'a self) -> RwLockReadGuard<'a, Option<usize>> {
         self.current_pos.read().expect("Can't lock position!")
     }
 
-    fn get_pos_mut<'a>(&'a self) -> RwLockWriteGuard<'a, usize> {
+    /// Get position, if no current positione exists, returns 0
+    fn get_pos_mut<'a>(&'a self) -> RwLockWriteGuard<'a, Option<usize>> {
         self.current_pos.write().expect("Can't lock position!")
     }
 
@@ -153,10 +160,13 @@ where
 
     /// Insert track into playlist
     pub fn insert(&self, i: usize, v: T) {
-        let mut pos = self.get_pos_mut();
-        if *pos <= i {
-            *pos += 1;
+        let mut pos_opt = self.get_pos_mut();
+        if let Some(mut pos) = *pos_opt {
+            if pos <= i {
+                pos += 1;
+            }
         }
+
         let mut lst = self.list.write().expect("Can't lock list!'");
         lst.insert(
             i,
@@ -173,21 +183,33 @@ where
     }
 
     /// Get next track, updating current position
-    pub fn get_next(&self) -> ItemReturn<T> {
+    pub fn get_next(&self, repeat: bool) -> ItemReturn<T> {
         let lst = self.list.read().expect("Can't lock list!");
-        let mut pos = self.get_pos_mut();
-        if lst.len() == 0
-            || ((*pos).wrapping_add(1) >= lst.len() && !self.first_item.load(Ordering::Relaxed))
-        {
+        let mut pos_mut = self.get_pos_mut();
+        if lst.len() == 0 {
             return None;
         }
-        *pos = (*pos).wrapping_add(1);
-        self.first_item.store(false, Ordering::SeqCst);
-        let pos_c: usize = pos.clone();
-        drop(pos);
+
+        let pos = match *pos_mut {
+            Some(v) => {
+                if !repeat && v >= lst.len() {
+                    *pos_mut = None;
+                    return None;
+                }
+                let pos_new = v.wrapping_add(1);
+                *pos_mut = Some(pos_new);
+                pos_new
+            }
+            None => {
+                *pos_mut = Some(0);
+                0
+            }
+        };
+
+        drop(pos_mut);
         let lst_r = self.list.read().expect("Can't lock list");
         OwningRef::new(lst_r)
-            .try_map(|v| match v.get(pos_c) {
+            .try_map(|v| match v.get(pos) {
                 Some(v) => Ok(v),
                 None => Err(()),
             })
@@ -216,21 +238,21 @@ mod tests {
         let vec: Vec<_> = (0..5).collect();
         playlist.push(vec);
         {
-            assert_eq!(0, **playlist.get_next().unwrap());
-            assert_eq!(1, **playlist.get_next().unwrap());
-            assert_eq!(2, **playlist.get_next().unwrap());
-            assert_eq!(3, **playlist.get_next().unwrap());
-            assert_eq!(4, **playlist.get_next().unwrap());
-            assert!(playlist.get_next().is_none());
+            assert_eq!(0, **playlist.get_next(false).unwrap());
+            assert_eq!(1, **playlist.get_next(false).unwrap());
+            assert_eq!(2, **playlist.get_next(false).unwrap());
+            assert_eq!(3, **playlist.get_next(false).unwrap());
+            assert_eq!(4, **playlist.get_next(false).unwrap());
+            assert!(playlist.get_next(false).is_none());
             assert_eq!(true, playlist.get_next_tracks(1).is_empty());
         }
         let vec: Vec<_> = (5..6).collect();
         playlist.push(vec);
         dbg!(playlist.get_position());
         dbg!(playlist.size());
-        assert_eq!(5, **playlist.get_next().unwrap());
-        assert!(playlist.get_next().is_none());
-        assert!(playlist.get_next().is_none());
+        assert_eq!(5, **playlist.get_next(false).unwrap());
+        assert!(playlist.get_next(false).is_none());
+        assert!(playlist.get_next(false).is_none());
     }
 
     #[test]
@@ -246,7 +268,7 @@ mod tests {
 
         playlist.push(vec);
         // get first
-        assert_eq!(0, **playlist.get_next().unwrap());
+        assert_eq!(0, **playlist.get_next(false).unwrap());
         assert!(set.remove(&0));
         playlist.shuffle();
         // current still first..
@@ -254,12 +276,12 @@ mod tests {
         for _ in 0..4 {
             // go forard, shuffle again..
             // make sure the right values are still inside
-            let val = playlist.get_next().unwrap();
+            let val = playlist.get_next(false).unwrap();
             assert!(set.remove(&**val));
             drop(val); // shuffle will block otherwise
             playlist.shuffle();
         }
-        assert!(playlist.get_next().is_none());
+        assert!(playlist.get_next(false).is_none());
         assert!(set.is_empty());
     }
 
@@ -267,7 +289,7 @@ mod tests {
     fn init() {
         let playlist = Playlist::new();
         assert!(
-            playlist.get_next().is_none(),
+            playlist.get_next(false).is_none(),
             "get_next on empty playlist should be none"
         );
         assert!(
@@ -280,7 +302,7 @@ mod tests {
         playlist.push(vec);
         assert_eq!(
             0,
-            **playlist.get_next().unwrap(),
+            **playlist.get_next(false).unwrap(),
             "First element after inserting incorrect"
         );
     }

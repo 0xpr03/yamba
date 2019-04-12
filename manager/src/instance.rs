@@ -347,7 +347,7 @@ impl Instance {
     /// Play next track
     /// Note: Currently only queue
     fn play_next_int(&self) -> Fallible<()> {
-        if let Some(v) = self.playlist.get_next() {
+        if let Some(v) = self.playlist.get_next(false) {
             let fut = self.backend.play_url(&PlaybackUrlReq {
                 id: self.get_id(),
                 song: v.clone(),
