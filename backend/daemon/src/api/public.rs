@@ -167,7 +167,7 @@ impl_web! {
         fn instance_list(&self) -> Fallible<InstanceListResponse> {
             debug!("instance list request");
             let inst_r = self.instances.read().expect("Can't write instances!");
-            let ids = inst_r.keys().map(|v|v.clone()).collect();
+            let ids = inst_r.values().map(|val|InstanceListEntry{id: val.get_id(), started: val.get_startup_time()}).collect();
             Ok(InstanceListResponse{instances:ids})
         }
 

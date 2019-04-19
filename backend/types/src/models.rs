@@ -35,6 +35,9 @@ pub type CacheSong = String;
 /// Resolver ticket
 pub type Ticket = usize;
 
+/// Instance startup time representation, unix timestamp in seconds
+pub type TimeStarted = i64;
+
 pub use crate::TimeMS;
 
 #[cfg(feature = "track")]
@@ -132,7 +135,14 @@ pub struct VolumeResponse {
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct InstanceListResponse {
-    pub instances: Vec<ID>,
+    pub instances: Vec<InstanceListEntry>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct InstanceListEntry {
+    pub id: ID,
+    /// Unix Timestamp of startup time
+    pub started: TimeStarted,
 }
 
 /// URL Resolver response with ticket number

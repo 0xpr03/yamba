@@ -15,6 +15,7 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use chrono::offset::Utc;
 use failure::Fallible;
 use futures::sync::mpsc::Receiver;
 use futures::Stream;
@@ -34,7 +35,7 @@ use cache::Cache;
 use daemon::{HeartbeatMap, Instances, WInstances};
 use playback::{PlaybackState, Player, PlayerEvent, PlayerEventType};
 use ts::TSInstance;
-use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, Song, SongID};
+use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, Song, SongID, TimeStarted};
 use ytdl::YtDL;
 use ytdl_worker::{Controller, YTReqWrapped, YTSender};
 use SETTINGS;
@@ -83,6 +84,7 @@ pub struct Instance {
     cache: SongCache,
     instances: WInstances,
     url_resolve: YTSender,
+    startup_time: TimeStarted,
 }
 
 impl Drop for Instance {
@@ -117,6 +119,7 @@ impl Instance {
             current_song: Arc::new(RwLock::new(None)),
             instances: base.get_weak_instances().clone(),
             error_retries: AtomicUsize::new(0),
+            startup_time: Utc::now().timestamp(),
         };
 
         heartbeats.update(instance.get_id());
@@ -237,6 +240,11 @@ impl Instance {
 
     pub fn play(&self) {
         self.player.play();
+    }
+
+    /// Returns startup time as UNIX timestamp
+    pub fn get_startup_time(&self) -> i64 {
+        self.startup_time
     }
 
     /// Resume playback
