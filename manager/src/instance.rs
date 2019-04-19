@@ -15,12 +15,13 @@
  *  limitations under the License.
  */
 
-use actix::{registry::SystemService, spawn};
+use actix::{registry::SystemService, spawn, Supervised};
 use chashmap::CHashMap;
 use failure::Fallible;
 use futures::future::Future;
 use hashbrown::HashMap;
 use owning_ref::OwningRef;
+use yamba_types::manager;
 use yamba_types::models::{
     callback::{InstanceState, Playstate, PlaystateResponse},
     *,
@@ -34,7 +35,7 @@ use std::sync::{
 
 use crate::backend::Backend;
 use crate::frontend;
-use crate::playlist::Playlist;
+use crate::playlist::{ItemReturn, Playlist};
 
 //pub type Instances = Arc<RwLock<HashMap<ID, Instance>>>;
 #[derive(Clone)]
@@ -64,6 +65,20 @@ impl Instances {
             })
             .ok()
     }
+
+    /// Returns a InstanceMin representation of all instances
+    pub fn get_instances_min(&self) -> Vec<manager::InstanceMin> {
+        let instances_r = self.ins.read().expect("Can't read instance!");
+        instances_r
+            .iter()
+            .map(|(id, inst)| manager::InstanceMin {
+                name: inst.get_name().to_string(),
+                id: inst.get_id(),
+                running: inst.is_running(),
+            })
+            .collect()
+    }
+
     /// New Instances-Instance
     pub fn new() -> Instances {
         Instances {
@@ -85,6 +100,7 @@ pub type SPlaylist = Playlist<Song>;
 
 pub struct Instance {
     id: ID,
+    name: String,
     playlist: SPlaylist,
     volume: RwLock<Volume>,
     state: AtomicUsize,
@@ -125,6 +141,7 @@ impl Instance {
         );
 
         Instance {
+            name: format!("Instance {}", id),
             id,
             playlist: SPlaylist::new(),
             volume: RwLock::new(0.05),
@@ -136,6 +153,11 @@ impl Instance {
         }
     }
 
+    /// Returns currently playing title
+    pub fn get_current_title(&self) -> ItemReturn<Song> {
+        self.playlist.get_current()
+    }
+
     /// Format time from seconds!
     fn format_time(length: Option<u32>) -> String {
         match length {
@@ -144,7 +166,16 @@ impl Instance {
         }
     }
 
-    /// Randomize playlist
+    /// Returns name of Instance
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    /// Returns whether the instance is playing
+    pub fn is_playing(&self) -> bool {
+        self.playstate.load(Ordering::Relaxed) == Playstate::Playing as usize
+    }
+
+    /// Randomize playlistis_playing
     pub fn shuffle(&self) {
         self.playlist.shuffle();
     }
