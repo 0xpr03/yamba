@@ -56,6 +56,18 @@ pub fn init_frontend_server(
                 r.method(http::Method::POST)
                     .with_async(api::handle_create_ts)
             })
+            .resource("/api/playback/volume", |r| {
+                r.method(http::Method::GET).with(api::handle_volume_get)
+            })
+            .resource("/api/playback/state", |r| {
+                r.method(http::Method::GET).with(api::handle_playback_get)
+            })
+            .resource("/api/playback/track", |r| {
+                r.method(http::Method::GET).with(api::handle_track_get)
+            })
+            .resource("/api/instances", |r| {
+                r.method(http::Method::GET).with(api::handle_instances_get)
+            })
             .resource("/ws", |r| r.route().f(ws::ws_route))
             .handler("/static", fs::StaticFiles::new("./static").unwrap())
             .handler(

@@ -15,16 +15,71 @@
  *  limitations under the License.
  */
 
-use actix_web::{Error, Form, HttpResponse, State};
+use actix_web::{Error, Form, HttpResponse, Json, State};
+use failure::Fallible;
 use futures::{
     future::{result, Either},
     Future,
 };
 use reqwest::StatusCode;
-use yamba_types::models::{InstanceLoadReq, InstanceType, TSSettings};
+use yamba_types::manager::{self, *};
+use yamba_types::models::{InstanceLoadReq, InstanceType, Song, TSSettings};
 
 use super::*;
 use crate::instance::Instance;
+
+/// Returns current track information
+pub fn handle_instances_get(state: State<FrState>) -> Fallible<HttpResponse> {
+    trace!("State..");
+    Ok(HttpResponse::Ok().json(manager::Instances {
+        instances: state.instances.get_instances_min(),
+    }))
+}
+
+/// Returns current track information
+pub fn handle_track_get(
+    (state, params): (State<FrState>, Json<GenericRequest>),
+) -> Fallible<HttpResponse> {
+    if let Some(i) = state.instances.read(&params.instance) {
+        let track = match i.get_current_title() {
+            Some(t) => Some(TrackMin::from_song(&*t)),
+            None => None,
+        };
+        Ok(HttpResponse::Ok().json(track))
+    } else {
+        Ok(HttpResponse::BadRequest().json("Invalid instance!"))
+    }
+}
+
+/// Returns volume info
+pub fn handle_volume_get(
+    (state, params): (State<FrState>, Json<GenericRequest>),
+) -> Fallible<HttpResponse> {
+    if let Some(i) = state.instances.read(&params.instance) {
+        let vol = VolumeFull {
+            current: i.get_volume()?,
+            max: 1.0, // TODO: add support for volume limit
+        };
+        Ok(HttpResponse::Ok().json(vol))
+    } else {
+        Ok(HttpResponse::BadRequest().json("Invalid instance!"))
+    }
+}
+
+/// Returns playback state
+pub fn handle_playback_get(
+    (state, params): (State<FrState>, Json<GenericRequest>),
+) -> Fallible<HttpResponse> {
+    if let Some(i) = state.instances.read(&params.instance) {
+        let playback = Playback {
+            playing: i.is_playing(),
+            position: i.get_pos().unwrap_or(0),
+        };
+        Ok(HttpResponse::Ok().json(playback))
+    } else {
+        Ok(HttpResponse::BadRequest().json("Invalid instance!"))
+    }
+}
 
 /// Create TS Instance
 pub fn handle_create_ts(
