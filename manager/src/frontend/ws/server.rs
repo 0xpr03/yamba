@@ -17,21 +17,14 @@
 
 use actix::prelude::*;
 use actix::registry::SystemService;
-use actix_web::{ws, Error, HttpRequest, HttpResponse};
+use failure::Fallible;
 use rand::{self, rngs::ThreadRng, Rng};
-use serde::Serialize;
 use yamba_types::models::{self, ID};
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 
-use super::*;
-
-/// How often heartbeat pings are sent
-const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
-/// How long before lack of client response causes a timeout
-const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
+use super::{Message, RawMessage, WsErr};
+use crate::instance::Instances;
 
 /// Print warning on error in send_message
 macro_rules! warn_log {
@@ -40,163 +33,6 @@ macro_rules! warn_log {
             warn!("Can't push to WS: {}", e);
         }
     };
-}
-
-#[derive(Fail, Debug)]
-pub enum WsErr {
-    #[fail(display = "Can't send msg to unknown instance {}", _0)]
-    InvalidInstance(ID),
-}
-
-#[derive(Message, Serialize)]
-pub enum Message {
-    VolumeChange(models::VolumeSetReq),
-    InstancePlayback(models::callback::PlaystateResponse),
-    InstanceCreated(ID),
-    PositionUpdate(models::callback::TrackPositionUpdate),
-}
-
-#[derive(Serialize)]
-pub enum ClientMessage {
-    VolumeCHange(models::VolumeSetReq),
-}
-
-struct WsSession {
-    /// unique session id
-    id: usize,
-    /// Client must send ping at least once per 10 seconds (CLIENT_TIMEOUT),
-    /// otherwise we drop connection.
-    hb: Instant,
-    /// joined room
-    instance: ID,
-}
-
-/// Raw Message of a String which allows seriializing once and sending to multiple recipients
-#[derive(Message, Clone)]
-pub struct RawMessage(pub Arc<String>);
-
-impl RawMessage {
-    pub fn new(msg: &Message) -> RawMessage {
-        RawMessage(Arc::new(serde_json::to_string(msg).unwrap()))
-    }
-}
-
-impl Handler<RawMessage> for WsSession {
-    type Result = ();
-
-    fn handle(&mut self, msg: RawMessage, ctx: &mut Self::Context) {
-        ctx.text(msg.0);
-    }
-}
-
-impl Actor for WsSession {
-    type Context = ws::WebsocketContext<Self, FrState>;
-
-    fn started(&mut self, ctx: &mut Self::Context) {
-        self.hb(ctx);
-
-        let addr = ctx.address();
-        WSServer::from_registry()
-            .send(Connect {
-                addr: addr.recipient(),
-            })
-            .into_actor(self)
-            .then(|res, act, ctx| {
-                match res {
-                    Ok(res) => act.id = res,
-                    _ => ctx.stop(),
-                }
-                fut::ok(())
-            })
-            .wait(ctx);
-    }
-
-    fn stopping(&mut self, _ctx: &mut Self::Context) -> Running {
-        // TODO: remove client from internal state ?
-        WSServer::from_registry().do_send(Disconnect { id: self.id });
-        Running::Stop
-    }
-}
-
-/// WebSocket message handler
-impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
-    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
-        println!("WEBSOCKET MESSAGE: {:?}", msg);
-        match msg {
-            ws::Message::Ping(msg) => {
-                self.hb = Instant::now();
-                ctx.pong(&msg);
-            }
-            ws::Message::Pong(_) => {
-                self.hb = Instant::now();
-            }
-            ws::Message::Text(text) => {
-                let m = text.trim();
-                // we check for /sss type of messages
-                if m.starts_with('/') {
-                    let v: Vec<&str> = m.splitn(2, ' ').collect();
-                    match v[0] {
-                        "/join" => {
-                            if v.len() == 2 {
-                                self.instance = v[1].parse::<ID>().unwrap();
-                                WSServer::from_registry().do_send(Use {
-                                    id: self.id,
-                                    instance: self.instance.clone(),
-                                });
-
-                                ctx.text("joined");
-                            } else {
-                                ctx.text("!!! room name is required");
-                            }
-                        }
-                        _ => ctx.text(format!("!!! unknown command: {:?}", m)),
-                    }
-                } else {
-                    // let msg = if let Some(ref name) = self.name {
-                    //     format!("{}: {}", name, m)
-                    // } else {
-                    //     m.to_owned()
-                    // };
-                    // // send message to chat server
-                    // ctx.state().ws.do_send(ClientMessage {
-                    //     id: self.id,
-                    //     msg: msg,
-                    //     instance: self.instance.clone(),
-                    // })
-                }
-            }
-            ws::Message::Binary(_) => warn!("Unexpected binary"),
-            ws::Message::Close(_) => {
-                ctx.stop();
-            }
-        }
-    }
-}
-
-impl WsSession {
-    fn hb(&self, ctx: &mut ws::WebsocketContext<Self, FrState>) {
-        ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
-            if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
-                println!("Websocket Client heartbeat failed, disconnecting!");
-                WSServer::from_registry().do_send(Disconnect { id: act.id });
-                ctx.stop();
-                return;
-            }
-
-            ctx.ping("");
-        });
-    }
-}
-
-pub fn ws_route(req: &HttpRequest<FrState>) -> Result<HttpResponse, Error> {
-    ws::start(
-        req,
-        WsSession {
-            id: 0,
-            hb: Instant::now(),
-            instance: 1,
-        },
-    )
 }
 
 /// WebsocketServer - holds all connected clients
@@ -225,6 +61,16 @@ impl WSServer {
             Ok(())
         } else {
             Err(WsErr::InvalidInstance(instance.clone()).into())
+        }
+    }
+
+    /// Send message to specific client
+    fn send_direct_message(&self, client_id: &usize, message: RawMessage) -> Fallible<()> {
+        if let Some(client) = self.sessions.get(client_id) {
+            client.do_send(message)?;
+            Ok(())
+        } else {
+            Err(WsErr::InvalidClient.into())
         }
     }
 
@@ -360,12 +206,12 @@ impl Handler<Disconnect> for WSServer {
     }
 }
 
-/// Select instance to use
+/// Client select instance to use
 #[derive(Message)]
 pub struct Use {
     /// Client id
     pub id: usize,
-    /// Room name
+    /// Instance id
     pub instance: ID,
 }
 
@@ -383,10 +229,17 @@ impl Handler<Use> for WSServer {
             }
         }
 
-        if self.instances.get_mut(&instance).is_none() {
+        if let Some(i) = self.instances.get_mut(&instance) {
+            i.insert(id);
+
+        // let state = InitialState {
+        //     track: self.
+        // };
+
+        // warn_log!(self.send_direct_message(&id, RawMessage::from_serializable(&state)));
+        } else {
             //TODO: handle invalid instance
             // self.instances.insert(name.clone(), HashSet::new());
         }
-        self.instances.get_mut(&instance).unwrap().insert(id);
     }
 }
