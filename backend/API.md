@@ -4,6 +4,8 @@
 
 REST API for yamba-daemon 
 
+All types are in types/src/models.rs  
+
  ### Instance
  
  - GET `/instance/list` returns `InstanceListResponse` with ID & startup time
