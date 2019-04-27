@@ -29,7 +29,7 @@ use env_logger::{self, Env};
 use futures::future::Future;
 use futures::stream::Stream;
 use tokio_signal;
-use yamba_types::models::{InstanceType, TSSettings};
+use yamba_types::models::GenericRequest;
 
 use crate::db::Database;
 use std::net::SocketAddr;
@@ -151,7 +151,7 @@ fn main() -> Fallible<()> {
 
     let instances = instance::Instances::new(db.clone());
 
-    let backend = backend::Backend::new(
+    let my_backend = backend::Backend::new(
         addr_daemon,
         instances.clone(),
         api_secret,
@@ -160,14 +160,36 @@ fn main() -> Fallible<()> {
 
     let _server = jsonrpc::create_server(&addr_jsonrpc, addr_daemon.ip(), instances.clone())?;
 
-    match create_instance_cmd(&backend, &instances, &matches) {
+    match create_instance_cmd(&my_backend, &instances, &matches) {
         Err(e) => error!("Error during test-cmd handling: {}", e),
         Ok(_) => (),
     }
 
-    frontend::init_frontend_server(instances.clone(), backend.clone(), addr_frontend)?;
+    frontend::init_frontend_server(instances.clone(), my_backend.clone(), addr_frontend)?;
 
-    instances.load_instances(backend.clone())?;
+    let backend_c = my_backend.clone();
+    backend::Backend::spawn_ignore(my_backend.get_instances()?.and_then(move |i| {
+        i.instances.into_iter().for_each(|v| {
+            let time_db = db.get_instance_startup(&v.id);
+            let foreign = match time_db {
+                Ok(Some(time)) => time == v.started,
+                _ => false,
+            };
+            if foreign {
+                warn!("Found foreign instance running: {}", v.id);
+                backend::Backend::spawn_ignore(
+                    backend_c
+                        .stop_instance(&GenericRequest { id: v.id })
+                        .unwrap(),
+                );
+            } else {
+                info!("Found own instance running! {}", v.id);
+            }
+        });
+        Ok(())
+    }));
+
+    instances.load_instances(my_backend.clone())?;
 
     let ctrl_c = tokio_signal::ctrl_c().flatten_stream().into_future();
 

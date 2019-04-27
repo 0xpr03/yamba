@@ -15,7 +15,7 @@
  *  limitations under the License.
  */
 use crate::models::*;
-use yamba_types::models::ID;
+use yamba_types::models::{TimeStarted, ID};
 
 use failure::Fallible;
 
@@ -59,6 +59,10 @@ pub trait Database: Send + Sync + Clone {
     fn get_instances(&self, is_autostart: bool) -> Fallible<Vec<Instance>>;
     /// Create a new instance
     fn create_instance(&self, instance: NewInstance) -> Fallible<Instance>;
+    /// Get startup time for instance
+    fn get_instance_startup(&self, instance: &ID) -> Fallible<Option<TimeStarted>>;
+    /// Set startup time for instance
+    fn set_instance_startup(&self, instance: &ID, time: &Option<TimeStarted>) -> Fallible<()>;
     // /// Get user by UID
     // fn get_user(&self, uid: UID) -> Fallible<User>;
     // /// Create user

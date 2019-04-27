@@ -23,9 +23,10 @@ use std::sync::Arc;
 use super::Database;
 use crate::models::*;
 use bincode::{deserialize, serialize};
-use yamba_types::models::ID;
+use yamba_types::models::{TimeStarted, ID};
 
 const TREE_INSTANCES: &'static str = "instances";
+const TREE_STARTUP_TIMES: &'static str = "startup_times";
 const TREE_META: &'static str = "meta";
 const TREE_SONGS: &'static str = "songs";
 const TREE_PLAYLISTS: &'static str = "playlists";
@@ -104,6 +105,25 @@ impl Database for DB {
         let tree = self.open_tree(TREE_INSTANCES)?;
         tree.set(serialize(&id).unwrap(), serialize(&instance).unwrap())?;
         Ok(instance)
+    }
+    fn get_instance_startup(&self, instance: &ID) -> Fallible<Option<TimeStarted>> {
+        Ok(self
+            .open_tree(TREE_STARTUP_TIMES)?
+            .get(serialize(instance).unwrap())?
+            .map(|v| deserialize::<TimeStarted>(&v).unwrap()))
+    }
+    fn set_instance_startup(&self, instance: &ID, time: &Option<TimeStarted>) -> Fallible<()> {
+        let tree = self.open_tree(TREE_STARTUP_TIMES)?;
+        let serialized = serialize(instance)?;
+        match time {
+            Some(v) => {
+                tree.set(serialized, serialize(v)?)?;
+            }
+            None => {
+                tree.del(serialized)?;
+            }
+        }
+        Ok(())
     }
 }
 

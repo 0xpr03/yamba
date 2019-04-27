@@ -89,7 +89,7 @@ pub fn handle_instances_create(
         .instances
         .create_instance(params.into_inner(), state.backend.clone())
     {
-        Ok(id) => Either::A(match state.instances.read(&id).unwrap().start() {
+        Ok(id) => Either::A(match state.instances.start_instance(id) {
             Ok(v) => Either::A(v.then(|res| {
                 result(Ok(match res {
                     Err(e) => match e.status() {

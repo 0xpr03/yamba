@@ -97,6 +97,7 @@ impl Backend {
     }
 
     /// Stop instance
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn stop_instance(
         &self,
         inst: &models::InstanceStopReq,
@@ -112,6 +113,7 @@ impl Backend {
     }
 
     /// Get list of instances
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn get_instances(
         &self,
     ) -> Fallible<impl Future<Item = models::InstanceListResponse, Error = reqwest::Error>> {
@@ -122,21 +124,23 @@ impl Backend {
     }
 
     /// Create instance
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn create_instance(
         &self,
         inst: &models::InstanceLoadReq,
-    ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
+    ) -> Fallible<impl Future<Item = models::InstanceLoadResponse, Error = reqwest::Error>> {
         let fut = self
             .get_request_base(
                 &format!("http://{}/instance/start", self.addr),
                 Some(inst),
                 true,
             )?
-            .and_then(|mut x| x.json::<models::DefaultResponse>());
+            .and_then(|mut x| x.json::<models::InstanceLoadResponse>());
         Ok(fut)
     }
 
     /// Start URL playback
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn play_url(
         &self,
         request: &models::PlaybackUrlReq,
@@ -152,6 +156,7 @@ impl Backend {
     }
 
     /// Resolve URL request
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn resolve_url(
         &self,
         request: &models::ResolveRequest,
@@ -171,6 +176,7 @@ impl Backend {
     }
 
     /// Set Volume request
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn set_volume(
         &self,
         request: &models::VolumeSetReq,
@@ -182,6 +188,7 @@ impl Backend {
     }
 
     /// Perform request, ignoring outcome
+    #[must_use = "Future doesn't do anything untill polled!"]
     fn request_ignore<T>(
         &self,
         addr: &str,
@@ -197,6 +204,7 @@ impl Backend {
     }
 
     /// Create request base
+    #[must_use = "Future doesn't do anything untill polled!"]
     fn get_request_base<T>(
         &self,
         addr: &str,

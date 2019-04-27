@@ -38,6 +38,12 @@ use crate::frontend;
 use crate::models;
 use crate::playlist::{ItemReturn, Playlist};
 
+#[derive(Fail, Debug)]
+pub enum InstanceErr {
+    #[fail(display = "No instance with id {} found when expected!", _0)]
+    NoInstanceFound(ID),
+}
+
 //pub type Instances = Arc<RwLock<HashMap<ID, Instance>>>;
 #[derive(Clone)]
 pub struct Instances {
@@ -68,6 +74,12 @@ impl Instances {
             .ok()
     }
 
+    /// Read instance but return error when none is found
+    pub fn read_err<'a>(&'a self, id: &ID) -> Fallible<InstanceRef<'a>> {
+        self.read(id)
+            .ok_or(InstanceErr::NoInstanceFound(id.clone()).into())
+    }
+
     /// Create new instance
     pub fn create_instance(&self, new: models::NewInstance, backend: Backend) -> Fallible<ID> {
         let model = self.db.create_instance(new)?;
@@ -88,6 +100,22 @@ impl Instances {
                 running: inst.is_running(),
             })
             .collect()
+    }
+
+    /// Start created/loaded instance  
+    /// Updates startup time & writes back to DB
+    pub fn start_instance(
+        &self,
+        id: ID,
+    ) -> Fallible<impl Future<Item = (), Error = reqwest::Error>> {
+        let instances_c = self.clone();
+        Ok(self.read_err(&id)?.start()?.and_then(move |v| {
+            instances_c
+                .read_err(&id)
+                .unwrap()
+                .update_startup_time(Some(v.startup_time));
+            Ok(())
+        }))
     }
 
     /// New Instances-Instance
@@ -140,19 +168,21 @@ pub struct Instance {
     model: InstanceLoadReq,
     position: Weak<CHashMap<ID, TimeMS>>,
     db: DB,
+    start_time: RwLock<Option<TimeStarted>>,
 }
 
 impl Drop for Instance {
     fn drop(&mut self) {
-        match self
-            .backend
-            .stop_instance(&InstanceStopReq { id: self.get_id() })
-        {
+        match self.stop() {
             Ok(v) => {
                 Backend::spawn_ignore(v);
             }
             Err(e) => warn!("Can't auto-kill instance: {}", e),
         }
+        let _ = self.db.set_instance_startup(
+            &self.get_id(),
+            &self.start_time.read().expect("Can't read start_time!"),
+        );
     }
 }
 
@@ -173,6 +203,7 @@ impl Instance {
             name: name,
             id,
             db,
+            start_time: RwLock::new(None),
             playlist: SPlaylist::new(),
             volume: RwLock::new(0.05),
             state: AtomicUsize::new(InstanceState::Stopped as usize),
@@ -260,6 +291,12 @@ impl Instance {
         }
     }
 
+    /// Update startup time
+    pub fn update_startup_time(&self, time: Option<TimeStarted>) {
+        let mut val = self.start_time.write().expect("Can't lock startup_time!");
+        *val = time;
+    }
+
     /// Start instance, ignore outcome spawn on runtime
     pub fn start_with_rt(&mut self) -> Fallible<()> {
         spawn(self.start()?.map_err(|e| error!("{:?}", e)).map(|_| ()));
@@ -270,9 +307,9 @@ impl Instance {
         self.state.load(Ordering::Relaxed) != InstanceState::Stopped as usize
     }
 
-    /// Return start future
+    /// Return start future, has to be called by Instances to store state changes
     #[must_use = "Future doesn't do anything untill polled!"]
-    pub fn start(&self) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
+    fn start(&self) -> Fallible<impl Future<Item = InstanceLoadResponse, Error = reqwest::Error>> {
         Ok(self.backend.create_instance(&self.model)?)
     }
 
@@ -311,6 +348,7 @@ impl Instance {
     /// Return stop future
     #[must_use = "Future doesn't do anything untill polled!"]
     pub fn stop(&self) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
+        self.update_startup_time(None);
         Ok(self
             .backend
             .stop_instance(&InstanceStopReq { id: self.get_id() })?)
