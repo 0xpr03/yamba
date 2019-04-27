@@ -19,10 +19,10 @@ pub use server::{InstanceCreated, WSServer};
 
 mod server;
 
+use crate::models::UseInstance;
 use actix::prelude::*;
 use actix_web::{ws, Error, HttpRequest, HttpResponse};
 use serde::Serialize;
-use yamba_types::manager::UseInstance;
 use yamba_types::models::{self, ID};
 
 use std::sync::Arc;

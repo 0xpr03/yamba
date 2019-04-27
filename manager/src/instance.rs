@@ -21,7 +21,6 @@ use failure::Fallible;
 use futures::future::Future;
 use hashbrown::HashMap;
 use owning_ref::OwningRef;
-use yamba_types::manager;
 use yamba_types::models::{
     callback::{InstanceState, Playstate, PlaystateResponse},
     *,
@@ -34,7 +33,9 @@ use std::sync::{
 };
 
 use crate::backend::Backend;
+use crate::db::{Database, DB};
 use crate::frontend;
+use crate::models;
 use crate::playlist::{ItemReturn, Playlist};
 
 //pub type Instances = Arc<RwLock<HashMap<ID, Instance>>>;
@@ -42,6 +43,7 @@ use crate::playlist::{ItemReturn, Playlist};
 pub struct Instances {
     ins: Arc<RwLock<HashMap<ID, Instance>>>,
     pos_cache: Arc<CHashMap<ID, TimeMS>>,
+    db: DB,
 }
 
 impl Deref for Instances {
@@ -66,12 +68,21 @@ impl Instances {
             .ok()
     }
 
+    /// Create new instance
+    pub fn create_instance(&self, new: models::NewInstance, backend: Backend) -> Fallible<ID> {
+        let model = self.db.create_instance(new)?;
+        let mut instances_w = self.ins.write().expect("Can't lock instance!");
+        let id = model.id.clone();
+        instances_w.insert(id, Instance::new(backend, self.db.clone(), self, model));
+        Ok(id)
+    }
+
     /// Returns a InstanceMin representation of all instances
-    pub fn get_instances_min(&self) -> Vec<manager::InstanceMin> {
+    pub fn get_instances_min(&self) -> Vec<models::InstanceMin> {
         let instances_r = self.ins.read().expect("Can't read instance!");
         instances_r
             .iter()
-            .map(|(id, inst)| manager::InstanceMin {
+            .map(|(id, inst)| models::InstanceMin {
                 name: inst.get_name().to_string(),
                 id: inst.get_id(),
                 running: inst.is_running(),
@@ -80,13 +91,33 @@ impl Instances {
     }
 
     /// New Instances-Instance
-    pub fn new() -> Instances {
+    pub fn new(db: DB) -> Instances {
         Instances {
             ins: Arc::new(RwLock::new(HashMap::new())),
             pos_cache: Arc::new(CHashMap::new()),
+            db,
         }
     }
+
+    /// Load instances from DB
+    pub fn load_instances(&self, backend: Backend) -> Fallible<()> {
+        let mut instances_w = self.ins.write().expect("Can't lock instance!");
+        for instance in self.db.get_instances(false)? {
+            let id = instance.id.clone();
+            let start = instance.autostart;
+            instances_w.insert(
+                id,
+                Instance::new(backend.clone(), self.db.clone(), self, instance),
+            );
+            if start {
+                instances_w.get_mut(&id).unwrap().start_ignore()?;
+            }
+        }
+        Ok(())
+    }
+
     /// Returns playback position
+    #[allow(unused)]
     pub fn get_pos(&self, id: &ID) -> Option<TimeMS> {
         self.pos_cache.get(id).map(|v| v.clone())
     }
@@ -108,6 +139,7 @@ pub struct Instance {
     backend: Backend,
     model: InstanceLoadReq,
     position: Weak<CHashMap<ID, TimeMS>>,
+    db: DB,
 }
 
 impl Drop for Instance {
@@ -117,9 +149,7 @@ impl Drop for Instance {
             .stop_instance(&InstanceStopReq { id: self.get_id() })
         {
             Ok(v) => {
-                if let Err(e) = Backend::spawn_ignore(v) {
-                    warn!("Error on auto-killing instance: {}", e);
-                }
+                Backend::spawn_ignore(v);
             }
             Err(e) => warn!("Can't auto-kill instance: {}", e),
         }
@@ -128,26 +158,25 @@ impl Drop for Instance {
 
 #[allow(unused)]
 impl Instance {
-    pub fn new(
-        id: ID,
-        backend: Backend,
-        instances: &Instances,
-        model: InstanceLoadReq,
-    ) -> Instance {
+    fn new(backend: Backend, db: DB, instances: &Instances, model: models::Instance) -> Instance {
+        let id = model.id.clone();
         spawn(
             frontend::WSServer::from_registry()
                 .send(frontend::InstanceCreated { id: id.clone() })
                 .map_err(|e| warn!("WS-Server error: {}", e)),
         );
 
+        let (load_req, name) = model.into_InstanceLoadReq();
+
         Instance {
-            name: format!("Instance {}", id),
+            model: load_req,
+            name: name,
             id,
+            db,
             playlist: SPlaylist::new(),
             volume: RwLock::new(0.05),
             state: AtomicUsize::new(InstanceState::Stopped as usize),
             backend,
-            model,
             playstate: AtomicUsize::new(Playstate::Stopped as usize),
             position: Arc::downgrade(&instances.pos_cache),
         }
@@ -316,7 +345,7 @@ impl Instance {
     /// Start instance, ignore outcome
     pub fn start_ignore(&mut self) -> Fallible<()> {
         trace!("Startin instance {}", self.id);
-        Backend::spawn_ignore(self.start()?)?;
+        Backend::spawn_ignore(self.start()?);
         Ok(())
     }
 

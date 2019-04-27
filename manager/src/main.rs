@@ -21,21 +21,32 @@ use clap::{App, Arg, ArgMatches};
 use failure::Fallible;
 #[macro_use]
 extern crate log;
+#[cfg(any(feature = "mysql", feature = "postgres"))]
+#[macro_use]
+extern crate diesel;
 use actix::System;
 use env_logger::{self, Env};
 use futures::future::Future;
 use futures::stream::Stream;
 use tokio_signal;
-use yamba_types::models::{InstanceLoadReq, InstanceType, TSSettings};
+use yamba_types::models::{InstanceType, TSSettings};
 
+use crate::db::Database;
 use std::net::SocketAddr;
 
 mod backend;
+mod db;
 mod frontend;
 mod instance;
 mod jsonrpc;
+mod models;
 mod playlist;
 mod security;
+
+#[cfg(any(feature = "maria", feature = "postgres"))]
+const DB_DEFAULT_PATH: &'static str = "127.0.0.1:3306";
+#[cfg(feature = "local")]
+const DB_DEFAULT_PATH: &'static str = "sled_db.db";
 
 #[derive(Fail, Debug)]
 pub enum ParamErr {
@@ -117,6 +128,14 @@ fn main() -> Fallible<()> {
                 .help("Specify pw for connecting")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("db")
+                .long("db")
+                .value_name("DB connection URI")
+                .help("Specify for DB connection / path depending on the DB compilation type")
+                .takes_value(true)
+                .default_value(DB_DEFAULT_PATH),
+        )
         .get_matches();
 
     let addr_daemon: SocketAddr = matches.value_of("daemon").unwrap().parse()?;
@@ -124,10 +143,13 @@ fn main() -> Fallible<()> {
     let addr_jsonrpc: SocketAddr = matches.value_of("jsonrpc").unwrap().parse()?;
     let addr_callback_bind: SocketAddr = matches.value_of("callback").unwrap().parse()?;
     let api_secret = matches.value_of("api_secret").unwrap();
+    let db_path = matches.value_of("db").unwrap();
 
     let mut sys = System::new("manager");
 
-    let instances = instance::Instances::new();
+    let db = db::DB::create(db_path.to_owned())?;
+
+    let instances = instance::Instances::new(db.clone());
 
     let backend = backend::Backend::new(
         addr_daemon,
@@ -144,6 +166,8 @@ fn main() -> Fallible<()> {
     }
 
     frontend::init_frontend_server(instances.clone(), backend.clone(), addr_frontend)?;
+
+    instances.load_instances(backend.clone())?;
 
     let ctrl_c = tokio_signal::ctrl_c().flatten_stream().into_future();
 
@@ -175,25 +199,20 @@ fn create_instance_cmd(
             Some(Ok(i)) => Some(i),
         };
         let addr: SocketAddr = addr.parse()?;
-        let model = InstanceLoadReq {
-            id: 0,
-            volume: 0.05,
-            data: InstanceType::TS(TSSettings {
-                host: addr.ip().to_string(),
-                port: Some(addr.port()),
-                identity: "".to_string(),
-                cid: cid,
-                name: String::from("test_instance"),
-                password: None,
-            }),
+        let model = models::NewInstance {
+            autostart: true,
+            host: addr.ip().to_string(),
+            port: Some(addr.port()),
+            identity: None,
+            cid: cid,
+            name: String::from("test_instance"),
+            password: None,
+            nick: String::from("TestYambaInstance"),
         };
 
-        let mut inst_w = instances.write().expect("Can't lock instances!");
-        inst_w.insert(
-            1,
-            instance::Instance::new(1, backend.clone(), &instances, model),
-        );
+        instances.create_instance(model, backend.clone())?;
 
+        let mut inst_w = instances.write().expect("Can't lock instances!");
         let inst = inst_w.get_mut(&1).expect("Invalid identifier ?");
         inst.start_with_rt()?;
     }

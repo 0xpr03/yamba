@@ -24,7 +24,6 @@ use std::net::SocketAddr;
 pub use ws::{InstanceCreated, WSServer};
 
 mod api;
-mod form;
 mod ws;
 
 #[derive(Clone)]
@@ -52,9 +51,13 @@ pub fn init_frontend_server(
     server::new(move || {
         App::with_state(state.clone())
             .middleware(middleware::Logger::new("manager::api::frontend"))
-            .resource("/form/create/ts", |r| {
+            // .resource("/form/create/ts", |r| {
+            //     r.method(http::Method::POST)
+            //         .with_async(api::handle_create_ts_form)
+            // })
+            .resource("/api/instances/create", |r| {
                 r.method(http::Method::POST)
-                    .with_async(api::handle_create_ts)
+                    .with_async(api::handle_instances_create)
             })
             .resource("/api/playback/volume", |r| {
                 r.method(http::Method::GET).with(api::handle_volume_get)

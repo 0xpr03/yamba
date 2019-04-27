@@ -83,7 +83,7 @@ impl Backend {
     }
 
     /// Spawn on default, simply printing the result
-    pub fn spawn_ignore<T, V, E>(fut: T) -> Fallible<()>
+    pub fn spawn_ignore<T, V, E>(fut: T)
     where
         T: Future<Item = V, Error = E> + Send + 'static,
         V: Debug,
@@ -94,7 +94,6 @@ impl Backend {
                 .map(|_| ())
                 .map_err(|err| warn!("Error sending api request: {:?}", err)),
         );
-        Ok(())
     }
 
     /// Stop instance
