@@ -134,7 +134,7 @@ impl DB {
                 }
             }
         } else {
-            tree.set(KEY_VERSION, DB_VERSION)?;
+            tree.set(KEY_VERSION, serialize(DB_VERSION).unwrap())?;
         }
         Ok(())
     }
