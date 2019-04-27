@@ -20,7 +20,7 @@ use http_r::status::StatusCode;
 use tokio::{net::TcpListener, runtime};
 use tower_web::*;
 use tower_web::{middleware::log::LogMiddleware, view::Handlebars};
-use yamba_types::models::callback::{PlaystateResponse, ResolveResponse};
+use yamba_types::models::callback::{InstanceStateResponse, PlaystateResponse, ResolveResponse};
 use yamba_types::models::*;
 
 use std::net::SocketAddr;
@@ -173,6 +173,16 @@ impl_web! {
             let inst_r = self.instances.read().expect("Can't write instances!");
             let ids = inst_r.values().map(|val|InstanceListEntry{id: val.get_id(), started: val.get_startup_time()}).collect();
             Ok(InstanceListResponse{instances:ids})
+        }
+
+        #[get("/instance/state")]
+        #[content_type("application/json")]
+        fn instance_state(&self, query_string: StateGetReq) -> Rsp {
+            debug!("playback state request: {:?}",query_string);
+            match get_instance_by_id(&self.instances, &query_string.id) {
+                Some(v) =>  ok_response(InstanceStateResponse{id: query_string.id, state: v.get_state()}),
+                None => invalid_instance(),
+            }
         }
 
         #[post("/instance/stop")]

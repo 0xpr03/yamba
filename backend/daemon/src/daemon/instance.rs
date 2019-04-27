@@ -85,6 +85,7 @@ pub struct Instance {
     instances: WInstances,
     url_resolve: YTSender,
     startup_time: TimeStarted,
+    state: RwLock<InstanceState>,
 }
 
 impl Drop for Instance {
@@ -120,6 +121,7 @@ impl Instance {
             instances: base.get_weak_instances().clone(),
             error_retries: AtomicUsize::new(0),
             startup_time: Utc::now().timestamp(),
+            state: RwLock::new(InstanceState::Started),
         };
 
         heartbeats.update(instance.get_id());
@@ -260,11 +262,20 @@ impl Instance {
         Ok(())
     }
 
+    /// Returns current instance state  
+    /// Must never be stopped.
+    pub fn get_state(&self) -> InstanceState {
+        self.state.read().expect("Can't read state").clone()
+    }
+
     /// Called when voip is connected & able to send audio
     pub(crate) fn connected(&self, param: InstanceStartedReq) -> Fallible<()> {
         match self.voip {
             InstanceType::Teamspeak(ref ts) => ts.on_connected(param.pid)?,
         }
+        let mut state = self.state.write().expect("Can't lock state!");
+        *state = InstanceState::Running;
+        drop(state);
 
         let _ = callback::send_instance_state(&InstanceStateResponse {
             id: self.get_id(),

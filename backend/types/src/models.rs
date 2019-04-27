@@ -231,7 +231,7 @@ pub mod callback {
         pub id: ID,
     }
 
-    #[derive(Debug, Serialize, Deserialize)]
+    #[derive(Debug, Serialize, Deserialize, Clone)]
     pub enum InstanceState {
         Started = 1,
         Running = 2,
