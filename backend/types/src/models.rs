@@ -160,6 +160,13 @@ pub struct ResolveRequest {
     pub url: String,
 }
 
+/// Response on successfully started instance
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Response))]
+pub struct InstanceLoadResponse {
+    pub startup_time: TimeStarted,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Extract))]
 pub struct InstanceLoadReq {

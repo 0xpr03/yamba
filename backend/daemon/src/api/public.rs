@@ -156,7 +156,11 @@ impl_web! {
             debug!("instance start request: {:?}",body);
             let mut inst_w = self.instances.write().expect("Can't write instances!");
             if !inst_w.contains_key(&body.id) {
-                create_instance(&self.base, body).map(|v|  {inst_w.insert(v.get_id(),v); ok() })?
+                create_instance(&self.base, body).map(|v|  {
+                    let time = v.get_startup_time();
+                    inst_w.insert(v.get_id(),v);
+                    ok_response(InstanceLoadResponse{startup_time: time})
+                })?
             } else {
                 custom_response(StatusCode::CONFLICT,ErrorResponse{msg: String::from("Instance running!"),details: ErrorCodes::INSTANCE_RUNNING})
             }
