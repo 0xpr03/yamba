@@ -21,8 +21,6 @@
 extern crate tower_web;
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "manager")]
-pub mod manager;
 #[cfg(feature = "rest")]
 pub mod models;
 #[cfg(feature = "rpc")]

@@ -17,8 +17,6 @@ rest = []
 rpc = []
 # Actix messages for Websocket stuff
 message = ["actix"]
-# Manager stuff
-manager = ["actix"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

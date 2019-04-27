@@ -177,7 +177,7 @@ pub enum InstanceType {
 pub struct TSSettings {
     pub host: String,
     pub port: Option<u16>,
-    pub identity: String,
+    pub identity: Option<String>,
     pub cid: Option<i32>,
     pub name: String,
     pub password: Option<String>,
