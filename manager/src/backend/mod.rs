@@ -102,8 +102,22 @@ impl Backend {
         inst: &models::InstanceStopReq,
     ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
         let fut = self
-            .get_request_base(&format!("http://{}/instance/stop", self.addr), inst, true)?
+            .get_request_base(
+                &format!("http://{}/instance/stop", self.addr),
+                Some(inst),
+                true,
+            )?
             .and_then(|mut x| x.json::<models::DefaultResponse>());
+        Ok(fut)
+    }
+
+    /// Get list of instances
+    pub fn get_instances(
+        &self,
+    ) -> Fallible<impl Future<Item = models::InstanceListResponse, Error = reqwest::Error>> {
+        let fut = self
+            .get_request_base::<()>(&format!("http://{}/instance/list", self.addr), None, false)?
+            .and_then(|mut x| x.json::<models::InstanceListResponse>());
         Ok(fut)
     }
 
@@ -113,7 +127,11 @@ impl Backend {
         inst: &models::InstanceLoadReq,
     ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
         let fut = self
-            .get_request_base(&format!("http://{}/instance/start", self.addr), inst, true)?
+            .get_request_base(
+                &format!("http://{}/instance/start", self.addr),
+                Some(inst),
+                true,
+            )?
             .and_then(|mut x| x.json::<models::DefaultResponse>());
         Ok(fut)
     }
@@ -124,7 +142,11 @@ impl Backend {
         request: &models::PlaybackUrlReq,
     ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
         let fut = self
-            .get_request_base(&format!("http://{}/playback/url", self.addr), request, true)?
+            .get_request_base(
+                &format!("http://{}/playback/url", self.addr),
+                Some(request),
+                true,
+            )?
             .and_then(|mut x| x.json::<models::DefaultResponse>());
         Ok(fut)
     }
@@ -136,7 +158,11 @@ impl Backend {
     ) -> Fallible<impl Future<Item = models::ResolveTicketResponse, Error = reqwest::Error>> {
         trace!("Resolving url {}", request.url);
         let fut = self
-            .get_request_base(&format!("http://{}/resolve/url", self.addr), request, false)?
+            .get_request_base(
+                &format!("http://{}/resolve/url", self.addr),
+                Some(request),
+                false,
+            )?
             .and_then(|mut x| {
                 debug!("Resolve response: {:?} {:?}", x, x.body());
                 x.json::<models::ResolveTicketResponse>()
@@ -150,7 +176,7 @@ impl Backend {
         request: &models::VolumeSetReq,
     ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
         let fut = self
-            .get_request_base(&format!("http://{}/volume", self.addr), request, true)?
+            .get_request_base(&format!("http://{}/volume", self.addr), Some(request), true)?
             .and_then(|mut x| x.json::<models::DefaultResponse>());
         Ok(fut)
     }
@@ -165,7 +191,7 @@ impl Backend {
         T: Serialize,
     {
         Ok(self
-            .get_request_base(addr, data, true)?
+            .get_request_base(addr, Some(data), true)?
             .map(|x| trace!("Request response: {:?}", x))
             .map_err(|err| warn!("Error sending api request: {:?}", err)))
     }
@@ -174,16 +200,24 @@ impl Backend {
     fn get_request_base<T>(
         &self,
         addr: &str,
-        data: &T,
+        data: Option<&T>,
         post: bool,
     ) -> Fallible<impl Future<Item = Response, Error = reqwest::Error>>
     where
         T: Serialize,
     {
         Ok(if post {
-            self.client.post(addr).json(data).send()
+            let mut c = self.client.post(addr);
+            if let Some(d) = data {
+                c = c.json(d)
+            }
+            c.send()
         } else {
-            self.client.get(addr).query(data).send()
+            let mut c = self.client.get(addr);
+            if let Some(d) = data {
+                c = c.query(d)
+            }
+            c.send()
         })
     }
 }
