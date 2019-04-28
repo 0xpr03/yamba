@@ -27,6 +27,7 @@ pub use crate::ErrorCodes;
 pub use crate::{Volume, ID};
 
 /// Song identifier, char(32)
+/// Effectively u128, but not supported by json
 pub type SongID = String;
 
 /// Cache representation
@@ -265,9 +266,15 @@ pub mod callback {
     /// Url resolve response for ticket
     #[derive(Debug, Serialize, Deserialize)]
     pub struct ResolveResponse {
+        /// Original URL for request
+        pub source: String,
+        /// Whether the call had success
         pub success: bool,
+        /// Message for aribtrary errors
         pub msg: Option<String>,
+        /// Song list on success (can be empty for an empty playlist!)
         pub songs: Vec<Song>,
+        /// TicketID
         pub ticket: Ticket,
     }
 }

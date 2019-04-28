@@ -94,12 +94,14 @@ impl YTRequest for ResolveDispatcher {
     fn callback(&mut self, songs: RSongs, _: Instances) {
         let response = match songs {
             Ok(s) => ResolveResponse {
+                source: self.url.clone(),
                 ticket: self.ticket,
                 success: true,
                 songs: s,
                 msg: None,
             },
             Err(e) => ResolveResponse {
+                source: self.url.clone(),
                 ticket: self.ticket,
                 success: false,
                 songs: Vec::new(),

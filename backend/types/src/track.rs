@@ -54,6 +54,7 @@ impl Hash for Track {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.title.hash(state);
         self.extractor.hash(state);
+        self.uploader.hash(state);
     }
 }
 
