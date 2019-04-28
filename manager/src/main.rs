@@ -168,28 +168,36 @@ fn main() -> Fallible<()> {
     frontend::init_frontend_server(instances.clone(), my_backend.clone(), addr_frontend)?;
 
     let backend_c = my_backend.clone();
-    backend::Backend::spawn_ignore(my_backend.get_instances()?.and_then(move |i| {
-        i.instances.into_iter().for_each(|v| {
-            let time_db = db.get_instance_startup(&v.id);
-            let foreign = match time_db {
-                Ok(Some(time)) => time == v.started,
-                _ => false,
-            };
-            if foreign {
-                warn!("Found foreign instance running: {}", v.id);
-                backend::Backend::spawn_ignore(
-                    backend_c
-                        .stop_instance(&GenericRequest { id: v.id })
-                        .unwrap(),
-                );
-            } else {
-                info!("Found own instance running! {}", v.id);
-            }
-        });
-        Ok(())
-    }));
-
-    instances.load_instances(my_backend.clone())?;
+    backend::Backend::spawn_ignore(
+        my_backend
+            .get_instances()?
+            .and_then(move |i| {
+                i.instances.into_iter().for_each(|v| {
+                    let time_db = db.get_instance_startup(&v.id);
+                    let foreign = match time_db {
+                        Ok(Some(time)) => time == v.started,
+                        _ => false,
+                    };
+                    if foreign {
+                        warn!("Found foreign instance running: {}", v.id);
+                        backend::Backend::spawn_ignore(
+                            backend_c
+                                .stop_instance(&GenericRequest { id: v.id })
+                                .unwrap(),
+                        );
+                    } else {
+                        info!("Found own instance running! {}", v.id);
+                    }
+                });
+                Ok(())
+            })
+            .and_then(move |_| {
+                if let Err(e) = instances.load_instances(my_backend.clone()) {
+                    warn!("Error loading instances! {}", e);
+                }
+                Ok(())
+            }),
+    );
 
     let ctrl_c = tokio_signal::ctrl_c().flatten_stream().into_future();
 
