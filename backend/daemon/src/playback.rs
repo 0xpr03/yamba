@@ -273,15 +273,6 @@ impl Player {
         Ok(())
     }
 
-    /// Get position in song as ms
-    pub fn get_position_ms(&self) -> u64 {
-        // gst player reports in total MS
-        match self.player.get_position().mseconds() {
-            Some(ms) => ms,
-            None => 0,
-        }
-    }
-
     /// Returns the current position as raw value
     pub fn get_position(&self) -> Position {
         let clock = self.player.get_position();

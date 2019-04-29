@@ -202,12 +202,10 @@ fn main() -> Fallible<()> {
                     debug!("url: {:?}", url);
                     let player_c = player.clone();
                     runtime.spawn(recv.for_each(move |event| {
-                        let player = player_c.clone();
                         trace!("Event: {:?}", event);
                         match event.event_type {
                             PlayerEventType::PositionUpdated(time) => {
                                 debug!("Position: {}", time);
-                                //player.set_volume(f64::from(player.get_position()) / 1000.0);
                             }
                             PlayerEventType::EndOfStream
                             | PlayerEventType::StateChanged(PlaybackState::Stopped) => {
