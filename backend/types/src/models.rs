@@ -79,6 +79,8 @@ pub struct PlaybackPauseReq {
     pub id: ID,
 }
 
+pub type PlaybackStopReq = PlaybackPauseReq;
+
 /// Generic Request who require an instance ID
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Extract))]

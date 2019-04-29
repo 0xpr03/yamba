@@ -220,6 +220,16 @@ impl_web! {
             }
         }
 
+        #[post("/playback/stop")]
+        #[content_type("application/json")]
+        fn playback_stop(&self, body: PlaybackStopReq) -> Rsp {
+            debug!("playback pause request: {:?}",body);
+            match get_instance_by_id(&self.instances, &body.id) {
+                Some(v) =>  {v.stop_playback(); ok()},
+                None => invalid_instance(),
+            }
+        }
+
         #[get("/playback/state")]
         #[content_type("application/json")]
         fn playback_state(&self, query_string: StateGetReq) -> Rsp {
