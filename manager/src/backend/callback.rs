@@ -20,16 +20,9 @@ use crate::frontend;
 use crate::security::SecurityModule;
 
 use actix::SystemService;
-use actix_web::{
-    error::Result,
-    http,
-    middleware::{self, Middleware, Started},
-    server, App, HttpRequest, HttpResponse, Json,
-};
+use actix_web::{http, middleware, server, App, HttpRequest, HttpResponse, Json};
 use failure::Fallible;
 use yamba_types::models::callback as cb;
-
-use std::net::IpAddr;
 
 #[derive(Fail, Debug)]
 pub enum ServerErr {

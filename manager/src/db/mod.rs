@@ -15,7 +15,7 @@
  *  limitations under the License.
  */
 use crate::models::*;
-use yamba_types::models::{TimeStarted, ID};
+use yamba_types::models::{Song, SongID, TimeStarted, ID};
 
 use failure::Fallible;
 

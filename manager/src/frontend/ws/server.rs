@@ -24,7 +24,6 @@ use yamba_types::models::{self, ID};
 use std::collections::{HashMap, HashSet};
 
 use super::{Message, RawMessage, WsErr};
-use crate::instance::Instances;
 
 /// Print warning on error in send_message
 macro_rules! warn_log {

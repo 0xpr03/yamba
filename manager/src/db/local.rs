@@ -17,7 +17,6 @@
 use failure::{Error, Fallible};
 use sled::{self, *};
 
-use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Arc;
 
 use super::Database;

@@ -16,17 +16,15 @@
  */
 
 use crate::models::{self, *};
-use actix_web::{Error, Form, HttpResponse, Json, State};
+use actix_web::{Error, HttpResponse, Json, State};
 use failure::Fallible;
 use futures::{
     future::{err, result, Either},
     Future,
 };
 use reqwest::StatusCode;
-use yamba_types::models::{InstanceLoadReq, InstanceType, Song, TSSettings};
 
 use super::*;
-use crate::instance::Instance;
 
 /// Returns current track information
 pub fn handle_instances_get(state: State<FrState>) -> Fallible<HttpResponse> {

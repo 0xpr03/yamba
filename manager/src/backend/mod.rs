@@ -187,22 +187,6 @@ impl Backend {
         Ok(fut)
     }
 
-    /// Perform request, ignoring outcome
-    #[must_use = "Future doesn't do anything untill polled!"]
-    fn request_ignore<T>(
-        &self,
-        addr: &str,
-        data: &T,
-    ) -> Fallible<impl Future<Item = (), Error = ()>>
-    where
-        T: Serialize,
-    {
-        Ok(self
-            .get_request_base(addr, Some(data), true)?
-            .map(|x| trace!("Request response: {:?}", x))
-            .map_err(|err| warn!("Error sending api request: {:?}", err)))
-    }
-
     /// Create request base
     #[must_use = "Future doesn't do anything untill polled!"]
     fn get_request_base<T>(

@@ -16,8 +16,7 @@
  */
 
 use actix_web::{
-	error::ErrorInternalServerError, middleware, App, Error as WebError, HttpRequest, HttpResponse,
-	Json,
+	error::ErrorInternalServerError, middleware, Error as WebError, HttpRequest, HttpResponse, Json,
 };
 use failure::Fallible;
 use futures::{
@@ -34,7 +33,6 @@ use serde_json;
 use yamba_types::rpc::*;
 
 use std::net::{IpAddr, SocketAddr};
-use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLockReadGuard};
 
 use crate::instance::{Instance, Instances};

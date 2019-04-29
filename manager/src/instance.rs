@@ -15,10 +15,10 @@
  *  limitations under the License.
  */
 
-use actix::{registry::SystemService, spawn, Supervised};
+use actix::{registry::SystemService, spawn};
 use chashmap::CHashMap;
 use failure::Fallible;
-use futures::future::Future;
+use futures::future::{result, Either, Future};
 use hashbrown::HashMap;
 use owning_ref::OwningRef;
 use yamba_types::models::{
@@ -94,7 +94,7 @@ impl Instances {
         let instances_r = self.ins.read().expect("Can't read instance!");
         instances_r
             .iter()
-            .map(|(id, inst)| models::InstanceMin {
+            .map(|(_, inst)| models::InstanceMin {
                 name: inst.get_name().to_string(),
                 id: inst.get_id(),
                 running: inst.is_running(),
