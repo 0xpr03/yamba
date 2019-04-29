@@ -63,6 +63,7 @@ impl HeartbeatMap {
     }
     /// Update heartbeat timestamp for instance
     pub fn update(&self, id: ID) {
+        trace!("Updating heartbeat for {}", id);
         self.storage.insert(id, Instant::now());
     }
     /// Get entries older than specified duration

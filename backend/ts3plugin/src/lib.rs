@@ -54,7 +54,7 @@ use std::time::Duration;
 #[derive(Fail, Debug)]
 pub enum APIErr {
     #[fail(display = "Request response not successfull {}", _0)]
-    NoSuccess(&'static str),
+    NoSuccess(String),
     #[fail(display = "Error performing request {}", _0)]
     RequestError(#[cause] reqwest::Error),
 }
@@ -266,7 +266,7 @@ impl Plugin for MyTsPlugin {
             match connected(*ID.as_ref().unwrap(), &api) {
                 Err(e) => {
                     api.log_or_print(
-                        format!("Error trying to signal connected state to backend: {}", e),
+                        format!("Error trying to signal connected state to backend, stopping heartbeat: {}", e),
                         PLUGIN_NAME_I,
                         LogLevel::Error,
                     );
@@ -731,13 +731,16 @@ fn connected(id: i32, api: &TsApi) -> Fallible<()> {
             pid: process::id(),
         })
         .send()
-        .and_then(|mut v| v.json::<ConnectedResponse>())
     {
         Ok(v) => {
-            if v.success {
+            if v.status() == reqwest::StatusCode::ACCEPTED {
                 Ok(())
             } else {
-                Err(APIErr::NoSuccess("No success during connect-callback").into())
+                Err(APIErr::NoSuccess(format!(
+                    "No success during connect-callback: {}",
+                    v.status()
+                ))
+                .into())
             }
         }
         Err(e) => Err(APIErr::RequestError(e).into()),
@@ -750,14 +753,13 @@ fn heartbeat(id: i32) -> Fallible<()> {
         .post(&format!("http://{}/internal/heartbeat", *CALLBACK_INTERNAL))
         .json(&HeartbeatRequest { id })
         .send()
-        .and_then(|mut v| v.json::<HeartbeatResponse>())
     {
         Err(e) => Err(APIErr::RequestError(e).into()),
         Ok(v) => {
-            if v.success {
+            if v.status() == reqwest::StatusCode::ACCEPTED {
                 Ok(())
             } else {
-                Err(APIErr::NoSuccess("No success during heartbeat").into())
+                Err(APIErr::NoSuccess(format!("Heartbeat failed: {}", v.status())).into())
             }
         }
     }
@@ -768,7 +770,6 @@ create_plugin!(MyTsPlugin);
 #[cfg(test)]
 mod testing {
     use super::*;
-    use std::collections::HashMap;
     use std::process;
     #[test]
     fn test_connected() {
