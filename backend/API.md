@@ -23,6 +23,7 @@ All types are in types/src/models.rs
 #### Playback
 - POST `/playback/url` with body `PlaybackUrlReq` starts playback with specified track
 - POST `/playback/pause` with body `PlaybackPauseReq` toggle pause for current playback
+- POST `/playback/stop` with body `PlaybackStopReq` stop current playback
 - GET `/playback/state` with query params `StateGetReq` returns `PlaystateResponse`
 - POST `/volume` with body `VolumeSetReq` sets volume
 - GET `/volume` with query params `VolumeGetReq` returns `VolumeResponse`
