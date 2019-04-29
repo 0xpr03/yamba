@@ -155,7 +155,7 @@ pub fn start_runtime() -> Fallible<()> {
             cache: cache,
             controller: controller,
             w_instances: Arc::downgrade(&instances),
-            heartbeat: heartbeat::HeartbeatMap::new(),
+            heartbeat: heartbeat::HeartbeatMap::new(instances.clone(), &mut rt),
         };
 
         api::start_server(&mut rt, instances.clone(), base)?;

@@ -149,9 +149,6 @@ impl Instance {
         Ok(self.url_resolve.try_send(request)?)
     }
 
-    /// Do heartbeat update
-    pub fn heartbeat(&self) {}
-
     /// Stop playback
     pub fn stop_playback(&self) {
         let mut lock = self.current_song.write().expect("Can't lock current song!");

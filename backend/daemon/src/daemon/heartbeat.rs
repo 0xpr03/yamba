@@ -16,11 +16,16 @@
  */
 
 use concurrent_hashmap::ConcHashMap;
+use futures::{Future, Stream};
+use tokio::runtime::Runtime;
+use tokio::timer::Interval;
 
-use super::ID;
+use super::{Instances, ID};
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+const CHECK_INTERVAL: Duration = Duration::from_secs(3);
 
 #[derive(Clone)]
 pub struct HeartbeatMap {
@@ -28,17 +33,40 @@ pub struct HeartbeatMap {
 }
 
 impl HeartbeatMap {
-    pub fn new() -> HeartbeatMap {
-        HeartbeatMap {
+    /// Create new heartbeatmap & start handler
+    pub fn new(instances: Instances, runtime: &mut Runtime) -> HeartbeatMap {
+        let hbm = HeartbeatMap {
             storage: Arc::new(ConcHashMap::<ID, Instant>::new()),
-        }
-    }
+        };
 
+        let hbm_c = hbm.clone();
+        runtime.spawn(
+            Interval::new_interval(CHECK_INTERVAL)
+                .for_each(move |_| {
+                    let mut inst_rw = instances.write().expect("Can't lock instances!");
+                    hbm_c
+                        .get_entries_older_than(CHECK_INTERVAL)
+                        .iter()
+                        .for_each(move |id| {
+                            warn!("Killing instance {}, timeout for heartbeat.", id);
+                            inst_rw.remove(id);
+                        });
+                    Ok(())
+                })
+                .map_err(|e| {
+                    error!("Interval errored: {:?}", e);
+                    ()
+                }),
+        );
+
+        hbm
+    }
+    /// Update heartbeat timestamp for instance
     pub fn update(&self, id: ID) {
         self.storage.insert(id, Instant::now());
     }
-
-    pub fn get_entries_older_than<'a>(&'a self, limit: Duration) -> Vec<&'a ID> {
+    /// Get entries older than specified duration
+    fn get_entries_older_than<'a>(&'a self, limit: Duration) -> Vec<&'a ID> {
         self.storage
             .iter()
             .filter_map(|(key, val)| match val.elapsed() >= limit {
