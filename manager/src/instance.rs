@@ -127,6 +127,11 @@ impl Instances {
         }
     }
 
+    /// Get DB
+    pub fn get_db(&self) -> &DB {
+        &self.db
+    }
+
     /// Load instances from DB
     pub fn load_instances(&self, backend: Backend) -> Fallible<()> {
         let mut instances_w = self.ins.write().expect("Can't lock instance!");
@@ -359,12 +364,21 @@ impl Instance {
         self.playlist.push(songs);
     }
 
-    /// Return queue future
+    /// Returns queue future.
+    /// Resolves URL by cache or calling daemon.
     #[must_use = "Future doesn't do anything untill polled!"]
-    pub fn queue(
-        &self,
-        url: String,
-    ) -> Fallible<impl Future<Item = ResolveTicketResponse, Error = reqwest::Error>> {
+    pub fn queue(&self, url: String) -> Fallible<impl Future<Item = (), Error = reqwest::Error>> {
+        if let Some(pl) = self.db.get_playlist_by_url(&url)? {
+            trace!("Found playlist cache hit for url.");
+            self.add_to_queue(pl.data);
+            return Ok(Either::A(result(Ok(()))));
+        }
+        if let Some(song) = self.db.get_song_by_url(&url)? {
+            trace!("Found song cache hit for url.");
+            self.add_to_queue(vec![song]);
+            return Ok(Either::A(result(Ok(()))));
+        }
+
         let fut = self.backend.resolve_url(&ResolveRequest {
             instance: self.get_id(),
             url,
@@ -374,10 +388,10 @@ impl Instance {
         let id = self.get_id();
         let fut = fut.map(move |v| {
             tickets.add_queue(id, v.ticket.clone());
-            v
+            ()
         });
 
-        Ok(fut)
+        Ok(Either::B(fut))
     }
 
     /// Start instance, ignore outcome

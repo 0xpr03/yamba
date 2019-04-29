@@ -23,13 +23,21 @@ use std::sync::Arc;
 use super::Database;
 use crate::models::*;
 use bincode::{deserialize, serialize};
-use yamba_types::models::{TimeStarted, ID};
+use yamba_types::models::{Song, SongID, TimeStarted, ID};
 
+/// Instance data storage
 const TREE_INSTANCES: &'static str = "instances";
+/// Startup times for instances
 const TREE_STARTUP_TIMES: &'static str = "startup_times";
 const TREE_META: &'static str = "meta";
+/// Raw Songs
 const TREE_SONGS: &'static str = "songs";
+/// Match URL <-> Song
+const TREE_SONG_URL: &'static str = "songs_url";
+/// Playlist storage
 const TREE_PLAYLISTS: &'static str = "playlists";
+/// Match URL <-> Playlist
+const TREE_PLAYLIST_URL: &'static str = "playlists_url";
 
 const KEY_VERSION: &'static str = "DB_VERSION";
 const DB_VERSION: &'static str = "0.0.1";
@@ -125,11 +133,71 @@ impl Database for DB {
         }
         Ok(())
     }
+    fn upsert_song(&self, song: &Song, url: &Option<&str>) -> Fallible<()> {
+        let tree = self.open_tree(TREE_SONGS)?;
+        let id = serialize(&song.id)?;
+        tree.set(serialize(&id)?, serialize(&song)?)?;
+        if let Some(url) = url {
+            self.open_tree(TREE_SONG_URL)?
+                .set(serialize(url)?, serialize(&id)?)?;
+        }
+        Ok(())
+    }
+    fn get_song(&self, song: SongID) -> Fallible<Option<Song>> {
+        let tree = self.open_tree(TREE_SONGS)?;
+        Ok(tree.get(song)?.map(|v| deserialize::<Song>(&v).unwrap()))
+    }
+    fn get_song_by_url(&self, url: &str) -> Fallible<Option<Song>> {
+        let tree_url = self.open_tree(TREE_SONG_URL)?;
+        if let Some(id) = tree_url.get(url)? {
+            let tree_songs = self.open_tree(TREE_SONGS)?;
+            match tree_songs.get(&id)? {
+                Some(s) => return Ok(Some(deserialize::<Song>(&s)?)),
+                None => {
+                    // no song for ID found, delete wrong mapping
+                    warn!("Inconsitent DB! No song for stored URL found!");
+                    tree_url.del(id)?;
+                }
+            }
+        }
+        Ok(None)
+    }
+    fn upsert_playlist(&self, playlist: &NewPlaylistData, url: Option<&str>) -> Fallible<()> {
+        let tree = self.open_tree(TREE_PLAYLISTS)?;
+        let id = playlist.id.to_le_bytes();
+        tree.set(&id, serialize(playlist)?)?;
+        if let Some(url) = url {
+            self.open_tree(TREE_PLAYLIST_URL)?
+                .set(serialize(url)?, &id)?;
+        }
+        Ok(())
+    }
+    fn get_playlist_by_url(&self, url: &str) -> Fallible<Option<PlaylistData>> {
+        let tree_url = self.open_tree(TREE_PLAYLIST_URL)?;
+        if let Some(id) = tree_url.get(serialize(url)?)? {
+            let tree_pl = self.open_tree(TREE_PLAYLISTS)?;
+            match tree_pl.get(&id)? {
+                Some(pl) => return Ok(Some(deserialize::<PlaylistData>(&pl)?)),
+                None => {
+                    // No playlist but mapping URL->ID in DB
+                    warn!("Inconsitent DB! No playlist for stored URL found!");
+                    tree_pl.del(id)?;
+                }
+            }
+        }
+        Ok(None)
+    }
 }
 
 type WTree = Arc<Tree>;
 
 impl DB {
+    /// Generate ID, used for manual ID creation
+    /// (playlist creation workaround)
+    pub fn generate_id(&self) -> Fallible<u64> {
+        Ok(self.db.generate_id()?)
+    }
+
     /// Check version of DB
     fn check_version(&self) -> Fallible<()> {
         let tree = self.open_tree(TREE_META)?;
@@ -159,14 +227,18 @@ impl DB {
         Ok(())
     }
 
-    /// Generate new instance ID
     fn gen_instance_id(&self) -> Fallible<ID> {
+        self.gen_id(KEY_INSTANCE_ID, INSTANCE_ID_ZERO)
+    }
+
+    /// Generate new instance ID
+    fn gen_id(&self, key: &'static str, zero: ID) -> Fallible<ID> {
         let old = self
             .open_tree(TREE_META)?
-            .fetch_and_update(KEY_INSTANCE_ID, |v| match v {
+            .fetch_and_update(key, |v| match v {
                 // Basically fetch_add in sled style
                 Some(v) => Some(serialize(&(deserialize::<ID>(&v).unwrap() + 1)).unwrap()),
-                None => Some(serialize(&INSTANCE_ID_ZERO).unwrap()),
+                None => Some(serialize(&zero).unwrap()),
             })?;
 
         Ok(match old {

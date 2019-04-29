@@ -46,9 +46,6 @@ macro_rules! assert_unique_feature {
 
 assert_unique_feature!("maria", "local", "postgres");
 
-pub type UID = i64; // TODO
-pub type Permission = String; // TODO
-
 pub trait Database: Send + Sync + Clone {
     type DB: Database;
     /// Create Database
@@ -63,6 +60,16 @@ pub trait Database: Send + Sync + Clone {
     fn get_instance_startup(&self, instance: &ID) -> Fallible<Option<TimeStarted>>;
     /// Set startup time for instance
     fn set_instance_startup(&self, instance: &ID, time: &Option<TimeStarted>) -> Fallible<()>;
+    /// Upsert song, insert URL relation if provided
+    fn upsert_song(&self, song: &Song, url: &Option<&str>) -> Fallible<()>;
+    /// Get Song
+    fn get_song(&self, song: SongID) -> Fallible<Option<Song>>;
+    /// Get song by URL
+    fn get_song_by_url(&self, url: &str) -> Fallible<Option<Song>>;
+    /// Upsert playlist, insert URL relation if provided
+    fn upsert_playlist(&self, playlist: &NewPlaylistData, url: Option<&str>) -> Fallible<()>;
+    /// Get Playlist by URL
+    fn get_playlist_by_url(&self, url: &str) -> Fallible<Option<PlaylistData>>;
     // /// Get user by UID
     // fn get_user(&self, uid: UID) -> Fallible<User>;
     // /// Create user

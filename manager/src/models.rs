@@ -22,9 +22,15 @@
 
 #[cfg(any(feature = "maria", feature = "postgres"))]
 use crate::db::schema::*;
+#[cfg(feature = "local")]
+use crate::db::DB;
+#[cfg(feature = "local")]
+use failure::Fallible;
 use serde::{Deserialize, Serialize};
 use yamba_types::models::{InstanceLoadReq, InstanceType, Song, TSSettings};
 use yamba_types::{TimeMS, Volume, ID};
+
+pub type PlaylistID = u64;
 
 /// Used for creating instances in manager-rs
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,6 +51,35 @@ pub struct NewInstance {
     pub autostart: bool,
     /// VoIP identity nick
     pub nick: String,
+}
+
+/// PlaylistData for DB retrieval
+#[derive(Debug, Deserialize)]
+pub struct PlaylistData {
+    pub id: PlaylistID,
+    pub name: String,
+    /// Data of playlist
+    pub data: Vec<Song>,
+}
+
+/// New playlist Data, used for insertion
+#[derive(Debug, Serialize)]
+pub struct NewPlaylistData<'a> {
+    pub id: PlaylistID,
+    pub name: String,
+    /// Data of playlist
+    pub data: &'a [Song],
+}
+
+#[cfg(feature = "local")]
+impl<'a> NewPlaylistData<'a> {
+    pub fn new(name: String, data: &'a [Song], db: &DB) -> Fallible<Self> {
+        Ok(NewPlaylistData {
+            id: db.generate_id()?,
+            name,
+            data,
+        })
+    }
 }
 
 /// Instance model, contains data for creating an instance
