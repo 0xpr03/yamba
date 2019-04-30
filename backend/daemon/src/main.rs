@@ -200,7 +200,6 @@ fn main() -> Fallible<()> {
                 let mut runtime = runtime::Runtime::new()?;
                 {
                     debug!("url: {:?}", url);
-                    let player_c = player.clone();
                     runtime.spawn(recv.for_each(move |event| {
                         trace!("Event: {:?}", event);
                         match event.event_type {
