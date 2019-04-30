@@ -162,8 +162,6 @@ impl Handler<models::callback::TrackPositionUpdate> for WSServer {
     type Result = ();
 
     fn handle(&mut self, msg: models::callback::TrackPositionUpdate, _: &mut Context<Self>) {
-        trace!("Position changed on {}", msg.id);
-
         warn_log!(self.send_message(&msg.id.clone(), &Message::PositionUpdate(msg), 0));
     }
 }

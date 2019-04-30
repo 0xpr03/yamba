@@ -484,7 +484,6 @@ pub fn create_playback_event_handler(
                 }
             }
             PlayerEventType::PositionUpdated(time) => {
-                trace!("Position update for {}", event.id);
                 if let Some(time) = time.mseconds() {
                     Instance::send_position_update(event.id, time as u32);
                 }
