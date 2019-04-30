@@ -3,9 +3,7 @@ Backend with core for playback
 ## Build
 Requirements:
  - [rust](https://www.rust-lang.org)  
- - [libvlc](https://wiki.videolan.org/LibVLC) or libvlc-dev on debian  
- - vlc addons (addons APT package under *debian) to run with codecs  
- - libssl-dev  
+ - [gstreamer](http://gstreamer.freedesktop.org/)
  - [python3](https://www.python.org/) to run  
  - libpulse-dev
 
@@ -13,3 +11,9 @@ Requirements:
 
 Simple testing: `cargo test`  
 Full output: cargo test -- --nocapture
+
+## Docker build
+
+ - Copy `backend.env` to `backend.default.env`
+ - Adjust `backend.default.env` to your needs
+ - run start.sh --build

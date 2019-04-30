@@ -143,6 +143,10 @@ fn main() -> Fallible<()> {
         "API Public Binding: {}:{}",
         SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port
     );
+    info!(
+        "TS RPC callback IP: {}:{}",
+        SETTINGS.main.api_jsonrpc_ip, SETTINGS.main.api_jsonrpc_port
+    );
 
     match app.subcommand() {
         ("init", Some(_)) => {
