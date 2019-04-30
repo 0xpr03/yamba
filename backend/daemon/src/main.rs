@@ -57,6 +57,12 @@ extern crate yamba_types;
 
 use std::alloc::System;
 
+#[derive(Fail, Debug)]
+pub enum MainErr {
+    #[fail(display = "License not accepted.")]
+    LicenseUnaccepted,
+}
+
 #[global_allocator]
 static GLOBAL: System = System;
 
@@ -104,6 +110,8 @@ fn main() -> Fallible<()> {
     init_log()?;
 
     info!("Startup");
+
+    check_license_agreements()?;
 
     let app = App::new("YAMBA")
         .version(VERSION)
@@ -246,6 +254,25 @@ fn main() -> Fallible<()> {
 /// Check runtime relevant config values
 fn check_runtime() -> Fallible<()> {
     api::check_runtime()?;
+    Ok(())
+}
+
+/// Check license agreement for 3rd party terms
+fn check_license_agreements() -> Fallible<()> {
+    let mut accepted = false;
+    if let Ok(v) = std::env::var("LICENSE_AGREEMENT") {
+        accepted = v == "accepted";
+    }
+    if std::path::Path::new(".yamba_license_accepted").exists() {
+        accepted = true;
+    }
+
+    if !accepted {
+        error!("License not accepted!");
+        error!("To accept add a env value of LICENSE_AGREEMENT with accepted as value or create a file .yamba_license_accepted");
+        return Err(MainErr::LicenseUnaccepted.into());
+    }
+
     Ok(())
 }
 
