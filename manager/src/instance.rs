@@ -371,11 +371,15 @@ impl Instance {
         if let Some(pl) = self.db.get_playlist_by_url(&url)? {
             trace!("Found playlist cache hit for url.");
             self.add_to_queue(pl.data);
+            // check playback as no ticket handler will be executed
+            self.check_playback();
             return Ok(Either::A(result(Ok(()))));
         }
         if let Some(song) = self.db.get_song_by_url(&url)? {
             trace!("Found song cache hit for url.");
             self.add_to_queue(vec![song]);
+            // check playback as no ticket handler will be executed
+            self.check_playback();
             return Ok(Either::A(result(Ok(()))));
         }
 
