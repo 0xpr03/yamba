@@ -266,7 +266,7 @@ fn init_log() -> Fallible<()> {
     DirBuilder::new().recursive(true).create(log_dir)?;
 
     if !metadata(&log_path).is_ok() {
-        let config = include_str!("../default_log.yml");
+        let config = include_str!("../includes/default_log.yml");
         let mut file = File::create(&log_path)?;
         file.write_all(config.as_bytes())?;
         file.flush()?;
