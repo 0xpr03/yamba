@@ -1,6 +1,6 @@
 [package]
 name = "yamba_types"
-version = "0.3.0"
+version = "0.5.0"
 authors = ["Aron Heinecke <aron.heinecke@t-online.de>"]
 edition = "2018"
 license = "GPL-3.0-or-later"
@@ -15,8 +15,11 @@ track = ["metrohash"]
 rest = []
 # Json RPC types
 rpc = []
+# Actix messages for Websocket stuff
+message = ["actix"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 tower-web = { optional = true, version = "0"}
 metrohash = { optional = true, version = "1" }
+actix = { optional = true, version = "0.7" }

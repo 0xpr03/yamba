@@ -4,39 +4,38 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="static/bootstrap.min.css" crossorigin="anonymous">
-    <script src="static/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
-    <script src="static/bootstrap.min.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="static/bootstrap.min.css">
+    <script src="static/jquery-3.3.1.min.js"></script>
+    <script src="static/bootstrap.min.js"></script>
 </head>
 
 <body>
     <div style="padding: 1em; margin-top: 2em; margin: auto; width: 30%; text-align: center;">
-        <form id="tsForm" action="/form/create/ts" method="post">
-            <input type="hidden" name="id" value="1">
-            <input type="hidden" id="custId" name="name" value="myYAMBAInstance">
+        <form id="tsForm" action="" method="post">
             <div class="input-group mb-3">
                 <div class="input-group-prepend">
                     <span class="input-group-text" id="basic-addon1">Host</span>
                 </div>
-                <input type="text" name="host" class="form-control" aria-describedby="basic-addon1" required>
+                <input type="text" id="host" name="host" class="form-control" aria-describedby="basic-addon1" required>
             </div>
             <div class="input-group mb-3">
                 <div class="input-group-prepend">
                     <span class="input-group-text" id="basic-addon1">Password</span>
                 </div>
-                <input type="text" name="password" class="form-control" aria-describedby="basic-addon1">
+                <input type="text" id="password" name="password" class="form-control" aria-describedby="basic-addon1">
             </div>
             <div class="input-group mb-3">
                 <div class="input-group-prepend">
                     <span class="input-group-text" id="basic-addon1">Port</span>
                 </div>
-                <input type="text" name="port" class="form-control" aria-describedby="basic-addon1">
+                <input type="number" id="port" name="port" class="form-control" value="0"
+                    aria-describedby="basic-addon1">
             </div>
             <div class="input-group mb-3">
                 <div class="input-group-prepend">
                     <span class="input-group-text" id="basic-addon1">cID</span>
                 </div>
-                <input type="text" name="cid" class="form-control" aria-describedby="basic-addon1">
+                <input type="number" id="cid" name="cid" class="form-control" value="0" aria-describedby="basic-addon1">
             </div>
             <input type="submit" value="Create & Run" class="btn btn-primary btn-lg">
         </form>
@@ -47,17 +46,31 @@
 
     <script>
         $("#tsForm").submit(function (e) {
-            e.preventDefault();
             $('#alert').hide();
             $('#alert').empty();
-            var form = $(this);
-            var url = form.attr("action");
+            var port = undefined;
+            if ($('#port').val() != "") {
+                port = Number($('#port').val());
+            }
+            var cid = undefined;
+            if ($('#cid').val() != "") {
+                cid = Number($('#cid').val());
+            }
             $.ajax({
-                url: url,
-                type: "post",
+                url: "/api/instances/create",
+                type: 'POST',
+                contentType: "application/json",
                 dataType: "json",
-                data: form.serialize(),
-
+                data: JSON.stringify({
+                    'name': "Legacy Instance",
+                    'nick': "YambaTestInstance",
+                    'host': $('#host').val(),
+                    'password': $('#password').val(),
+                    'port': port,
+                    'cid': cid,
+                    'autostart': true,
+                    'type': 'Teamspeak'
+                })
             }).done(function (data) {
                 console.log(data);
             }).fail(function (data) {
@@ -65,6 +78,7 @@
                 $('#alert').show();
                 $('#alert').text(data.responseText);
             });
+            e.preventDefault();
         })
     </script>
 

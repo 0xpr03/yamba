@@ -57,6 +57,12 @@ extern crate yamba_types;
 
 use std::alloc::System;
 
+#[derive(Fail, Debug)]
+pub enum MainErr {
+    #[fail(display = "License not accepted.")]
+    LicenseUnaccepted,
+}
+
 #[global_allocator]
 static GLOBAL: System = System;
 
@@ -105,6 +111,8 @@ fn main() -> Fallible<()> {
 
     info!("Startup");
 
+    check_license_agreements()?;
+
     let app = App::new("YAMBA")
         .version(VERSION)
         .author(crate_authors!(",\n"))
@@ -142,6 +150,10 @@ fn main() -> Fallible<()> {
     info!(
         "API Public Binding: {}:{}",
         SETTINGS.main.api_bind_ip, SETTINGS.main.api_bind_port
+    );
+    info!(
+        "TS RPC callback IP: {}:{}",
+        SETTINGS.main.api_jsonrpc_ip, SETTINGS.main.api_jsonrpc_port
     );
 
     match app.subcommand() {
@@ -200,15 +212,11 @@ fn main() -> Fallible<()> {
                 let mut runtime = runtime::Runtime::new()?;
                 {
                     debug!("url: {:?}", url);
-                    let player_c = player.clone();
                     runtime.spawn(recv.for_each(move |event| {
-                        let player = player_c.clone();
                         trace!("Event: {:?}", event);
                         match event.event_type {
-                            PlayerEventType::PositionUpdated => {
-                                let player_l = player.lock().unwrap();
-                                debug!("Position: {}", player_l.get_position_ms());
-                                //player.set_volume(f64::from(player.get_position()) / 1000.0);
+                            PlayerEventType::PositionUpdated(time) => {
+                                debug!("Position: {}", time);
                             }
                             PlayerEventType::EndOfStream
                             | PlayerEventType::StateChanged(PlaybackState::Stopped) => {
@@ -249,6 +257,25 @@ fn check_runtime() -> Fallible<()> {
     Ok(())
 }
 
+/// Check license agreement for 3rd party terms
+fn check_license_agreements() -> Fallible<()> {
+    let mut accepted = false;
+    if let Ok(v) = std::env::var("LICENSE_AGREEMENT") {
+        accepted = v == "accepted";
+    }
+    if std::path::Path::new(".yamba_license_accepted").exists() {
+        accepted = true;
+    }
+
+    if !accepted {
+        error!("License not accepted!");
+        error!("To accept add a env value of LICENSE_AGREEMENT with accepted as value or create a file .yamba_license_accepted");
+        return Err(MainErr::LicenseUnaccepted.into());
+    }
+
+    Ok(())
+}
+
 /// validate path input
 fn validator_path(input: String) -> Result<(), String> {
     match get_path_for_existing_file(&input) {
@@ -266,7 +293,7 @@ fn init_log() -> Fallible<()> {
     DirBuilder::new().recursive(true).create(log_dir)?;
 
     if !metadata(&log_path).is_ok() {
-        let config = include_str!("../default_log.yml");
+        let config = include_str!("../includes/default_log.yml");
         let mut file = File::create(&log_path)?;
         file.write_all(config.as_bytes())?;
         file.flush()?;

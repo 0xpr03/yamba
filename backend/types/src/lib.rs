@@ -27,9 +27,13 @@ pub mod models;
 pub mod rpc;
 #[cfg(feature = "track")]
 pub mod track;
+#[cfg(feature = "message")]
+#[macro_use]
+extern crate actix;
 
 pub type ID = i32;
 
+#[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ErrorCodes {
     NONE = 0,
@@ -41,3 +45,6 @@ pub enum ErrorCodes {
 
 /// Volume it 0 to 1.0 (you can go above but that's undefined)
 pub type Volume = f64;
+
+/// Time unit (playback)
+pub type TimeMS = u32;

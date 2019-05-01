@@ -48,7 +48,7 @@ pub enum PlaybackState {
 pub enum PlayerEventType {
     UriLoaded,
     MediaInfoUpdated,
-    PositionUpdated,
+    PositionUpdated(gst::ClockTime),
     EndOfStream,
     StateChanged(PlaybackState),
     VolumeChanged(f64),
@@ -97,14 +97,14 @@ impl Player {
             Some(&dispatcher.upcast::<gst_player::PlayerSignalDispatcher>()),
         );
 
-        // Get position updates every 250ms.
         let mut config = player.get_config();
-        config.set_position_update_interval(250);
 
         let name = Player::get_name_by_id(&id);
 
         config.set_name(&name);
-        config.set_position_update_interval(250);
+
+        // Get position updates every 1000ms.
+        config.set_position_update_interval(1000);
         player.set_config(config).unwrap();
 
         let playbin = player.get_pipeline();
@@ -168,13 +168,13 @@ impl Player {
 
         let events_clone = events.clone();
         let id_clone = id.clone();
-        player.connect_position_updated(move |_, _| {
+        player.connect_position_updated(move |_, time| {
             let mut events = events_clone.clone();
             let id = id_clone.clone();
             events
                 .try_send(PlayerEvent {
                     id,
-                    event_type: PlayerEventType::PositionUpdated,
+                    event_type: PlayerEventType::PositionUpdated(time),
                 })
                 .unwrap();
         });
@@ -271,15 +271,6 @@ impl Player {
             ))?
         ));
         Ok(())
-    }
-
-    /// Get position in song as ms
-    pub fn get_position_ms(&self) -> u64 {
-        // gst player reports in total MS
-        match self.player.get_position().mseconds() {
-            Some(ms) => ms,
-            None => 0,
-        }
     }
 
     /// Returns the current position as raw value
@@ -384,7 +375,7 @@ mod tests {
         sender
             .try_send(PlayerEvent {
                 id: TEST_ID.clone(),
-                event_type: PlayerEventType::PositionUpdated,
+                event_type: PlayerEventType::PositionUpdated(gst::ClockTime::from_mseconds(1000)),
             })
             .unwrap();
         loop {
@@ -398,7 +389,9 @@ mod tests {
             sender
                 .try_send(PlayerEvent {
                     id: TEST_ID.clone(),
-                    event_type: PlayerEventType::PositionUpdated,
+                    event_type: PlayerEventType::PositionUpdated(gst::ClockTime::from_mseconds(
+                        1000,
+                    )),
                 })
                 .unwrap();
         }

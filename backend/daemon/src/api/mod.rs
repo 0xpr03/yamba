@@ -76,6 +76,12 @@ fn ok() -> Rsp {
         .unwrap())
 }
 
+fn accepted() -> Rsp {
+    let mut builder = Response::builder();
+    builder.status(StatusCode::ACCEPTED);
+    Ok(builder.body(String::new()).unwrap())
+}
+
 /// Helper returning 200 + specified json struct
 fn ok_response<T>(val: T) -> Rsp
 where

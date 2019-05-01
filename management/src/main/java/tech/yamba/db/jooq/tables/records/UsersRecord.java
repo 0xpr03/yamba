@@ -7,6 +7,8 @@ package tech.yamba.db.jooq.tables.records;
 import java.sql.Timestamp;
 
 import javax.annotation.Generated;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 import org.jooq.Field;
 import org.jooq.Record1;
@@ -30,7 +32,7 @@ import tech.yamba.db.jooq.tables.Users;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class UsersRecord extends UpdatableRecordImpl<UsersRecord> implements Record5<Short, String, Boolean, String, Timestamp> {
 
-    private static final long serialVersionUID = 1051171232;
+    private static final long serialVersionUID = -1668918295;
 
     /**
      * Setter for <code>public.users.id</code>.
@@ -58,6 +60,8 @@ public class UsersRecord extends UpdatableRecordImpl<UsersRecord> implements Rec
     /**
      * Getter for <code>public.users.username</code>.
      */
+    @NotNull
+    @Size(max = 255)
     public String getUsername() {
         return (String) get(1);
     }
@@ -88,6 +92,8 @@ public class UsersRecord extends UpdatableRecordImpl<UsersRecord> implements Rec
     /**
      * Getter for <code>public.users.password</code>.
      */
+    @NotNull
+    @Size(max = 60)
     public String getPassword() {
         return (String) get(3);
     }

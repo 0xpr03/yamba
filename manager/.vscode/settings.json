@@ -3,10 +3,14 @@
     "editor.formatOnPaste": true,
     "files.exclude": {
         "**/target": true,
-        "**/ts": true
+        "**/ts": true,
+        "**/node_modules": true,
+        "**/build": true,
     },
     "files.watcherExclude": {
         "**/target": true,
-        "**/ts": true
+        "**/ts": true,
+        "**/node_modules": true,
+        "**/build": true,
     }
 }

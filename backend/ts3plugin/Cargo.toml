@@ -3,6 +3,9 @@ name = "yamba-plugin"
 version = "0.1.0"
 authors = ["Aron Heinecke <aron.heinecke@t-online.de>","Oliver Habersetzer <oliver.habersetzer@gmail.com>"]
 
+[profile.release]
+lto = true
+
 [lib]
 name = "yamba_plugin"
 crate-type = ["dylib"]
@@ -29,7 +32,7 @@ git = "https://github.com/0xpr03/rust-ts3plugin"
 branch = "master"
 
 [dependencies.yamba_types]
-path = "../../types"
+path = "../types"
 version = "0"
 default-features = false
 features = ["rpc"]

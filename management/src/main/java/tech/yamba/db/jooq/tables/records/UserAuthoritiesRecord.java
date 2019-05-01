@@ -5,6 +5,7 @@ package tech.yamba.db.jooq.tables.records;
 
 
 import javax.annotation.Generated;
+import javax.validation.constraints.NotNull;
 
 import org.jooq.Field;
 import org.jooq.Record2;
@@ -27,7 +28,7 @@ import tech.yamba.db.jooq.tables.UserAuthorities;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class UserAuthoritiesRecord extends UpdatableRecordImpl<UserAuthoritiesRecord> implements Record2<Short, Short> {
 
-    private static final long serialVersionUID = 1544199218;
+    private static final long serialVersionUID = -1260881861;
 
     /**
      * Setter for <code>public.user_authorities.user_id</code>.
@@ -40,6 +41,7 @@ public class UserAuthoritiesRecord extends UpdatableRecordImpl<UserAuthoritiesRe
     /**
      * Getter for <code>public.user_authorities.user_id</code>.
      */
+    @NotNull
     public Short getUserId() {
         return (Short) get(0);
     }
@@ -55,6 +57,7 @@ public class UserAuthoritiesRecord extends UpdatableRecordImpl<UserAuthoritiesRe
     /**
      * Getter for <code>public.user_authorities.authority_id</code>.
      */
+    @NotNull
     public Short getAuthorityId() {
         return (Short) get(1);
     }

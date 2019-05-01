@@ -21,20 +21,32 @@ use clap::{App, Arg, ArgMatches};
 use failure::Fallible;
 #[macro_use]
 extern crate log;
+#[cfg(any(feature = "mysql", feature = "postgres"))]
+#[macro_use]
+extern crate diesel;
+use actix::System;
 use env_logger::{self, Env};
 use futures::future::Future;
 use futures::stream::Stream;
-use tokio::runtime::Runtime;
 use tokio_signal;
-use yamba_types::models::{InstanceLoadReq, InstanceType, TSSettings};
+use yamba_types::models::GenericRequest;
 
+use crate::db::Database;
 use std::net::SocketAddr;
 
 mod backend;
+mod db;
 mod frontend;
 mod instance;
 mod jsonrpc;
+mod models;
 mod playlist;
+mod security;
+
+#[cfg(any(feature = "maria", feature = "postgres"))]
+const DB_DEFAULT_PATH: &'static str = "127.0.0.1:3306";
+#[cfg(feature = "local")]
+const DB_DEFAULT_PATH: &'static str = "sled_db.db";
 
 #[derive(Fail, Debug)]
 pub enum ParamErr {
@@ -116,6 +128,14 @@ fn main() -> Fallible<()> {
                 .help("Specify pw for connecting")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("db")
+                .long("db")
+                .value_name("DB connection URI")
+                .help("Specify for DB connection / path depending on the DB compilation type")
+                .takes_value(true)
+                .default_value(DB_DEFAULT_PATH),
+        )
         .get_matches();
 
     let addr_daemon: SocketAddr = matches.value_of("daemon").unwrap().parse()?;
@@ -123,35 +143,65 @@ fn main() -> Fallible<()> {
     let addr_jsonrpc: SocketAddr = matches.value_of("jsonrpc").unwrap().parse()?;
     let addr_callback_bind: SocketAddr = matches.value_of("callback").unwrap().parse()?;
     let api_secret = matches.value_of("api_secret").unwrap();
+    let db_path = matches.value_of("db").unwrap();
 
-    let instances = instance::create_instances();
+    let mut sys = System::new("manager");
 
-    let mut runtime = Runtime::new()?;
+    let db = db::DB::create(db_path.to_owned())?;
 
-    let (backend, _shutdown_guard) = backend::Backend::new(
+    let instances = instance::Instances::new(db.clone());
+
+    let my_backend = backend::Backend::new(
         addr_daemon,
         instances.clone(),
         api_secret,
         addr_callback_bind,
     )?;
 
-    let _server = jsonrpc::create_server(
-        &addr_jsonrpc,
-        &addr_daemon.ip().to_string(),
-        instances.clone(),
-    )?;
+    let _server = jsonrpc::create_server(&addr_jsonrpc, addr_daemon.ip(), instances.clone())?;
 
-    match create_instance_cmd(&backend, &instances, &matches, &mut runtime) {
+    match create_instance_cmd(&my_backend, &instances, &matches) {
         Err(e) => error!("Error during test-cmd handling: {}", e),
         Ok(_) => (),
     }
 
-    let _shutdown_guard_frontend =
-        frontend::init_frontend_server(&instances, &backend, addr_frontend)?;
+    frontend::init_frontend_server(instances.clone(), my_backend.clone(), addr_frontend)?;
+
+    let backend_c = my_backend.clone();
+    backend::Backend::spawn_ignore(
+        my_backend
+            .get_instances()?
+            .and_then(move |i| {
+                i.instances.into_iter().for_each(|v| {
+                    let time_db = db.get_instance_startup(&v.id);
+                    let foreign = match time_db {
+                        Ok(Some(time)) => time == v.started,
+                        _ => false,
+                    };
+                    if foreign {
+                        warn!("Found foreign instance running: {}", v.id);
+                        backend::Backend::spawn_ignore(
+                            backend_c
+                                .stop_instance(&GenericRequest { id: v.id })
+                                .unwrap(),
+                        );
+                    } else {
+                        info!("Found own instance running! {}", v.id);
+                    }
+                });
+                Ok(())
+            })
+            .and_then(move |_| {
+                if let Err(e) = instances.load_instances(my_backend.clone()) {
+                    warn!("Error loading instances! {}", e);
+                }
+                Ok(())
+            }),
+    );
 
     let ctrl_c = tokio_signal::ctrl_c().flatten_stream().into_future();
 
-    match runtime.block_on(ctrl_c) {
+    match sys.block_on(ctrl_c) {
         Err(_e) => {
             // first tuple element conains error, but is neither display nor debug..
             error!("Error in signal handler");
@@ -159,8 +209,6 @@ fn main() -> Fallible<()> {
         }
         Ok(_) => (),
     };
-
-    drop(_shutdown_guard);
     Ok(())
 }
 
@@ -169,7 +217,6 @@ fn create_instance_cmd(
     backend: &backend::Backend,
     instances: &instance::Instances,
     args: &ArgMatches,
-    rt: &mut Runtime,
 ) -> Fallible<()> {
     if let Some(addr) = args.value_of("ts") {
         let _pw = args.value_of("pw");
@@ -182,24 +229,22 @@ fn create_instance_cmd(
             Some(Ok(i)) => Some(i),
         };
         let addr: SocketAddr = addr.parse()?;
-        let model = InstanceLoadReq {
-            id: 0,
-            volume: 0.05,
-            data: InstanceType::TS(TSSettings {
-                host: addr.ip().to_string(),
-                port: Some(addr.port()),
-                identity: "".to_string(),
-                cid: cid,
-                name: String::from("test_instance"),
-                password: None,
-            }),
+        let model = models::NewInstance {
+            autostart: true,
+            host: addr.ip().to_string(),
+            port: Some(addr.port()),
+            identity: None,
+            cid: cid,
+            name: String::from("test_instance"),
+            password: None,
+            nick: String::from("TestYambaInstance"),
         };
 
-        let mut inst_w = instances.write().expect("Can't lock instances!");
-        inst_w.insert(1, instance::Instance::new(1, backend.clone(), model));
+        instances.create_instance(model, backend.clone())?;
 
+        let mut inst_w = instances.write().expect("Can't lock instances!");
         let inst = inst_w.get_mut(&1).expect("Invalid identifier ?");
-        inst.start_with_rt(rt)?;
+        inst.start_with_rt()?;
     }
 
     Ok(())

@@ -21,7 +21,9 @@ use yamba_types::models::{Song, Ticket as TicketID, ID};
 
 use std::sync::{Arc, RwLock};
 
+use crate::db::Database;
 use crate::instance::Instances;
+use crate::models::NewPlaylistData;
 
 /// Ticket Handler that stores callback tickets.  
 /// Knows action to perform for specific IDs.
@@ -47,12 +49,20 @@ impl TicketHandler {
     }
 
     /// Handle ticket
-    pub fn handle(&self, ticket: &TicketID, instances: &Instances, songs: Vec<Song>) {
+    pub fn handle(
+        &self,
+        ticket: &TicketID,
+        instances: &Instances,
+        songs: Vec<Song>,
+        source: String,
+    ) {
         let mut data_w = self.data.write().expect("Can't lock tickets!");
         debug!("Handling {}", ticket);
         match data_w.remove(ticket) {
             Some(v) => {
-                v.handle(instances, songs);
+                if let Err(e) = v.handle(instances, songs, source) {
+                    warn!("Error on handling ticket: {}", e);
+                }
             }
             None => warn!("Ticket unknown: {} {:?}!", ticket, songs),
         }
@@ -61,7 +71,7 @@ impl TicketHandler {
 
 /// Ticket with action desciption
 pub trait Ticket {
-    fn handle(&self, instances: &Instances, songs: Vec<Song>) -> Fallible<()>;
+    fn handle(&self, instances: &Instances, songs: Vec<Song>, souce: String) -> Fallible<()>;
 }
 
 /// Queue ticket type, inserts into queue
@@ -76,9 +86,21 @@ impl QueueTicket {
 }
 
 impl Ticket for QueueTicket {
-    fn handle(&self, instances: &Instances, songs: Vec<Song>) -> Fallible<()> {
-        let inst_r = instances.read().expect("Can't lock instances!");
-        inst_r.get(&self.instance).map(|inst| {
+    fn handle(&self, instances: &Instances, songs: Vec<Song>, source: String) -> Fallible<()> {
+        let song_url = match songs.len() == 1 {
+            true => Some(source.as_str()),
+            false => None,
+        };
+        for song in &songs {
+            instances.get_db().upsert_song(song, &song_url)?;
+        }
+        if songs.len() > 1 {
+            let pl_data = NewPlaylistData::new(String::new(), &songs, instances.get_db())?;
+            instances
+                .get_db()
+                .upsert_playlist(&pl_data, Some(source.as_str()))?;
+        }
+        instances.read(&self.instance).map(|inst| {
             inst.add_to_queue(songs);
             inst.check_playback();
         });
@@ -86,10 +108,3 @@ impl Ticket for QueueTicket {
         Ok(())
     }
 }
-
-/*
-pub struct ResolveTicket {
-    id: TicketID,
-    playlist: Option<i32>,
-}
-*/

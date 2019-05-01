@@ -15,6 +15,9 @@
  *  limitations under the License.
  */
 
+use actix_web::{
+	error::ErrorInternalServerError, middleware, Error as WebError, HttpRequest, HttpResponse, Json,
+};
 use failure::Fallible;
 use futures::{
 	future::{result, Either},
@@ -22,17 +25,18 @@ use futures::{
 };
 use hashbrown::HashMap;
 use jsonrpc_core::types::error::{self, Error};
-use jsonrpc_core::*;
-use jsonrpc_http_server::*;
+use jsonrpc_core::{types::Request, *};
 use owning_ref::OwningRef;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use serde_json;
 use yamba_types::rpc::*;
 
-use std::net::SocketAddr;
-use std::sync::RwLockReadGuard;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::{Arc, RwLockReadGuard};
 
 use crate::instance::{Instance, Instances};
+use crate::security::SecurityModule;
 
 /// Parse input and call fn on success
 fn parse_input<T, F, D>(data: Params, foo: F) -> impl Future<Item = Value, Error = Error>
@@ -58,14 +62,12 @@ where
 	T: DeserializeOwned + 'static + GetId + Send,
 	D: Future<Item = Value, Error = Error> + Send,
 {
-	parse_input(data, move |v: T| {
-		match get_instance_by_id(&instances, &v.get_id()) {
-			Some(i) => Either::A(foo(v, i)),
-			None => Either::B(result(Ok(serde_json::to_value(response_invalid_instance(
-				&v.get_id(),
-			))
-			.unwrap()))),
-		}
+	parse_input(data, move |v: T| match instances.read(&v.get_id()) {
+		Some(i) => Either::A(foo(v, i)),
+		None => Either::B(result(Ok(serde_json::to_value(response_invalid_instance(
+			&v.get_id(),
+		))
+		.unwrap()))),
 	})
 }
 
@@ -108,24 +110,33 @@ fn response_invalid_instance(id: &ID) -> DefaultResponse {
 
 type InstanceRef<'a> = OwningRef<RwLockReadGuard<'a, HashMap<i32, Instance>>, Instance>;
 
-/// Get instance by ID
-/// Returns instance & guard
-fn get_instance_by_id<'a>(instances: &'a Instances, instance_id: &ID) -> Option<InstanceRef<'a>> {
-	let instances_r = instances.read().expect("Can't read instance!");
-	OwningRef::new(instances_r)
-		.try_map(|i| match i.get(instance_id) {
-			Some(v) => Ok(v),
-			None => Err(()),
+type JsonrpcState = Arc<IoHandler>;
+
+/// Handle jsonrpc-core IOHandler stuff in actix
+/// Based on https://github.com/paritytech/jsonrpc/blob/9360dc86e9c02e65e858ee7816c5ce6e04f18aef/http/src/handler.rs#L415
+fn jsonrpc_websocket_bridge(
+	(data, req): (Json<Request>, HttpRequest<JsonrpcState>),
+) -> impl Future<Item = HttpResponse, Error = WebError> {
+	req.state()
+		.handle_rpc_request(data.into_inner())
+		.map(|res| match res {
+			Some(v) => HttpResponse::Ok().json(v),
+			e => {
+				error!("Invalid response for request: {:?}", e);
+				HttpResponse::InternalServerError().finish()
+			}
 		})
-		.ok()
+		.map_err(|_| {
+			ErrorInternalServerError("()-Error route in jsonrpc-actix bridge! Should never happen.")
+		})
 }
 
 /// Create jsonrpc server for handling chat cmds
 pub fn create_server(
 	bind_addr: &SocketAddr,
-	allowed_host: &str,
+	allowed_host: IpAddr,
 	instances: Instances,
-) -> Fallible<Server> {
+) -> Fallible<()> {
 	let mut io = IoHandler::new();
 
 	let inst_c = instances.clone();
@@ -204,11 +215,32 @@ pub fn create_server(
 			})
 		})
 	});
+	let inst_c = instances.clone();
+	io.add_method("playback_random", move |data: Params| {
+		parse_input_instance(inst_c.clone(), data, |_: ParamDefault, inst| {
+			inst.shuffle();
+			send_ok()
+		})
+	});
 
-	let server = ServerBuilder::new(io)
-		//.allowed_hosts(DomainsValidation::AllowOnly(vec![allowed_host.into()]))
-		.rest_api(RestApi::Secure)
-		.start_http(bind_addr)?;
+	let state: JsonrpcState = Arc::new(io);
 
-	Ok(server)
+	actix_web::server::new(move || {
+		let json_only = actix_web::pred::Header("Content-Type", "application/json");
+		actix_web::App::with_state(state.clone())
+			.middleware(middleware::Logger::new("manager::api::jsonrpc"))
+			.middleware(SecurityModule::new(allowed_host))
+			.resource("/", |r| {
+				r.post()
+					.filter(json_only)
+					.with_async(jsonrpc_websocket_bridge)
+			})
+			.boxed()
+	})
+	.bind(bind_addr)
+	.unwrap()
+	.shutdown_timeout(1)
+	.start();
+
+	Ok(())
 }

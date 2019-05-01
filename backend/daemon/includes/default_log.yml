@@ -26,7 +26,9 @@ loggers:
   # Lower level for ourselfs
   yamba_daemon:
     level: trace
-  tower_web:
-    level: warn
   yamba_daemon::api::internal:
+    level: warn
+  yamba_daemon::daemon::heartbeat:
+    level: warn
+  yamba_daemon::api::callback:
     level: warn

@@ -12,7 +12,7 @@ pub trait GetId {
 }
 
 /// Error code for permission error
-pub const PermissionErrorCode:i64  = 403;
+pub const PERMISSION_ERROR_CODE:i64  = 403;
 
 macro_rules! add_trait {
     ( ( $( $Trait: ident ),+ ) for $Ty: ident ) => {

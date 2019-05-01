@@ -1,8 +1,9 @@
-package tech.yamba.management.configuration;
+package tech.yamba.management.auth;
 
 import java.security.SecureRandom;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.Collections;
 
 import javax.sql.DataSource;
 
@@ -10,12 +11,17 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import lombok.extern.slf4j.Slf4j;
 import tech.yamba.db.jooq.tables.daos.UserAuthoritiesDao;
@@ -76,9 +82,28 @@ public class AuthConfig extends WebSecurityConfigurerAdapter {
 				//.successForwardUrl("/") // TODO: implement login forward
 				.and()
 				.logout()
-				.logoutSuccessUrl("/login?logout");
+				.logoutSuccessUrl("/login?logout")
+				.and()
+				.csrf()
+				.disable()
+				.cors();
 	}
 
+
+	@Bean
+	CorsConfigurationSource corsConfigurationSource() {
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		CorsConfiguration corsConfiguration = new CorsConfiguration().applyPermitDefaultValues();
+		corsConfiguration.setAllowedOrigins(Collections.singletonList("http://localhost:3000"));
+		corsConfiguration.setAllowCredentials(true);
+		source.registerCorsConfiguration("/**", corsConfiguration);
+		return source;
+	}
+
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 
 	@EventListener(ApplicationReadyEvent.class)
 	public void initRootUser() {
@@ -97,7 +122,7 @@ public class AuthConfig extends WebSecurityConfigurerAdapter {
 					(short) 0,
 					rootUsername,
 					true,
-					new BCryptPasswordEncoder().encode(randomPassword),
+					passwordEncoder().encode(randomPassword),
 					Timestamp.valueOf(LocalDateTime.now())
 			));
 

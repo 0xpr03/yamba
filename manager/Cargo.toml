@@ -5,26 +5,46 @@ authors = ["Aron Heinecke <aron.heinecke@t-online.de>"]
 edition = "2018"
 license = "LGPL-3.0-or-later"
 
+[features]
+default = ["local"]
+# You can't combine multiple DB types!
+# MariaDB support
+maria = ["diesel/mysql","diesel_migrations"]
+# Postgres Support
+postgres = ["diesel/postgres","diesel_migrations"]
+# Local DB
+local = ["sled","bincode"]
+
+[profile.release]
+lto = true
+
 [dependencies]
 clap = "2"
-jsonrpc-http-server = "10"
+jsonrpc-core = "11"
 failure = "0.1"
 owning_ref = "0.4"
 rand = "0"
-rayon = "1"
-hashbrown = "0.1"
+hashbrown = "0.3"
 reqwest = "0.9"
 serde = "1"
 serde_json = "1"
 futures = "0.1"
 log = "0.4"
 env_logger = "0.6"
-tokio = "0.1"
 tokio-signal = "0.2"
 actix-web = "0.7"
+# don't upgrade unless transition to actix-web 1.0 is done
 actix = "0.7"
+chashmap = "2.2"
+diesel = { version = "1", optional = true }
+sled = { version = "0.23", optional = true }
+diesel_migrations = {version="1", optional=true}
+bincode= {version = "1", optional = true }
 
 [dependencies.yamba_types]
 version = "0"
-path = "../types"
-features = ["rest","rpc"]
+path = "../backend/types"
+features = ["rest","rpc","message"]
+
+[dev-dependencies]
+serde_urlencoded = "0.5"

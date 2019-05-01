@@ -16,17 +16,12 @@
  */
 
 use super::*;
-use actix::System;
-use actix_web::{
-    error::Result,
-    http,
-    middleware::{self, Middleware, Started},
-    server, App, HttpRequest, HttpResponse, Json,
-};
+use crate::frontend;
+use crate::security::SecurityModule;
+
+use actix::SystemService;
+use actix_web::{http, middleware, server, App, HttpRequest, HttpResponse, Json};
 use failure::Fallible;
-use futures::{sync::mpsc, Future, Stream};
-use std::net::IpAddr;
-use std::thread;
 use yamba_types::models::callback as cb;
 
 #[derive(Fail, Debug)]
@@ -35,45 +30,12 @@ pub enum ServerErr {
     BindFailed(#[cause] std::io::Error),
 }
 
-struct SecurityModule {
-    ip: String,
-}
-
-impl SecurityModule {
-    pub fn new(addr: IpAddr) -> SecurityModule {
-        SecurityModule {
-            ip: addr.to_string(),
-        }
-    }
-}
-
-impl<S> Middleware<S> for SecurityModule {
-    fn start(&self, req: &HttpRequest<S>) -> Result<Started> {
-        if let Some(remote) = req.connection_info().remote() {
-            if remote
-                .parse::<SocketAddr>()
-                .map(|v| v.ip().to_string() == self.ip)
-                .unwrap_or_else(|e| {
-                    warn!("Can't parse remote IP! {}", e);
-                    false
-                })
-            {
-                return Ok(Started::Done);
-            } else {
-                debug!("Remote: {} Own: {}", remote, self.ip);
-            }
-        }
-        Ok(Started::Response(HttpResponse::Unauthorized().finish()))
-    }
-}
-
 /// Handle instance callback
 fn callback_instance(
     (data, req): (Json<cb::InstanceStateResponse>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
     debug!("Instance state change: {:?}", data);
-    let inst = req.state().instances.read().expect("Can't lock instances!");
-    if let Some(i) = inst.get(&data.id) {
+    if let Some(i) = req.state().instances.read(&data.id) {
         i.cb_set_instance_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
@@ -83,8 +45,7 @@ fn callback_volume(
     (data, req): (Json<cb::VolumeChange>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
     debug!("Volume change: {:?}", data);
-    let inst = req.state().instances.read().expect("Can't lock instances!");
-    if let Some(i) = inst.get(&data.id) {
+    if let Some(i) = req.state().instances.read(&data.id) {
         i.cb_update_volume(data.into_inner().volume);
     }
     HttpResponse::Ok().json(true)
@@ -94,8 +55,7 @@ fn callback_playback(
     (data, req): (Json<cb::PlaystateResponse>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
     debug!("Playback change: {:?}", data);
-    let inst = req.state().instances.read().expect("Can't lock instances!");
-    if let Some(i) = inst.get(&data.id) {
+    if let Some(i) = req.state().instances.read(&data.id) {
         i.cb_set_playback_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
@@ -111,19 +71,20 @@ fn callback_resolve(
     req.state()
         .backend
         .tickets
-        .handle(&ticket, &req.state().instances, songs);
+        .handle(&ticket, &req.state().instances, songs, data_r.source);
     HttpResponse::Ok().json(true)
 }
 
-/// Guard that automatically shuts down the server on drop
-pub struct ShutdownGuard {
-    sender: mpsc::Sender<usize>,
-}
-
-impl Drop for ShutdownGuard {
-    fn drop(&mut self) {
-        let _ = self.sender.try_send(1);
-    }
+fn callback_position(
+    (data, req): (Json<cb::TrackPositionUpdate>, HttpRequest<CallbackState>),
+) -> HttpResponse {
+    req.state().instances.set_pos(data.id, data.position_ms);
+    spawn(
+        frontend::WSServer::from_registry()
+            .send(data.into_inner())
+            .map_err(|e| warn!("WS-Server error: {}", e)),
+    );
+    HttpResponse::Ok().json(true)
 }
 
 #[derive(Clone)]
@@ -138,53 +99,51 @@ pub fn init_callback_server(
     instances: Instances,
     callback_server: SocketAddr,
     _tickets: super::TicketHandler,
-) -> Fallible<ShutdownGuard> {
+) -> Fallible<()> {
     let state = CallbackState {
         backend: backend.clone(),
         instances,
     };
+    server::new(move || {
+        App::with_state(state.clone())
+            .middleware(middleware::Logger::new("manager::api::backend::callback"))
+            .middleware(SecurityModule::new(backend.addr.ip()))
+            .resource(cb::PATH_INSTANCE, |r| {
+                r.method(http::Method::POST)
+                    .with_config(callback_instance, |((cfg, _),)| {
+                        cfg.limit(4096);
+                    })
+            })
+            .resource(cb::PATH_VOLUME, |r| {
+                r.method(http::Method::POST)
+                    .with_config(callback_volume, |((cfg, _),)| {
+                        cfg.limit(4096);
+                    })
+            })
+            .resource(cb::PATH_PLAYBACK, |r| {
+                r.method(http::Method::POST)
+                    .with_config(callback_playback, |((cfg, _),)| {
+                        cfg.limit(4096);
+                    })
+            })
+            .resource(cb::PATH_RESOLVE, |r| {
+                r.method(http::Method::POST)
+                    .with_config(callback_resolve, |((cfg, _),)| {
+                        cfg.limit(256096);
+                    })
+            })
+            .resource(cb::PATH_POSITION, |r| {
+                r.method(http::Method::POST)
+                    .with_config(callback_position, |((cfg, _),)| {
+                        cfg.limit(4096);
+                    })
+            })
+    })
+    .bind(callback_server)
+    .map_err(|e| ServerErr::BindFailed(e))
+    .unwrap()
+    .shutdown_timeout(1)
+    .start();
 
-    let (tx, rx) = mpsc::channel(1);
-    thread::spawn(move || {
-        let mut sys = System::new("callback_server");
-        server::new(move || {
-            App::with_state(state.clone())
-                .middleware(middleware::Logger::new("manager::api::backend::callback"))
-                .middleware(SecurityModule::new(backend.addr.ip()))
-                .resource(cb::PATH_INSTANCE, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_instance, |((cfg, _),)| {
-                            cfg.limit(4096);
-                        })
-                })
-                .resource(cb::PATH_VOLUME, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_volume, |((cfg, _),)| {
-                            cfg.limit(4096);
-                        })
-                })
-                .resource(cb::PATH_PLAYBACK, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_playback, |((cfg, _),)| {
-                            cfg.limit(4096);
-                        })
-                })
-                .resource(cb::PATH_RESOLVE, |r| {
-                    r.method(http::Method::POST)
-                        .with_config(callback_resolve, |((cfg, _),)| {
-                            cfg.limit(256096);
-                        })
-                })
-        })
-        .bind(callback_server)
-        .map_err(|e| ServerErr::BindFailed(e))
-        .unwrap()
-        .shutdown_timeout(1)
-        .run();
-
-        sys.block_on(rx.into_future().map(|_| println!("received shutdown")))
-            .unwrap();
-    });
-
-    Ok(ShutdownGuard { sender: tx })
+    Ok(())
 }

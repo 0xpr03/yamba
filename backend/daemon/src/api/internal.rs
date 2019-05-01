@@ -22,7 +22,7 @@ use tower_web::*;
 
 use std::net::SocketAddr;
 
-use super::{get_instance_by_id, invalid_instance, ok, APIErr, Rsp};
+use super::{accepted, get_instance_by_id, invalid_instance, APIErr, Rsp};
 use daemon::{HeartbeatMap, Instances};
 use yamba_types::models::{HeartbeatReq, InstanceStartedReq};
 use SETTINGS;
@@ -77,7 +77,7 @@ impl_web! {
             match get_instance_by_id(&self.instances, &body.id) {
                 Some(v) => {
                     v.connected(body)?;
-                    ok()
+                    accepted()
                 },
                 None => invalid_instance(),
             }
@@ -90,7 +90,7 @@ impl_web! {
             let inst_r = self.instances.read().expect("Can't write instances!");
             if inst_r.contains_key(&body.id) {
                 self.heartbeat.update(body.id);
-                ok()
+                accepted()
             } else {
                 invalid_instance()
             }

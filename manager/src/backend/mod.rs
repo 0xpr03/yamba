@@ -18,11 +18,11 @@
 pub mod callback;
 pub mod tickets;
 
+use actix::spawn;
 use failure::Fallible;
 use futures::future::Future;
 use reqwest::{self, header, r#async::*};
 use serde::Serialize;
-use tokio::executor::{DefaultExecutor, Executor, SpawnError};
 use yamba_types::models;
 
 use std::fmt::Debug;
@@ -31,12 +31,6 @@ use std::net::SocketAddr;
 use self::tickets::TicketHandler;
 
 use crate::instance::Instances;
-
-#[derive(Fail, Debug)]
-pub enum BackendErr {
-    #[fail(display = "Failed to execute future {}", _0)]
-    ExcecutionFailed(#[cause] SpawnError),
-}
 
 #[derive(Clone)]
 pub struct Backend {
@@ -52,7 +46,7 @@ impl Backend {
         instances: Instances,
         api_secret: &str,
         callback_bind: SocketAddr,
-    ) -> Fallible<(Backend, callback::ShutdownGuard)> {
+    ) -> Fallible<Backend> {
         let mut headers = header::HeaderMap::new();
         headers.insert(
             header::USER_AGENT,
@@ -69,10 +63,9 @@ impl Backend {
             tickets: tickets.clone(),
         };
 
-        let shutdown_guard =
-            callback::init_callback_server(backend.clone(), instances, callback_bind, tickets)?;
+        callback::init_callback_server(backend.clone(), instances, callback_bind, tickets)?;
 
-        Ok((backend, shutdown_guard))
+        Ok(backend)
     }
 
     /// Returns ticket handler
@@ -85,70 +78,96 @@ impl Backend {
     where
         T: Future<Item = (), Error = ()> + Send + 'static,
     {
-        DefaultExecutor::current()
-            .spawn(Box::new(fut))
-            .map_err(|v| BackendErr::ExcecutionFailed(v))?;
+        spawn(fut);
         Ok(())
     }
 
     /// Spawn on default, simply printing the result
-    pub fn spawn_ignore<T, V, E>(fut: T) -> Fallible<()>
+    pub fn spawn_ignore<T, V, E>(fut: T)
     where
         T: Future<Item = V, Error = E> + Send + 'static,
         V: Debug,
         E: Debug,
     {
-        DefaultExecutor::current()
-            .spawn(Box::new(
-                fut.map(|x| trace!("Request response: {:?}", x))
-                    .map(|_| ())
-                    .map_err(|err| warn!("Error sending api request: {:?}", err)),
-            ))
-            .map_err(|v| BackendErr::ExcecutionFailed(v))?;
-        Ok(())
+        spawn(
+            fut.map(|x| trace!("Request response: {:?}", x))
+                .map(|_| ())
+                .map_err(|err| warn!("Error sending api request: {:?}", err)),
+        );
     }
 
     /// Stop instance
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn stop_instance(
         &self,
         inst: &models::InstanceStopReq,
     ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
         let fut = self
-            .get_request_base(&format!("http://{}/instance/stop", self.addr), inst, true)?
+            .get_request_base(
+                &format!("http://{}/instance/stop", self.addr),
+                Some(inst),
+                true,
+            )?
             .and_then(|mut x| x.json::<models::DefaultResponse>());
+        Ok(fut)
+    }
+
+    /// Get list of instances
+    #[must_use = "Future doesn't do anything untill polled!"]
+    pub fn get_instances(
+        &self,
+    ) -> Fallible<impl Future<Item = models::InstanceListResponse, Error = reqwest::Error>> {
+        let fut = self
+            .get_request_base::<()>(&format!("http://{}/instance/list", self.addr), None, false)?
+            .and_then(|mut x| x.json::<models::InstanceListResponse>());
         Ok(fut)
     }
 
     /// Create instance
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn create_instance(
         &self,
         inst: &models::InstanceLoadReq,
-    ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
+    ) -> Fallible<impl Future<Item = models::InstanceLoadResponse, Error = reqwest::Error>> {
         let fut = self
-            .get_request_base(&format!("http://{}/instance/start", self.addr), inst, true)?
-            .and_then(|mut x| x.json::<models::DefaultResponse>());
+            .get_request_base(
+                &format!("http://{}/instance/start", self.addr),
+                Some(inst),
+                true,
+            )?
+            .and_then(|mut x| x.json::<models::InstanceLoadResponse>());
         Ok(fut)
     }
 
     /// Start URL playback
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn play_url(
         &self,
         request: &models::PlaybackUrlReq,
     ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
         let fut = self
-            .get_request_base(&format!("http://{}/playback/url", self.addr), request, true)?
+            .get_request_base(
+                &format!("http://{}/playback/url", self.addr),
+                Some(request),
+                true,
+            )?
             .and_then(|mut x| x.json::<models::DefaultResponse>());
         Ok(fut)
     }
 
     /// Resolve URL request
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn resolve_url(
         &self,
         request: &models::ResolveRequest,
     ) -> Fallible<impl Future<Item = models::ResolveTicketResponse, Error = reqwest::Error>> {
         trace!("Resolving url {}", request.url);
         let fut = self
-            .get_request_base(&format!("http://{}/resolve/url", self.addr), request, false)?
+            .get_request_base(
+                &format!("http://{}/resolve/url", self.addr),
+                Some(request),
+                false,
+            )?
             .and_then(|mut x| {
                 debug!("Resolve response: {:?} {:?}", x, x.body());
                 x.json::<models::ResolveTicketResponse>()
@@ -157,45 +176,40 @@ impl Backend {
     }
 
     /// Set Volume request
+    #[must_use = "Future doesn't do anything untill polled!"]
     pub fn set_volume(
         &self,
         request: &models::VolumeSetReq,
     ) -> Fallible<impl Future<Item = models::DefaultResponse, Error = reqwest::Error>> {
         let fut = self
-            .get_request_base(&format!("http://{}/volume", self.addr), request, true)?
+            .get_request_base(&format!("http://{}/volume", self.addr), Some(request), true)?
             .and_then(|mut x| x.json::<models::DefaultResponse>());
         Ok(fut)
     }
 
-    /// Perform request, ignoring outcome
-    fn request_ignore<T>(
-        &self,
-        addr: &str,
-        data: &T,
-    ) -> Fallible<impl Future<Item = (), Error = ()>>
-    where
-        T: Serialize,
-    {
-        Ok(self
-            .get_request_base(addr, data, true)?
-            .map(|x| trace!("Request response: {:?}", x))
-            .map_err(|err| warn!("Error sending api request: {:?}", err)))
-    }
-
     /// Create request base
+    #[must_use = "Future doesn't do anything untill polled!"]
     fn get_request_base<T>(
         &self,
         addr: &str,
-        data: &T,
+        data: Option<&T>,
         post: bool,
     ) -> Fallible<impl Future<Item = Response, Error = reqwest::Error>>
     where
         T: Serialize,
     {
         Ok(if post {
-            self.client.post(addr).json(data).send()
+            let mut c = self.client.post(addr);
+            if let Some(d) = data {
+                c = c.json(d)
+            }
+            c.send()
         } else {
-            self.client.get(addr).query(data).send()
+            let mut c = self.client.get(addr);
+            if let Some(d) = data {
+                c = c.query(d)
+            }
+            c.send()
         })
     }
 }

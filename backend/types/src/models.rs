@@ -27,6 +27,7 @@ pub use crate::ErrorCodes;
 pub use crate::{Volume, ID};
 
 /// Song identifier, char(32)
+/// Effectively u128, but not supported by json
 pub type SongID = String;
 
 /// Cache representation
@@ -34,6 +35,11 @@ pub type CacheSong = String;
 
 /// Resolver ticket
 pub type Ticket = usize;
+
+/// Instance startup time representation, unix timestamp in seconds
+pub type TimeStarted = i64;
+
+pub use crate::TimeMS;
 
 #[cfg(feature = "track")]
 impl From<Track> for Song {
@@ -60,6 +66,7 @@ pub struct PlaybackUrlReq {
 /// Volume set data
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Extract))]
+#[cfg_attr(feature = "message", derive(Message))]
 pub struct VolumeSetReq {
     pub id: ID,
     pub volume: Volume,
@@ -71,6 +78,8 @@ pub struct VolumeSetReq {
 pub struct PlaybackPauseReq {
     pub id: ID,
 }
+
+pub type PlaybackStopReq = PlaybackPauseReq;
 
 /// Generic Request who require an instance ID
 #[derive(Debug, Deserialize, Serialize)]
@@ -101,7 +110,7 @@ pub struct Song {
     pub source: String,
     pub artist: Option<String>,
     /// Length in seconds
-    pub length: Option<u32>,
+    pub length: Option<TimeMS>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -129,7 +138,14 @@ pub struct VolumeResponse {
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct InstanceListResponse {
-    pub instances: Vec<ID>,
+    pub instances: Vec<InstanceListEntry>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct InstanceListEntry {
+    pub id: ID,
+    /// Unix Timestamp of startup time
+    pub started: TimeStarted,
 }
 
 /// URL Resolver response with ticket number
@@ -145,6 +161,13 @@ pub struct ResolveTicketResponse {
 pub struct ResolveRequest {
     pub instance: ID,
     pub url: String,
+}
+
+/// Response on successfully started instance
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "tower", derive(Response))]
+pub struct InstanceLoadResponse {
+    pub startup_time: TimeStarted,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -164,7 +187,7 @@ pub enum InstanceType {
 pub struct TSSettings {
     pub host: String,
     pub port: Option<u16>,
-    pub identity: String,
+    pub identity: Option<String>,
     pub cid: Option<i32>,
     pub name: String,
     pub password: Option<String>,
@@ -202,6 +225,8 @@ pub mod callback {
     pub const PATH_SONG: &'static str = "/callback/song";
     /// Full path for callback
     pub const PATH_VOLUME: &'static str = "/callback/volume";
+    /// Full path for callback
+    pub const PATH_POSITION: &'static str = "/callback/position";
 
     #[derive(Debug, Serialize, Deserialize)]
     pub struct InstanceStateResponse {
@@ -209,7 +234,7 @@ pub mod callback {
         pub id: ID,
     }
 
-    #[derive(Debug, Serialize, Deserialize)]
+    #[derive(Debug, Serialize, Deserialize, Clone)]
     pub enum InstanceState {
         Started = 1,
         Running = 2,
@@ -217,6 +242,14 @@ pub mod callback {
     }
 
     #[derive(Debug, Serialize, Deserialize)]
+    #[cfg_attr(feature = "message", derive(Message))]
+    pub struct TrackPositionUpdate {
+        pub position_ms: TimeMS,
+        pub id: ID,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    #[cfg_attr(feature = "message", derive(Message))]
     pub struct PlaystateResponse {
         pub state: Playstate,
         pub id: ID,
@@ -235,9 +268,15 @@ pub mod callback {
     /// Url resolve response for ticket
     #[derive(Debug, Serialize, Deserialize)]
     pub struct ResolveResponse {
+        /// Original URL for request
+        pub source: String,
+        /// Whether the call had success
         pub success: bool,
+        /// Message for aribtrary errors
         pub msg: Option<String>,
+        /// Song list on success (can be empty for an empty playlist!)
         pub songs: Vec<Song>,
+        /// TicketID
         pub ticket: Ticket,
     }
 }

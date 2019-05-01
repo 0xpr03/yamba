@@ -15,6 +15,7 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use chrono::offset::Utc;
 use failure::Fallible;
 use futures::sync::mpsc::Receiver;
 use futures::Stream;
@@ -34,7 +35,7 @@ use cache::Cache;
 use daemon::{HeartbeatMap, Instances, WInstances};
 use playback::{PlaybackState, Player, PlayerEvent, PlayerEventType};
 use ts::TSInstance;
-use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, Song, SongID};
+use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, Song, SongID, TimeStarted};
 use ytdl::YtDL;
 use ytdl_worker::{Controller, YTReqWrapped, YTSender};
 use SETTINGS;
@@ -83,6 +84,8 @@ pub struct Instance {
     cache: SongCache,
     instances: WInstances,
     url_resolve: YTSender,
+    startup_time: TimeStarted,
+    state: RwLock<InstanceState>,
 }
 
 impl Drop for Instance {
@@ -117,6 +120,8 @@ impl Instance {
             current_song: Arc::new(RwLock::new(None)),
             instances: base.get_weak_instances().clone(),
             error_retries: AtomicUsize::new(0),
+            startup_time: Utc::now().timestamp(),
+            state: RwLock::new(InstanceState::Started),
         };
 
         heartbeats.update(instance.get_id());
@@ -143,9 +148,6 @@ impl Instance {
     pub fn dispatch_resolve(&self, request: YTReqWrapped) -> Fallible<()> {
         Ok(self.url_resolve.try_send(request)?)
     }
-
-    /// Do heartbeat update
-    pub fn heartbeat(&self) {}
 
     /// Stop playback
     pub fn stop_playback(&self) {
@@ -239,6 +241,11 @@ impl Instance {
         self.player.play();
     }
 
+    /// Returns startup time as UNIX timestamp
+    pub fn get_startup_time(&self) -> i64 {
+        self.startup_time
+    }
+
     /// Resume playback
     pub fn resume_playback(&self) -> Fallible<()> {
         if self
@@ -252,11 +259,20 @@ impl Instance {
         Ok(())
     }
 
+    /// Returns current instance state  
+    /// Must never be stopped.
+    pub fn get_state(&self) -> InstanceState {
+        self.state.read().expect("Can't read state").clone()
+    }
+
     /// Called when voip is connected & able to send audio
     pub(crate) fn connected(&self, param: InstanceStartedReq) -> Fallible<()> {
         match self.voip {
             InstanceType::Teamspeak(ref ts) => ts.on_connected(param.pid)?,
         }
+        let mut state = self.state.write().expect("Can't lock state!");
+        *state = InstanceState::Running;
+        drop(state);
 
         let _ = callback::send_instance_state(&InstanceStateResponse {
             id: self.get_id(),
@@ -324,6 +340,15 @@ impl Instance {
             id: self.id.clone(),
             state,
         }) {
+            error!("Can't send playback state change: {}", e);
+        }
+    }
+
+    /// Send position change
+    fn send_position_update(id: ID, position_ms: u32) {
+        if let Err(e) =
+            callback::send_track_position_update(&TrackPositionUpdate { id, position_ms })
+        {
             error!("Can't send playback state change: {}", e);
         }
     }
@@ -458,7 +483,11 @@ pub fn create_playback_event_handler(
                     v.send_playstate_change(playback_to_public_state(state));
                 }
             }
-            PlayerEventType::PositionUpdated => (), // silence
+            PlayerEventType::PositionUpdated(time) => {
+                if let Some(time) = time.mseconds() {
+                    Instance::send_position_update(event.id, time as u32);
+                }
+            }
             PlayerEventType::MediaInfoUpdated => (), // silence
             PlayerEventType::Error(e) => {
                 let mut retry = false;

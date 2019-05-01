@@ -17,15 +17,14 @@
 
 use crate::backend::Backend;
 use crate::instance::Instances;
-use actix::System;
 use actix_web::{fs, http, middleware, server, App};
 use failure::Fallible;
-use futures::{sync::mpsc, Future, Stream};
 use std::net::SocketAddr;
-use std::thread;
+
+pub use ws::{InstanceCreated, WSServer};
 
 mod api;
-mod form;
+mod ws;
 
 #[derive(Clone)]
 pub struct FrState {
@@ -39,54 +38,50 @@ pub enum ServerErr {
     BindFailed(#[cause] std::io::Error),
 }
 
-/// Guard that automatically shuts down the server on drop
-pub struct ShutdownGuard {
-    sender: mpsc::Sender<usize>,
-}
-
-impl Drop for ShutdownGuard {
-    fn drop(&mut self) {
-        let _ = self.sender.try_send(1);
-    }
-}
-
+/// Init frontend server + websockets
 pub fn init_frontend_server(
-    instances: &Instances,
-    backend: &Backend,
+    instances: Instances,
+    backend: Backend,
     bind_addr: SocketAddr,
-) -> Fallible<ShutdownGuard> {
-    let (tx, rx) = mpsc::channel(1);
+) -> Fallible<()> {
     let state = FrState {
         instances: instances.clone(),
         backend: backend.clone(),
     };
-    thread::spawn(move || {
-        let mut sys = System::new("frontend_server");
-        server::new(move || {
-            App::with_state(state.clone())
-                .middleware(middleware::Logger::new("manager::api::frontend"))
-                .resource("/form/create/ts", |r| {
-                    r.method(http::Method::POST)
-                        .with_async(api::handle_create_ts)
-                })
-                .handler("/static", fs::StaticFiles::new("./static").unwrap())
-                .handler(
-                    "/",
-                    fs::StaticFiles::new("./templates")
-                        .unwrap()
-                        .index_file("index.html"),
-                )
-                .boxed()
-        })
-        .bind(bind_addr)
-        .map_err(|e| ServerErr::BindFailed(e))
-        .unwrap()
-        .shutdown_timeout(1)
-        .run();
+    server::new(move || {
+        App::with_state(state.clone())
+            .middleware(middleware::Logger::new("manager::api::frontend"))
+            .resource("/api/instances/create", |r| {
+                r.method(http::Method::POST)
+                    .with_async(api::handle_instances_create)
+            })
+            .resource("/api/playback/volume", |r| {
+                r.method(http::Method::GET).with(api::handle_volume_get)
+            })
+            .resource("/api/playback/state", |r| {
+                r.method(http::Method::GET).with(api::handle_playback_get)
+            })
+            .resource("/api/playback/track", |r| {
+                r.method(http::Method::GET).with(api::handle_track_get)
+            })
+            .resource("/api/instances", |r| {
+                r.method(http::Method::GET).with(api::handle_instances_get)
+            })
+            .resource("/ws", |r| r.route().f(ws::ws_route))
+            .handler("/static", fs::StaticFiles::new("./static").unwrap())
+            .handler(
+                "/",
+                fs::StaticFiles::new("./templates")
+                    .unwrap()
+                    .index_file("index.html"),
+            )
+            .boxed()
+    })
+    .bind(bind_addr)
+    .map_err(|e| ServerErr::BindFailed(e))
+    .unwrap()
+    .shutdown_timeout(1)
+    .start();
 
-        sys.block_on(rx.into_future().map(|_| println!("received shutdown")))
-            .unwrap();
-    });
-
-    Ok(ShutdownGuard { sender: tx })
+    Ok(())
 }

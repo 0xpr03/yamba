@@ -7,6 +7,8 @@ package tech.yamba.db.jooq.tables.pojos;
 import java.io.Serializable;
 
 import javax.annotation.Generated;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 
 /**
@@ -22,7 +24,7 @@ import javax.annotation.Generated;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Authority implements Serializable {
 
-    private static final long serialVersionUID = 1880525530;
+    private static final long serialVersionUID = -404607971;
 
     private Short  id;
     private String authority;
@@ -51,6 +53,8 @@ public class Authority implements Serializable {
         return this;
     }
 
+    @NotNull
+    @Size(max = 63)
     public String getAuthority() {
         return this.authority;
     }

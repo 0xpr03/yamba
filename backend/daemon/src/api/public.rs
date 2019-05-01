@@ -20,7 +20,7 @@ use http_r::status::StatusCode;
 use tokio::{net::TcpListener, runtime};
 use tower_web::*;
 use tower_web::{middleware::log::LogMiddleware, view::Handlebars};
-use yamba_types::models::callback::{PlaystateResponse, ResolveResponse};
+use yamba_types::models::callback::{InstanceStateResponse, PlaystateResponse, ResolveResponse};
 use yamba_types::models::*;
 
 use std::net::SocketAddr;
@@ -94,12 +94,14 @@ impl YTRequest for ResolveDispatcher {
     fn callback(&mut self, songs: RSongs, _: Instances) {
         let response = match songs {
             Ok(s) => ResolveResponse {
+                source: self.url.clone(),
                 ticket: self.ticket,
                 success: true,
                 songs: s,
                 msg: None,
             },
             Err(e) => ResolveResponse {
+                source: self.url.clone(),
                 ticket: self.ticket,
                 success: false,
                 songs: Vec::new(),
@@ -156,7 +158,11 @@ impl_web! {
             debug!("instance start request: {:?}",body);
             let mut inst_w = self.instances.write().expect("Can't write instances!");
             if !inst_w.contains_key(&body.id) {
-                create_instance(&self.base, body).map(|v|  {inst_w.insert(v.get_id(),v); ok() })?
+                create_instance(&self.base, body).map(|v|  {
+                    let time = v.get_startup_time();
+                    inst_w.insert(v.get_id(),v);
+                    ok_response(InstanceLoadResponse{startup_time: time})
+                })?
             } else {
                 custom_response(StatusCode::CONFLICT,ErrorResponse{msg: String::from("Instance running!"),details: ErrorCodes::INSTANCE_RUNNING})
             }
@@ -167,8 +173,18 @@ impl_web! {
         fn instance_list(&self) -> Fallible<InstanceListResponse> {
             debug!("instance list request");
             let inst_r = self.instances.read().expect("Can't write instances!");
-            let ids = inst_r.keys().map(|v|v.clone()).collect();
+            let ids = inst_r.values().map(|val|InstanceListEntry{id: val.get_id(), started: val.get_startup_time()}).collect();
             Ok(InstanceListResponse{instances:ids})
+        }
+
+        #[get("/instance/state")]
+        #[content_type("application/json")]
+        fn instance_state(&self, query_string: StateGetReq) -> Rsp {
+            debug!("playback state request: {:?}",query_string);
+            match get_instance_by_id(&self.instances, &query_string.id) {
+                Some(v) =>  ok_response(InstanceStateResponse{id: query_string.id, state: v.get_state()}),
+                None => invalid_instance(),
+            }
         }
 
         #[post("/instance/stop")]
@@ -200,6 +216,16 @@ impl_web! {
             debug!("playback pause request: {:?}",body);
             match get_instance_by_id(&self.instances, &body.id) {
                 Some(v) =>  {v.pause(); ok()},
+                None => invalid_instance(),
+            }
+        }
+
+        #[post("/playback/stop")]
+        #[content_type("application/json")]
+        fn playback_stop(&self, body: PlaybackStopReq) -> Rsp {
+            debug!("playback pause request: {:?}",body);
+            match get_instance_by_id(&self.instances, &body.id) {
+                Some(v) =>  {v.stop_playback(); ok()},
                 None => invalid_instance(),
             }
         }

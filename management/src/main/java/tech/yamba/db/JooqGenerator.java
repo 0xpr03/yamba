@@ -39,6 +39,7 @@ public class JooqGenerator {
 								.withPojosEqualsAndHashCode(true)
 								.withFluentSetters(true)
 								.withSpringAnnotations(true)
+								.withValidationAnnotations(true)
 						));
 		GenerationTool.generate(configuration);
 	}
