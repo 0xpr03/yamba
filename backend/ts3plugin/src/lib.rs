@@ -14,22 +14,14 @@
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
-
-extern crate serde;
-extern crate ts3plugin;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate jsonrpc_client_core;
-extern crate failure;
-extern crate jsonrpc_client_http;
-extern crate regex;
-extern crate reqwest;
 #[macro_use]
 extern crate failure_derive;
-extern crate yamba_types;
 
 mod models;
 
@@ -362,10 +354,10 @@ impl Plugin for MyTsPlugin {
 
     fn message(
         &mut self,
-        api: &mut ::TsApi,
-        server_id: ::ServerId,
-        invoker: ::Invoker,
-        target: ::MessageReceiver,
+        api: &mut TsApi,
+        server_id: ServerId,
+        invoker: Invoker,
+        target: MessageReceiver,
         message: String,
         _ignored: bool,
     ) -> bool {
