@@ -1,31 +1,32 @@
 package tech.yamba.management.users;
 
+import static tech.yamba.db.jooq.tables.Users.USERS;
+
+import java.util.List;
+
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import tech.yamba.db.jooq.tables.daos.UserAuthoritiesDao;
 import tech.yamba.db.jooq.tables.daos.UsersDao;
 import tech.yamba.db.jooq.tables.pojos.User;
 import tech.yamba.db.jooq.tables.pojos.UserAuthority;
 
-import java.util.List;
-
-import static tech.yamba.db.jooq.tables.Users.USERS;
-
 @Service
 public class UserService {
 
-    DSLContext create;
-    UsersDao usersDao;
-    PasswordEncoder passwordEncoder;
-    UserAuthoritiesDao userAuthoritiesDao;
+    private final DSLContext create;
+    private final UsersDao usersDao;
+    private final PasswordEncoder passwordEncoder;
+    private final UserAuthoritiesDao userAuthoritiesDao;
 
     @Autowired
     public UserService(DSLContext create, PasswordEncoder passwordEncoder) {
         this.create = create;
-        this.usersDao = new UsersDao(create.configuration());
-        this.userAuthoritiesDao = new UserAuthoritiesDao(create.configuration());
+        usersDao = new UsersDao(create.configuration());
+        userAuthoritiesDao = new UserAuthoritiesDao(create.configuration());
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -38,7 +39,7 @@ public class UserService {
                 .into(User.class);
 
         // Add default role to user
-        userAuthoritiesDao.insert(new UserAuthority(result.getId(), (short)-1));
+        userAuthoritiesDao.insert(new UserAuthority(result.getId(), (short) -1));
 
         return result;
     }
