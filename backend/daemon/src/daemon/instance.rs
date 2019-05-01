@@ -32,7 +32,7 @@ use std::thread;
 use api::callback;
 use audio::NullSink;
 use cache::Cache;
-use daemon::{HeartbeatMap, Instances, WInstances};
+use daemon::{heartbeat::HeartbeatMap, HeartBeatInstance, Instances, WInstances};
 use playback::{PlaybackState, Player, PlayerEvent, PlayerEventType};
 use ts::TSInstance;
 use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, Song, SongID, TimeStarted};
@@ -86,6 +86,7 @@ pub struct Instance {
     url_resolve: YTSender,
     startup_time: TimeStarted,
     state: RwLock<InstanceState>,
+    heartbeat: HeartBeatInstance,
 }
 
 impl Drop for Instance {
@@ -122,6 +123,7 @@ impl Instance {
             error_retries: AtomicUsize::new(0),
             startup_time: Utc::now().timestamp(),
             state: RwLock::new(InstanceState::Started),
+            heartbeat: heartbeats.get_instance_guard(id),
         };
 
         heartbeats.update(instance.get_id());

@@ -22,10 +22,24 @@ use tokio::timer::Interval;
 
 use super::{Instances, ID};
 
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 
 const CHECK_INTERVAL: Duration = Duration::from_secs(3);
+
+/// A guard for an instance that removes the heartbeat entry on drop
+pub struct HeartBeatInstance {
+    storage: Weak<ConcHashMap<ID, Instant>>,
+    id: ID,
+}
+
+impl Drop for HeartBeatInstance {
+    fn drop(&mut self) {
+        if let Some(v) = self.storage.upgrade() {
+            v.remove(&self.id);
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct HeartbeatMap {
@@ -61,6 +75,15 @@ impl HeartbeatMap {
 
         hbm
     }
+
+    /// Returns instance guard, removes instance from heartbeats on drop
+    pub fn get_instance_guard(&self, id: ID) -> HeartBeatInstance {
+        HeartBeatInstance {
+            storage: Arc::downgrade(&self.storage),
+            id,
+        }
+    }
+
     /// Update heartbeat timestamp for instance
     pub fn update(&self, id: ID) {
         trace!("Updating heartbeat for {}", id);

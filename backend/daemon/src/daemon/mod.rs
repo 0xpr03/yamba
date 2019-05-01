@@ -18,7 +18,7 @@
 mod heartbeat;
 pub mod instance;
 
-pub use self::heartbeat::HeartbeatMap;
+pub use self::heartbeat::{HeartBeatInstance, HeartbeatMap};
 use failure::Fallible;
 use futures::sync::mpsc;
 use futures::{future, Future, Stream};
