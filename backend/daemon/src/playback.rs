@@ -335,7 +335,7 @@ impl Player {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use audio;
+    use crate::audio;
     use futures::sync::mpsc;
     use futures::Stream;
     use gst;
