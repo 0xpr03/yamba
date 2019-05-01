@@ -18,14 +18,16 @@
 use failure::Fallible;
 use futures::sync::mpsc::Sender;
 use glib::FlagsClass;
-use gst;
+
 use gst::prelude::*;
-use gst_player::{self, Cast};
+use gst_player::Cast;
+use gstreamer as gst;
+use gstreamer_player as gst_player;
 
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 
-use daemon::instance::ID;
+use crate::daemon::instance::ID;
 
 /// Playback abstraction
 

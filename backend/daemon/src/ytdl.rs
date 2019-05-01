@@ -30,8 +30,8 @@ use serde_json;
 use serde_json::value::Value as JsonValue;
 use sha2::{Digest, Sha256};
 
-use http;
-use SETTINGS;
+use crate::http;
+use crate::SETTINGS;
 
 /// Ytdl handler
 

@@ -21,6 +21,8 @@ use futures::sync::mpsc::Receiver;
 use futures::Stream;
 use gst::ResourceError;
 use gst_player::PlayerError;
+use gstreamer as gst;
+use gstreamer_player as gst_player;
 use tokio::runtime;
 
 use std::sync::{
@@ -29,16 +31,16 @@ use std::sync::{
 };
 use std::thread;
 
-use api::callback;
-use audio::NullSink;
-use cache::Cache;
-use daemon::{heartbeat::HeartbeatMap, HeartBeatInstance, Instances, WInstances};
-use playback::{PlaybackState, Player, PlayerEvent, PlayerEventType};
-use ts::TSInstance;
+use crate::api::callback;
+use crate::audio::NullSink;
+use crate::cache::Cache;
+use crate::daemon::{heartbeat::HeartbeatMap, HeartBeatInstance, Instances, WInstances};
+use crate::playback::{PlaybackState, Player, PlayerEvent, PlayerEventType};
+use crate::ts::TSInstance;
+use crate::ytdl::YtDL;
+use crate::ytdl_worker::{Controller, YTReqWrapped, YTSender};
+use crate::SETTINGS;
 use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, Song, SongID, TimeStarted};
-use ytdl::YtDL;
-use ytdl_worker::{Controller, YTReqWrapped, YTSender};
-use SETTINGS;
 
 /// module containing a single instance
 
@@ -86,7 +88,7 @@ pub struct Instance {
     url_resolve: YTSender,
     startup_time: TimeStarted,
     state: RwLock<InstanceState>,
-    heartbeat: HeartBeatInstance,
+    _heartbeat_guard: HeartBeatInstance,
 }
 
 impl Drop for Instance {
@@ -123,7 +125,7 @@ impl Instance {
             error_retries: AtomicUsize::new(0),
             startup_time: Utc::now().timestamp(),
             state: RwLock::new(InstanceState::Started),
-            heartbeat: heartbeats.get_instance_guard(id),
+            _heartbeat_guard: heartbeats.get_instance_guard(id),
         };
 
         heartbeats.update(instance.get_id());

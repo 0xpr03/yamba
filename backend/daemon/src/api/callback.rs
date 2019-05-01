@@ -18,13 +18,13 @@
 use failure::Fallible;
 use futures::Future;
 use reqwest::header;
-use reqwest::{self, async};
+use reqwest::{self, r#async};
 use tokio::executor::{DefaultExecutor, Executor};
 
 use super::APIErr;
+use crate::SETTINGS;
+use crate::USERAGENT;
 use yamba_types::models::callback::*;
-use SETTINGS;
-use USERAGENT;
 
 lazy_static! {
     static ref API_CLIENT_SYNC: reqwest::Client = {
@@ -42,7 +42,7 @@ lazy_static! {
             .build()
             .unwrap()
     };
-    static ref API_CLIENT_ASYNC: async::Client = {
+    static ref API_CLIENT_ASYNC: r#async::Client = {
         let mut headers = header::HeaderMap::new();
         headers.insert(
             header::USER_AGENT,
@@ -52,7 +52,7 @@ lazy_static! {
             header::AUTHORIZATION,
             header::HeaderValue::from_static(&SETTINGS.main.api_callback_secret),
         );
-        async::ClientBuilder::new()
+        r#async::ClientBuilder::new()
             .default_headers(headers)
             .build()
             .unwrap()

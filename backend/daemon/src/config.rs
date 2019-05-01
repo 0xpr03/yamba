@@ -20,10 +20,10 @@ use std::ffi::OsStr;
 use std::fs::{read_dir, DirBuilder, OpenOptions};
 use std::io::{self, Write};
 
-use config_rs::{Config, ConfigError as ConfigRSError, Environment, File as CFile};
+use config::{Config, ConfigError as ConfigRSError, Environment, File as CFile};
 use failure::Fallible;
 
-use {CONF_DIR, DEFAULT_CONFIG_NAME};
+use crate::{CONF_DIR, DEFAULT_CONFIG_NAME};
 
 /// Config handler
 

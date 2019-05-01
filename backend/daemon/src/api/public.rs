@@ -16,7 +16,7 @@
  */
 
 use failure::Fallible;
-use http_r::status::StatusCode;
+use http::status::StatusCode;
 use tokio::{net::TcpListener, runtime};
 use tower_web::*;
 use tower_web::{middleware::log::LogMiddleware, view::Handlebars};
@@ -28,9 +28,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::callback::send_resolve;
 use super::*;
-use daemon::{create_instance, instance, InstanceBase, Instances};
-use ytdl_worker::{RSongs, YTRequest};
-use SETTINGS;
+use crate::daemon::{create_instance, instance, InstanceBase, Instances};
+use crate::ytdl_worker::{RSongs, YTRequest};
+use crate::SETTINGS;
 
 static CALLBACK_TICKET: AtomicUsize = AtomicUsize::new(0);
 

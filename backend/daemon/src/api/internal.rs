@@ -23,9 +23,9 @@ use tower_web::*;
 use std::net::SocketAddr;
 
 use super::{accepted, get_instance_by_id, invalid_instance, APIErr, Rsp};
-use daemon::{HeartbeatMap, Instances};
+use crate::daemon::{HeartbeatMap, Instances};
+use crate::SETTINGS;
 use yamba_types::models::{HeartbeatReq, InstanceStartedReq};
-use SETTINGS;
 
 /// Internal API, used for plugin<->daemon communication
 /// Not secured or intended for public exposure

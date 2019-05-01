@@ -21,13 +21,16 @@ use std::boxed::Box;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
-use pulse;
+use libpulse_binding as pulse;
+
 use pulse::callbacks::ListResult;
 use pulse::context::{flags, Context, State};
 use pulse::mainloop::standard::{IterateResult, Mainloop};
 use pulse::proplist::{properties, Proplist};
 
-/// Audio controller. Handling audio devices
+/*
+ * Audio controller. Handling audio devices
+ */
 
 pub type CMainloop = Arc<Mutex<Mainloop>>;
 pub type CContext = Arc<Mutex<Context>>;

@@ -22,7 +22,7 @@ pub use self::heartbeat::{HeartBeatInstance, HeartbeatMap};
 use failure::Fallible;
 use futures::sync::mpsc;
 use futures::{future, Future, Stream};
-use gst;
+use gstreamer as gst;
 use hashbrown::HashMap;
 use tokio::{self, runtime::Runtime};
 use tokio_signal::unix::{self, Signal};
@@ -35,15 +35,15 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, RwLock, Weak};
 use std::thread;
 
 use self::instance::*;
-use api;
-use audio::{self, CContext, CMainloop, NullSink};
-use cache::Cache;
-use playback::{PlaybackSender, Player, PlayerEvent};
-use ts::TSInstance;
+use crate::api;
+use crate::audio::{self, CContext, CMainloop, NullSink};
+use crate::cache::Cache;
+use crate::playback::{PlaybackSender, Player, PlayerEvent};
+use crate::ts::TSInstance;
+use crate::ytdl::YtDL;
+use crate::ytdl_worker;
+use crate::SETTINGS;
 use yamba_types::models::{self, SongID, TSSettings};
-use ytdl::YtDL;
-use ytdl_worker;
-use SETTINGS;
 
 /// Daemon init & startup of all servers
 

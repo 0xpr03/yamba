@@ -26,12 +26,12 @@ use std::boxed::Box;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use ytdl::YtDL;
+use crate::ytdl::YtDL;
 
-use daemon::instance::{SongCache, ID};
-use daemon::Instances;
+use crate::daemon::instance::{SongCache, ID};
+use crate::daemon::Instances;
+use crate::SETTINGS;
 use yamba_types::models::Song;
-use SETTINGS;
 
 /// Worker for ytdl tasks
 
@@ -46,7 +46,7 @@ pub trait YTRequest {
     fn url(&self) -> &str;
     /// Callback, called after resolving of requested url with return value
     /// instance calls should be done via the instance map passed
-    fn callback(&mut self, RSongs, Instances);
+    fn callback(&mut self, songs: RSongs, instances: Instances);
     /// Turn YTRequest into wrapped to send to scheduler
     fn wrap(self) -> YTReqWrapped
     where

@@ -45,7 +45,7 @@ struct CacheEntry<V> {
     value: V,
 }
 
-use SETTINGS;
+use crate::SETTINGS;
 
 // https://github.com/rust-lang/rust/issues/26925
 impl<K, V> Clone for Cache<K, V>

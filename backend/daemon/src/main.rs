@@ -20,40 +20,12 @@ extern crate failure;
 extern crate failure_derive;
 #[macro_use]
 extern crate clap;
-extern crate log4rs;
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
-extern crate atomic;
-extern crate chrono;
-extern crate concurrent_hashmap;
-extern crate config as config_rs;
-extern crate erased_serde;
-extern crate futures;
-extern crate glib;
-extern crate gstreamer as gst;
-extern crate gstreamer_player as gst_player;
-extern crate hashbrown;
-extern crate libpulse_binding as pulse;
-extern crate libpulse_glib_binding as pglib;
-extern crate libpulse_sys as pulse_sys;
-extern crate metrohash;
-extern crate mpmc_scheduler;
-extern crate owning_ref;
-extern crate reqwest;
-extern crate rusqlite;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_urlencoded;
-extern crate sha2;
-extern crate tokio;
-extern crate tokio_signal;
-extern crate tokio_threadpool;
 #[macro_use]
 extern crate tower_web;
-extern crate http as http_r;
-extern crate yamba_types;
 
 use std::alloc::System;
 
@@ -166,9 +138,10 @@ fn main() -> Fallible<()> {
         }
         ("play-audio", Some(sub_m)) => {
             info!("Audio playback testing..");
+            use gstreamer as gst;
             gst::init()?;
             let (send, recv) = mpsc::channel::<PlayerEvent>(10);
-            let mut player = playback::Player::new(send, -1, 0.1)?;
+            let player = playback::Player::new(send, -1, 0.1)?;
             let path = get_path_for_existing_file(sub_m.value_of("file").unwrap()).unwrap();
             player.set_uri(&path.to_string_lossy());
             player.play();
@@ -188,6 +161,7 @@ fn main() -> Fallible<()> {
             use std::thread;
             info!("Url play testing..");
             {
+                use gstreamer as gst;
                 gst::init()?;
                 let glib_loop = glib::MainLoop::new(None, false);
                 gstreamer::debug_set_active(true);

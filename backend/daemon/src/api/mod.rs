@@ -17,7 +17,7 @@
 
 use failure::Fallible;
 use hashbrown::HashMap;
-use http_r::{response::Response, status::StatusCode};
+use http::{response::Response, status::StatusCode};
 use owning_ref::OwningRef;
 use serde::Serialize;
 use tokio::{executor, runtime};
@@ -26,7 +26,7 @@ use yamba_types::models::{DefaultResponse, ErrorCodes, ErrorResponse};
 use std::net::SocketAddr;
 use std::sync::RwLockReadGuard;
 
-use daemon::{
+use crate::daemon::{
     instance::{Instance, ID},
     InstanceBase, Instances,
 };
