@@ -16,7 +16,8 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//! Yamba-Daemon API types & structures.  
+//! Yamba-Daemon API types & structures.
+//!
 //! All of the types here are written from the daemons pov.  
 //! For ResolveRequest this means client -> daemon request (incoming for daemon)
 
