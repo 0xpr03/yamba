@@ -19,7 +19,8 @@
             "label": "cargo build",
             "command": "cargo",
             "args": [
-                "build"
+                "build",
+                "--all-features"
             ],
             "problemMatcher": [
                 "$rustc"
@@ -28,18 +29,6 @@
                 "kind": "build",
                 "isDefault": true
             }
-        },
-        {
-            "type": "cargo",
-            "label": "cargo build all",
-            "command": "cargo",
-            "args": [
-                "build",
-                "--all-features"
-            ],
-            "problemMatcher": [
-                "$rustc"
-            ]
         }
     ]
 }

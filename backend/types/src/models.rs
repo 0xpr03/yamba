@@ -16,12 +16,14 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/// All of the types here are written from the daemons point of view
-/// So a PlaybackUrlReq means client -> daemon request (incoming for daemon)
+//! Yamba-Daemon API types & structures.  
+//! All of the types here are written from the daemons pov.  
+//! For ResolveRequest this means client -> daemon request (incoming for daemon)
+
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "track")]
-use crate::track::Track;
+use crate::track::{GetId, Track, TrackList};
 
 pub use crate::ErrorCodes;
 pub use crate::{Volume, ID};
@@ -29,6 +31,10 @@ pub use crate::{Volume, ID};
 /// Song identifier, char(32)
 /// Effectively u128, but not supported by json
 pub type SongID = String;
+
+/// Playlist identifier, char(32)
+/// Effectively u128, but not supported by json
+pub type PlaylistID = String;
 
 /// Cache representation
 pub type CacheSong = String;
@@ -93,7 +99,9 @@ pub type StateGetReq = GenericRequest;
 pub type InstanceStopReq = GenericRequest;
 pub type HeartbeatReq = GenericRequest;
 
-/// Instance started request, internal API
+/// Instance started request, __internal API__  
+/// Used by voip plugins like ts3plugin
+#[doc(hidden)]
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Extract))]
 pub struct InstanceStartedReq {
@@ -111,6 +119,19 @@ pub struct Song {
     pub artist: Option<String>,
     /// Length in seconds
     pub length: Option<TimeMS>,
+}
+
+/// Playlist representation from resolver
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Playlist {
+    pub id: PlaylistID,
+    /// Playlist Name
+    pub name: String,
+    pub songs: Vec<Song>,
+    /// Author/Uploader/User
+    pub author: Option<String>,
+    /// URL
+    pub source: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -132,6 +153,7 @@ pub struct ErrorResponse {
 #[cfg_attr(feature = "tower", derive(Response, Extract))]
 pub struct VolumeResponse {
     pub volume: Option<Volume>,
+    /// TODO: evaluate requirement, can be ignored, basically legacy ErrorResponse
     pub msg: Option<String>,
 }
 
@@ -143,6 +165,7 @@ pub struct InstanceListResponse {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InstanceListEntry {
+    /// Instance ID
     pub id: ID,
     /// Unix Timestamp of startup time
     pub started: TimeStarted,
@@ -159,7 +182,10 @@ pub struct ResolveTicketResponse {
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Extract))]
 pub struct ResolveRequest {
+    /// Instance ID under which to resolve  
+    /// Fails if there exists no instance under this ID
     pub instance: ID,
+    /// URL to resolve
     pub url: String,
 }
 
@@ -167,14 +193,18 @@ pub struct ResolveRequest {
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Response))]
 pub struct InstanceLoadResponse {
+    /// Internal startup time value, can be used for synchronization
     pub startup_time: TimeStarted,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "tower", derive(Extract))]
 pub struct InstanceLoadReq {
-    pub id: ID, //TODO:  zugriff ermöglichen, benötigt für plugin um sich zu identifizieren
+    /// ID under which to load this instance
+    pub id: ID,
+    /// Data for instance
     pub data: InstanceType,
+    /// Initial volume
     pub volume: Volume,
 }
 
@@ -183,13 +213,21 @@ pub enum InstanceType {
     TS(TSSettings),
 }
 
+/// Teamspeak instance settings
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TSSettings {
+    /// Host IP/domain
     pub host: String,
+    /// Optional if tsdns is available
     pub port: Option<u16>,
+    /// Identity to use  
+    /// __Currently ignored__
     pub identity: Option<String>,
+    /// Channel ID to connect to
     pub cid: Option<i32>,
+    /// Name on server
     pub name: String,
+    /// Password to use for server, if required
     pub password: Option<String>,
 }
 
@@ -208,8 +246,33 @@ pub struct InstanceOverview {
     pub playback_info: String,
 }
 
-/// Callbacks
+#[cfg(feature = "track")]
+impl From<Track> for Song {
+    fn from(mut track: Track) -> Self {
+        Song {
+            id: track.get_id(),
+            artist: track.take_artist(),
+            length: track.duration_as_u32(),
+            name: track.title,
+            source: track.webpage_url,
+        }
+    }
+}
 
+#[cfg(feature = "track")]
+impl From<TrackList> for Playlist {
+    fn from(tracklist: TrackList) -> Self {
+        Playlist {
+            id: tracklist.get_id(),
+            author: tracklist.uploader,
+            name: tracklist.title,
+            source: tracklist.webpage_url,
+            songs: tracklist.entries.into_iter().map(|t| t.into()).collect(),
+        }
+    }
+}
+
+/// Callbacks from daemon (some structs shared for manual polling APIs)
 pub mod callback {
     use super::*;
 
@@ -265,7 +328,9 @@ pub mod callback {
 
     pub type VolumeChange = VolumeSetReq;
 
-    /// Url resolve response for ticket
+    /// Url resolve response for ticket  
+    /// If a playlist is getting resolved first only one track is resolved.
+    /// Subsequent callbacks will be done when further songs got resolved
     #[derive(Debug, Serialize, Deserialize)]
     pub struct ResolveResponse {
         /// Original URL for request
@@ -275,7 +340,7 @@ pub mod callback {
         /// Message for aribtrary errors
         pub msg: Option<String>,
         /// Song list on success (can be empty for an empty playlist!)
-        pub songs: Vec<Song>,
+        pub data: ResolveType,
         /// TicketID
         pub ticket: Ticket,
     }

@@ -31,19 +31,26 @@ pub mod track;
 #[macro_use]
 extern crate actix;
 
+/// Instance ID
 pub type ID = i32;
 
+/// Error codes  
+/// Values are not the http codes and are just for comparison
 #[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ErrorCodes {
     NONE = 0,
+    /// Invalid instance ID
     INVALID_INSTANCE = 401,
+    /// Invalid volume (out of range)
     INVALID_VOLUME = 402,
+    /// Instance already running, can't start
     INSTANCE_RUNNING = 403,
+    /// Queue overloaded for instance, can't enqueue resolve job
     RESOLVE_QUEUE_OVERLOAD = 404,
 }
 
-/// Volume it 0 to 1.0 (you can go above but that's undefined)
+/// Volume of 0 to 1.0 (you can go above but that's undefined)
 pub type Volume = f64;
 
 /// Time unit (playback)
