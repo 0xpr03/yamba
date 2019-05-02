@@ -292,38 +292,51 @@ pub mod callback {
     /// Full path for callback
     pub const PATH_POSITION: &'static str = "/callback/position";
 
+    /// Data on instance state change
     #[derive(Debug, Serialize, Deserialize)]
     pub struct InstanceStateResponse {
+        /// New state of instance
         pub state: InstanceState,
+        /// Instance ID
         pub id: ID,
     }
 
+    /// Instance state
     #[derive(Debug, Serialize, Deserialize, Clone)]
     pub enum InstanceState {
         Started = 1,
         Running = 2,
+        /// Instances cannot be in state stopped, only valid when in callback on instance stop
         Stopped = 0,
     }
 
+    /// Data on playback position change
     #[derive(Debug, Serialize, Deserialize)]
     #[cfg_attr(feature = "message", derive(Message))]
     pub struct TrackPositionUpdate {
+        /// Position in ms
         pub position_ms: TimeMS,
+        /// Instance ID
         pub id: ID,
     }
 
+    /// Data on playback state change
     #[derive(Debug, Serialize, Deserialize)]
     #[cfg_attr(feature = "message", derive(Message))]
     pub struct PlaystateResponse {
+        /// New state
         pub state: Playstate,
+        /// Instance ID
         pub id: ID,
     }
 
+    /// Playback state
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub enum Playstate {
         Stopped = 0,
         Playing = 1,
         Paused = 2,
+        /// Media just ended, only on callback
         EndOfMedia = 3,
     }
 
