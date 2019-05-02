@@ -1,4 +1,4 @@
-package tech.yamba.management.web;
+package tech.yamba.management.users;
 
 import java.util.List;
 
@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import tech.yamba.db.jooq.tables.pojos.User;
-import tech.yamba.management.users.UserService;
 
 
 @Controller
