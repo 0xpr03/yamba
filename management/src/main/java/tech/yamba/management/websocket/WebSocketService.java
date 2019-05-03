@@ -35,6 +35,7 @@ public class WebSocketService extends TextWebSocketHandler {
 
 
 	public void notifySubscribers(Class<?> controllerClass, Function<String, Boolean> methodNameMatcher) {
+		log.debug("Notifying subscribers on '{}' class", controllerClass.getName());
 		mapper.getHandlerMethods().forEach((key, value) -> {
 			if (value.getMethod().getDeclaringClass().equals(controllerClass) && methodNameMatcher.apply(value.getMethod().getName())) {
 				key.getPatternsCondition().getPatterns().forEach(this::notifySubscribers);
@@ -44,6 +45,7 @@ public class WebSocketService extends TextWebSocketHandler {
 
 
 	public void notifySubscribers(String endpoint) {
+		log.debug("Notifying subscribers on endpoint '{}'", endpoint);
 		sessions
 				.entrySet()
 				.stream()
@@ -52,7 +54,7 @@ public class WebSocketService extends TextWebSocketHandler {
 					try {
 						session.getKey().sendMessage(new YambaMessage<>(ServerMessage.UPDATE, endpoint).toTextMessage());
 					} catch (IOException e) {
-						e.printStackTrace();
+						log.error("Exception during notify", e);
 					}
 				});
 	}
@@ -77,6 +79,7 @@ public class WebSocketService extends TextWebSocketHandler {
 
 			session.sendMessage(new YambaMessage<>(ServerMessage.OK).toTextMessage());
 		} catch (Exception e) {
+			log.trace("Got bad message '{}'", message);
 			session.sendMessage(new YambaMessage<>(ServerMessage.BAD, message.getPayload()).toTextMessage());
 		}
 	}
