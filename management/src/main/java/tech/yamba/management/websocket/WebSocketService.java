@@ -8,7 +8,6 @@ import java.util.Set;
 import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.web.socket.CloseStatus;
@@ -57,12 +56,6 @@ public class WebSocketService extends TextWebSocketHandler {
 					}
 				});
 	}
-
-	@Bean
-	public Map<WebSocketSession, Set<String>> getWebsocketSessions() {
-		return sessions;
-	}
-
 
 	@Override
 	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
