@@ -327,8 +327,6 @@ pub mod callback {
     pub struct ResolveInitialResponse {
         /// Data for initial resolve
         pub data: ResolveType,
-        /// TicketID
-        pub ticket: Ticket,
         /// Follow-up state, for multipart response
         pub state: ResolveState,
     }
@@ -337,8 +335,17 @@ pub mod callback {
     ///
     /// Used by rust implementations for de-/serializing
     #[derive(Debug, Deserialize, Serialize)]
+    pub struct ResolveResponse {
+        /// Ticket ID
+        pub ticket: Ticket,
+        /// Actual data
+        pub data: ResolveResponseData,
+    }
+
+    /// All possible data
+    #[derive(Debug, Deserialize, Serialize)]
     #[serde(untagged)]
-    pub enum ResolveResponse {
+    pub enum ResolveResponseData {
         Error(ResolveErrorResponse),
         Part(ResolvePartResponse),
         Initial(ResolveInitialResponse),
@@ -351,8 +358,6 @@ pub mod callback {
     pub struct ResolvePartResponse {
         /// Song list on success (can be empty for an empty playlist!)
         pub data: Playlist,
-        /// TicketID
-        pub ticket: Ticket,
         /// Follow-up state, for multipart response
         pub state: ResolveState,
         /// Start-Position of data in playlist
@@ -364,8 +369,6 @@ pub mod callback {
     /// Resolve error response, on failure to furth resolve the request
     #[derive(Debug, Deserialize, Serialize)]
     pub struct ResolveErrorResponse {
-        /// TicketID
-        pub ticket: Ticket,
         /// Error code
         pub details: ErrorCodes,
         /// Optional error message

@@ -100,19 +100,23 @@ impl ResolveDispatcher {
             };
             if let Err(e) = inst.dispatch_resolve(followup.wrap()) {
                 error!("Unable to dispatch followup resolve: {}", e);
-                send_resolve(&ResolveResponse::Error(ResolveErrorResponse {
-                    details: ErrorCodes::NONE,
-                    msg: Some(String::from("Unable to re-queue part request")),
+                send_resolve(&ResolveResponse {
                     ticket: self.ticket,
-                }));
+                    data: ResolveResponseData::Error(ResolveErrorResponse {
+                        details: ErrorCodes::NONE,
+                        msg: Some(String::from("Unable to re-queue part request")),
+                    }),
+                });
             }
         } else {
             debug!("Instance {} shut down, aborting resolve..", self.instance);
-            send_resolve(&ResolveResponse::Error(ResolveErrorResponse {
-                details: ErrorCodes::RESOLVE_CANCELLED,
-                msg: Some(String::from("Instance shut down")),
+            send_resolve(&ResolveResponse {
                 ticket: self.ticket,
-            }));
+                data: ResolveResponseData::Error(ResolveErrorResponse {
+                    details: ErrorCodes::RESOLVE_CANCELLED,
+                    msg: Some(String::from("Instance shut down")),
+                }),
+            });
         }
     }
 
@@ -137,17 +141,21 @@ impl ResolveDispatcher {
             Ok(s) => {
                 let state = self.state(&s);
                 followup = state == ResolveState::Part;
-                ResolveResponse::Initial(ResolveInitialResponse {
+                ResolveResponse {
                     ticket: self.ticket,
-                    state: state,
-                    data: s,
-                })
+                    data: ResolveResponseData::Initial(ResolveInitialResponse {
+                        state: state,
+                        data: s,
+                    }),
+                }
             }
-            Err(e) => ResolveResponse::Error(ResolveErrorResponse {
-                details: ErrorCodes::NONE,
-                msg: Some(format!("{}", e)),
+            Err(e) => ResolveResponse {
                 ticket: self.ticket,
-            }),
+                data: ResolveResponseData::Error(ResolveErrorResponse {
+                    details: ErrorCodes::NONE,
+                    msg: Some(format!("{}", e)),
+                }),
+            },
         };
         send_resolve(&response);
         if followup {
@@ -189,19 +197,23 @@ impl ResolveFollowup {
             let ticket = self.ticket;
             if let Err(e) = inst.dispatch_resolve(self.wrap()) {
                 error!("Unable to dispatch followup resolve: {}", e);
-                send_resolve(&ResolveResponse::Error(ResolveErrorResponse {
-                    details: ErrorCodes::NONE,
-                    msg: Some(String::from("Unable to re-queue part request")),
-                    ticket,
-                }));
+                send_resolve(&ResolveResponse {
+                    ticket: ticket,
+                    data: ResolveResponseData::Error(ResolveErrorResponse {
+                        details: ErrorCodes::NONE,
+                        msg: Some(String::from("Unable to re-queue part request")),
+                    }),
+                });
             }
         } else {
             debug!("Instance {} shut down, aborting resolve..", self.instance);
-            send_resolve(&ResolveResponse::Error(ResolveErrorResponse {
-                details: ErrorCodes::RESOLVE_CANCELLED,
-                msg: Some(String::from("Instance shut down")),
+            send_resolve(&ResolveResponse {
                 ticket: self.ticket,
-            }));
+                data: ResolveResponseData::Error(ResolveErrorResponse {
+                    details: ErrorCodes::RESOLVE_CANCELLED,
+                    msg: Some(String::from("Instance shut down")),
+                }),
+            });
         }
     }
 
@@ -222,18 +234,22 @@ impl ResolveFollowup {
             Ok(playlist) => {
                 let state = self.state(&playlist);
                 followup = state == ResolveState::Part;
-                ResolveResponse::Part(ResolvePartResponse {
+                ResolveResponse {
                     ticket: self.ticket,
-                    state: self.state(&playlist),
-                    data: playlist,
-                    position: self.start,
-                })
+                    data: ResolveResponseData::Part(ResolvePartResponse {
+                        state: self.state(&playlist),
+                        data: playlist,
+                        position: self.start,
+                    }),
+                }
             }
-            Err(e) => ResolveResponse::Error(ResolveErrorResponse {
-                details: ErrorCodes::NONE,
-                msg: Some(format!("{}", e)),
+            Err(e) => ResolveResponse {
                 ticket: self.ticket,
-            }),
+                data: ResolveResponseData::Error(ResolveErrorResponse {
+                    details: ErrorCodes::NONE,
+                    msg: Some(format!("{}", e)),
+                }),
+            },
         };
 
         send_resolve(&response);
