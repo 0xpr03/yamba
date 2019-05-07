@@ -75,8 +75,9 @@ pub struct ConfigMain {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigYtDL {
-    pub instance_backlog_max: u16,
-    pub workers: u8,
+    // could be u8 but usize avoid casts per schedule
+    pub instance_backlog_max: usize,
+    pub workers: usize,
     pub dir: String,
     pub update_intervall: u8,
     pub version_source: String,

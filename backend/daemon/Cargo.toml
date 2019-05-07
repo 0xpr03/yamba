@@ -46,11 +46,11 @@ gstreamer = "0.12"
 glib = "0"
 owning_ref = "0.4"
 concurrent-hashmap = {version = "0.2", default-features = false}
-mpmc-scheduler = "0.2"
+mpmc-scheduler = "0.3"
 http = "0.1"
 tower-web = "0.3"
 
 [dependencies.yamba_types]
 path = "../types"
-version = "0.5"
+version = "0.6"
 features = ["track","tower"]

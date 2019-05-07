@@ -16,16 +16,65 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+//! Daemon internal structures
+//!
+//! Defined here to allow direct conversion with public representation and further leverage the complexity in daemon
 
 use metrohash::MetroHash128;
 use serde::{Deserialize};
 
 use core::hash::{Hash, Hasher};
 
+pub trait GetId {
+    /// Calculates ID for Object
+    fn get_id(&self) -> String;
+}
+
+/// Response of either tracklist of playlist
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum TrackResponse {
+    TrackList(TrackList),
+    Track(Track)
+}
+
+/// Internal representation of a "playlist" of tracks
+#[derive(Debug, Deserialize)]
+pub struct TrackList {
+    pub title: String,
+    pub id: String,
+    /// This should always contain "playlist", not present for tracks
+    pub _type: String,
+    /// ytdl extractor (internal stuff but useful for ID)
+    pub extractor: String,
+    pub webpage_url: String,
+    pub entries: Vec<Track>,
+    pub uploader: Option<String>,
+}
+
+impl Hash for TrackList {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.title.hash(state);
+        self.extractor.hash(state);
+        self.uploader.hash(state);
+    }
+}
+
+impl GetId for TrackList {
+    fn get_id(&self) -> String {
+        let mut hasher = MetroHash128::default();
+        self.hash(&mut hasher);
+        let (h1, h2) = hasher.finish128();
+        format!("{:x}{:x}", h1, h2)
+    }
+}
+
+/// Internal representation of a Song
 #[derive(Debug, Deserialize)]
 pub struct Track {
     pub title: String,
     pub id: String,
+    /// ytdl extractor (internal stuff but useful for ID)
     pub extractor: String,
     pub duration: Option<f64>,
     pub formats: Vec<Format>,
@@ -35,18 +84,19 @@ pub struct Track {
     pub uploader: Option<String>,
 }
 
+/// Track format information
 #[derive(Debug, Deserialize)]
 pub struct Format {
     pub filesize: Option<i64>,
     pub format: String,
+    /// audio bit rate
     pub abr: Option<i64>,
-    // audio bit rate
     pub format_id: String,
     pub url: String,
     pub protocol: Option<String>,
     pub vcodec: Option<String>,
+    /// audio codec
     pub acodec: Option<String>,
-    // audio codec
     pub http_headers: HttpHeaders,
 }
 
@@ -143,9 +193,10 @@ impl Track {
     pub fn audio_only_formats(&self) -> Vec<&Format> {
         self.formats.iter().filter(|f| f.is_audio_only()).collect()
     }
+}
 
-    /// calculates track ID
-    pub fn get_id(&self) -> String {
+impl GetId for Track {
+    fn get_id(&self) -> String {
         let mut hasher = MetroHash128::default();
         self.hash(&mut hasher);
         let (h1, h2) = hasher.finish128();
@@ -171,6 +222,9 @@ impl Format {
     }
 }
 
+/// Http headers, could be required for some URIs to work
+///   
+/// Currently unused, would have to be passed to gstreamer on playback
 #[derive(Debug, Deserialize)]
 pub struct HttpHeaders {
     #[serde(rename = "Accept-Charset")]

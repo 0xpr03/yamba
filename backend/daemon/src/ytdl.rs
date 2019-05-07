@@ -15,25 +15,25 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+//! Ytdl handler
+
+use failure::{Fallible, ResultExt};
+use serde::de::DeserializeOwned;
+use serde_json;
+use serde_json::value::Value as JsonValue;
+use sha2::{Digest, Sha256};
 use std::env::current_dir;
 use std::fs::{remove_file, rename, set_permissions, DirBuilder, File};
-use std::io::{BufRead, BufReader, ErrorKind, Read};
+use std::io::{BufReader, ErrorKind, Read};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, RwLock};
 use std::thread;
-use yamba_types::track::Track;
-
-use failure::{Fallible, ResultExt};
-use serde_json;
-use serde_json::value::Value as JsonValue;
-use sha2::{Digest, Sha256};
+use yamba_types::track::{TrackList, TrackResponse};
 
 use crate::http;
 use crate::SETTINGS;
-
-/// Ytdl handler
 
 const UPDATE_VERSION_KEY: &'static str = "latest";
 // key in the json map
@@ -50,6 +50,8 @@ lazy_static! {
 
 #[derive(Fail, Debug)]
 pub enum YtDLErr {
+    #[fail(display = "Invalid URL, no data: {}", _0)]
+    InvalidURL(&'static str),
     #[fail(display = "Pipe error processing ytdl output {}", _0)]
     PipeError(String),
     #[fail(display = "Json invalid input {}", _0)]
@@ -91,14 +93,48 @@ impl YtDL {
         })
     }
 
-    /// Get playlist info
-    /// If url is no track, then only one track is returned
-    pub fn get_url_info(&self, url: &str) -> Fallible<Vec<Track>> {
+    /// Resolve playlist, skipping first X entries
+    pub fn get_tracks_multipart(
+        &self,
+        url: &str,
+        from: usize,
+        to: Option<usize>,
+    ) -> Fallible<TrackList> {
+        self.resolve_url(url, from, to)
+    }
+
+    /// Get URL information
+    pub fn get_url_info(&self, url: &str, resolve_max: usize) -> Fallible<TrackResponse> {
+        self.resolve_url(url, 1, Some(resolve_max))
+    }
+
+    /// Resolve URL to specific type
+    ///
+    /// start_list begins at 1
+    fn resolve_url<'a, T: 'a>(
+        &self,
+        url: &str,
+        start_list: usize,
+        end_list: Option<usize>,
+    ) -> Fallible<T>
+    where
+        T: DeserializeOwned,
+    {
         let _guard = LOCK.read().unwrap();
-        let mut child = self
-            .cmd_base()
-            .arg("-j")
+        let mut cmd = self.cmd_base();
+        cmd
+            // dumb as one full json
+            .arg("-J")
+            // preffer track if both
             .arg("--no-playlist")
+            .arg("--playlist-start")
+            .arg(start_list.to_string());
+
+        if let Some(end) = end_list {
+            cmd.arg("--playlist-end").arg(end.to_string());
+        }
+
+        let mut child = cmd
             .arg(url)
             .stdin(Stdio::null())
             .stderr(Stdio::piped())
@@ -120,10 +156,7 @@ impl YtDL {
             Ok(buffer)
         });
 
-        let tracks = stdout
-            .lines()
-            .map(|res| Ok(serde_json::from_str(&(res?))?))
-            .collect::<Fallible<Vec<Track>>>()?;
+        let response: Option<T> = serde_json::from_reader(stdout)?;
 
         child.wait()?;
 
@@ -131,7 +164,7 @@ impl YtDL {
             Ok(Ok(stderr)) => {
                 // don't abort if some tracks fail (playlist..)
                 if stderr.len() > 0 {
-                    if tracks.len() == 0 {
+                    if response.is_none() {
                         return Err(YtDLErr::ResponseError(format!("stderr: {}", stderr)).into());
                     } else {
                         warn!("Stderr from ytdl: {}", stderr);
@@ -142,7 +175,10 @@ impl YtDL {
             Err(e) => return Err(YtDLErr::ThreadPanic(format!("stderr worker {:?}", e)).into()),
         }
 
-        Ok(tracks)
+        match response {
+            Some(v) => Ok(v),
+            None => Err(YtDLErr::InvalidURL("No track or list for URL").into()),
+        }
     }
 
     /// get executable path
@@ -342,41 +378,45 @@ mod test {
     #[test]
     fn test_yt_info() {
         let output = DOWNLOADER
-            .get_url_info("https://www.youtube.com/watch?v=Es44QTJmuZ0")
+            .get_url_info("https://www.youtube.com/watch?v=Es44QTJmuZ0", 1)
             .unwrap();
 
-        let output = &output[0];
+        if let TrackResponse::Track(v) = output {
+            let output = v;
 
-        assert_eq!(Some(259.0), output.duration);
-        assert_eq!(
-            "HD SMPTE Color Bars & Tones 1920x1080 Test Pattern Jazz",
-            output.title
-        );
-        // assert_eq!(Some("https".into()), output.protocol);
+            assert_eq!(Some(259.0), output.duration);
+            assert_eq!(
+                "HD SMPTE Color Bars & Tones 1920x1080 Test Pattern Jazz",
+                output.title
+            );
+            // assert_eq!(Some("https".into()), output.protocol);
 
-        print!("Formats supported:\n");
-        output.audio_only_formats().iter().for_each(|format| {
-            if let Some(ref codec) = format.acodec {
-                print!("Codec: {} \n", codec);
-            }
-            if let Some(ref bitrate) = format.abr {
-                print!("|-> Bitrate: {} \n", bitrate);
-            }
-            print!("|-> URL: {}\n", format.url);
-            print!("\n");
-        });
+            print!("Formats supported:\n");
+            output.audio_only_formats().iter().for_each(|format| {
+                if let Some(ref codec) = format.acodec {
+                    print!("Codec: {} \n", codec);
+                }
+                if let Some(ref bitrate) = format.abr {
+                    print!("|-> Bitrate: {} \n", bitrate);
+                }
+                print!("|-> URL: {}\n", format.url);
+                print!("\n");
+            });
 
-        if let Some(best_format) = output.best_audio_only_format() {
-            print!("AND THE WINNER IS...\n\n");
-            if let Some(ref codec) = best_format.acodec {
-                print!("Codec: {} \n", codec);
+            if let Some(best_format) = output.best_audio_only_format() {
+                print!("AND THE WINNER IS...\n\n");
+                if let Some(ref codec) = best_format.acodec {
+                    print!("Codec: {} \n", codec);
+                }
+                if let Some(ref bitrate) = best_format.abr {
+                    print!("|-> Bitrate: {} \n", bitrate);
+                }
+                print!("|-> URL: {}\n", best_format.url);
+            } else {
+                print!("No best format found... :(");
             }
-            if let Some(ref bitrate) = best_format.abr {
-                print!("|-> Bitrate: {} \n", bitrate);
-            }
-            print!("|-> URL: {}\n", best_format.url);
         } else {
-            print!("No best format found... :(");
+            panic!("Expected track, got {:#?}", output);
         }
     }
 
@@ -386,28 +426,34 @@ mod test {
     #[ignore]
     fn test_stream_youtube() {
         let output = DOWNLOADER
-            .get_url_info("https://www.youtube.com/watch?v=oI3GdbsbDxk")
+            .get_url_info("https://www.youtube.com/watch?v=oI3GdbsbDxk", 1)
             .expect("can't get yt stream");
 
-        let output = &output[0];
-
-        assert_eq!(Some(0.0), output.duration, "failed for yt stream duration");
-        assert_eq!(Some("m3u8".into()), output.protocol);
+        match output {
+            TrackResponse::Track(v) => {
+                assert_eq!(Some(0.0), v.duration, "failed for yt stream duration");
+                assert_eq!(Some("m3u8".into()), v.protocol);
+            }
+            v => panic!("Expected track got {:#?}", v),
+        }
     }
 
     #[test]
     fn test_stream_info() {
         let output = DOWNLOADER
-            .get_url_info("http://yp.shoutcast.com/sbin/tunein-station.m3u?id=1796249")
+            .get_url_info(
+                "http://yp.shoutcast.com/sbin/tunein-station.m3u?id=1796249",
+                1,
+            )
             .expect("can't get sc stream");
 
-        let output = &output[0];
-
-        assert_eq!(
-            None, output.duration,
-            "failed for shoutcast stream duration"
-        );
-        assert_eq!(Some("m3u8".into()), output.protocol);
+        match output {
+            TrackResponse::Track(v) => {
+                assert_eq!(None, v.duration, "failed for shoutcast stream duration");
+                assert_eq!(Some("m3u8".into()), v.protocol);
+            }
+            v => panic!("Expected track got {:#?}", v),
+        }
     }
 
     #[test]
@@ -415,20 +461,27 @@ mod test {
         let output = DOWNLOADER
             .get_url_info(
                 "https://soundcloud.com/djsusumu/alan-walker-faded-susumu-melbourne-bounce-edit",
+                1,
             )
             .unwrap();
-
-        let output = &output[0];
-
-        assert_eq!(Some(144.0), output.duration);
-        assert_eq!(Some("https".into()), output.protocol);
+        match output {
+            TrackResponse::Track(v) => {
+                assert_eq!(Some(144.0), v.duration);
+                assert_eq!(Some("https".into()), v.protocol);
+            }
+            v => panic!("Expected track got {:#?}", v),
+        }
     }
 
     #[test]
     fn test_yt_playlist_info_track() {
-        let output = DOWNLOADER.get_url_info("https://www.youtube.com/watch?v=kYdrd4Kspxg&list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6&index=2&t=0s").unwrap();
-        println!("{:?}", output);
-        assert_eq!(1, output.len());
+        let output = DOWNLOADER.get_url_info("https://www.youtube.com/watch?v=kYdrd4Kspxg&list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6&index=2&t=0s",1).unwrap();
+        match output {
+            TrackResponse::TrackList(v) => {
+                assert_eq!(1, v.entries.len());
+            }
+            v => panic!("Expected tracklist got {:#?}", v),
+        }
     }
 
     #[test]
@@ -436,9 +489,14 @@ mod test {
         let output = DOWNLOADER
             .get_url_info(
                 "https://www.youtube.com/playlist?list=PLfU2RMxoOiSCH8R5pzOtGiq2cn5vJPjP6",
+                1,
             )
             .unwrap();
-        println!("{:?}", output);
-        assert_eq!(8, output.len());
+        match output {
+            TrackResponse::TrackList(v) => {
+                assert_eq!(8, v.entries.len());
+            }
+            v => panic!("Expected tracklist got {:#?}", v),
+        }
     }
 }

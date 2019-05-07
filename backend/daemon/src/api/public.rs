@@ -20,17 +20,15 @@ use http::status::StatusCode;
 use tokio::{net::TcpListener, runtime};
 use tower_web::*;
 use tower_web::{middleware::log::LogMiddleware, view::Handlebars};
-use yamba_types::models::callback::{InstanceStateResponse, PlaystateResponse, ResolveResponse};
+use yamba_types::models::callback::*;
 use yamba_types::models::*;
 
-use std::net::SocketAddr;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-use super::callback::send_resolve;
 use super::*;
 use crate::daemon::{create_instance, instance, InstanceBase, Instances};
-use crate::ytdl_worker::{RSongs, YTRequest};
+use crate::ytdl_worker::*;
 use crate::SETTINGS;
+use std::net::SocketAddr;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 static CALLBACK_TICKET: AtomicUsize = AtomicUsize::new(0);
 
@@ -70,48 +68,6 @@ struct ApiResource {
 
 unsafe impl Send for ApiResource {}
 unsafe impl Sync for ApiResource {}
-
-/// Struct for resolve jobs
-struct ResolveDispatcher {
-    url: String,
-    ticket: Ticket,
-}
-
-impl ResolveDispatcher {
-    pub fn new(req: ResolveRequest, ticket: usize) -> ResolveDispatcher {
-        ResolveDispatcher {
-            ticket,
-            url: req.url,
-        }
-    }
-}
-
-impl YTRequest for ResolveDispatcher {
-    fn url(&self) -> &str {
-        &self.url
-    }
-
-    fn callback(&mut self, songs: RSongs, _: Instances) {
-        let response = match songs {
-            Ok(s) => ResolveResponse {
-                source: self.url.clone(),
-                ticket: self.ticket,
-                success: true,
-                songs: s,
-                msg: None,
-            },
-            Err(e) => ResolveResponse {
-                source: self.url.clone(),
-                ticket: self.ticket,
-                success: false,
-                songs: Vec::new(),
-                msg: Some(format!("{}", e)),
-            },
-        };
-
-        send_resolve(&response);
-    }
-}
 
 impl_web! {
     impl ApiResource {

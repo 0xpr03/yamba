@@ -24,7 +24,7 @@
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "track")]
-use crate::track::{GetId, Track, TrackList};
+use crate::track::{GetId, Track};
 
 pub use crate::ErrorCodes;
 pub use crate::{Volume, ID};
@@ -47,19 +47,6 @@ pub type Ticket = usize;
 pub type TimeStarted = i64;
 
 pub use crate::TimeMS;
-
-#[cfg(feature = "track")]
-impl From<Track> for Song {
-    fn from(mut track: Track) -> Self {
-        Song {
-            id: track.get_id(),
-            artist: track.take_artist(),
-            length: track.duration_as_u32(),
-            name: track.title,
-            source: track.webpage_url,
-        }
-    }
-}
 
 /// Playback request data
 #[derive(Debug, Deserialize, Serialize)]
@@ -188,6 +175,8 @@ pub struct ResolveRequest {
     pub instance: ID,
     /// URL to resolve
     pub url: String,
+    /// Maxiumum amount of tracks to resolve at once
+    pub limit: usize,
 }
 
 /// Response on successfully started instance
@@ -202,6 +191,7 @@ pub struct InstanceLoadResponse {
 #[cfg_attr(feature = "tower", derive(Extract))]
 pub struct InstanceLoadReq {
     /// ID under which to load this instance
+    /// Note the range bounds for IDs.
     pub id: ID,
     /// Data for instance
     pub data: InstanceType,
@@ -256,19 +246,6 @@ impl From<Track> for Song {
             length: track.duration_as_u32(),
             name: track.title,
             source: track.webpage_url,
-        }
-    }
-}
-
-#[cfg(feature = "track")]
-impl From<TrackList> for Playlist {
-    fn from(tracklist: TrackList) -> Self {
-        Playlist {
-            id: tracklist.get_id(),
-            author: tracklist.uploader,
-            name: tracklist.title,
-            source: tracklist.webpage_url,
-            songs: tracklist.entries.into_iter().map(|t| t.into()).collect(),
         }
     }
 }
@@ -342,20 +319,72 @@ pub mod callback {
 
     pub type VolumeChange = VolumeSetReq;
 
-    /// Url resolve response for ticket  
-    /// If a playlist is getting resolved first only one track is resolved.
-    /// Subsequent callbacks will be done when further songs got resolved
+    /// Url resolve response for ticket
+    ///
+    /// If a playlist is getting resolved first only up to set limit tracks are resolved.
+    /// Subsequent callbacks will be done when further songs got resolved.
     #[derive(Debug, Serialize, Deserialize)]
-    pub struct ResolveResponse {
-        /// Original URL for request
-        pub source: String,
-        /// Whether the call had success
-        pub success: bool,
-        /// Message for aribtrary errors
-        pub msg: Option<String>,
-        /// Song list on success (can be empty for an empty playlist!)
+    pub struct ResolveInitialResponse {
+        /// Data for initial resolve
         pub data: ResolveType,
         /// TicketID
         pub ticket: Ticket,
+        /// Follow-up state, for multipart response
+        pub state: ResolveState,
+    }
+
+    /// Resolve response, contains all possible responses
+    ///
+    /// Used by rust implementations for de-/serializing
+    #[derive(Debug, Deserialize, Serialize)]
+    #[serde(untagged)]
+    pub enum ResolveResponse {
+        Error(ResolveErrorResponse),
+        Part(ResolvePartResponse),
+        Initial(ResolveInitialResponse),
+    }
+
+    /// Follow-up resolve response
+    ///
+    /// Contains additional playlist songs
+    #[derive(Debug, Deserialize, Serialize)]
+    pub struct ResolvePartResponse {
+        /// Song list on success (can be empty for an empty playlist!)
+        pub data: Playlist,
+        /// TicketID
+        pub ticket: Ticket,
+        /// Follow-up state, for multipart response
+        pub state: ResolveState,
+        /// Start-Position of data in playlist
+        ///
+        /// Useful when order of callbacks is out of order
+        pub position: usize,
+    }
+
+    /// Resolve error response, on failure to furth resolve the request
+    #[derive(Debug, Deserialize, Serialize)]
+    pub struct ResolveErrorResponse {
+        /// TicketID
+        pub ticket: Ticket,
+        /// Error code
+        pub details: ErrorCodes,
+        /// Optional error message
+        pub msg: Option<String>,
+    }
+
+    /// Resolve callback state
+    #[derive(Debug, Deserialize, Serialize, PartialEq)]
+    pub enum ResolveState {
+        /// Last response, job finished
+        Finished = 0,
+        /// Part response, followup incoming
+        Part = 1,
+    }
+
+    /// Type of response data for resolve
+    #[derive(Debug, Deserialize, Serialize)]
+    pub enum ResolveType {
+        Song(Song),
+        Playlist(Playlist),
     }
 }

@@ -38,9 +38,10 @@ use crate::daemon::{heartbeat::HeartbeatMap, HeartBeatInstance, Instances, WInst
 use crate::playback::{PlaybackState, Player, PlayerEvent, PlayerEventType};
 use crate::ts::TSInstance;
 use crate::ytdl::YtDL;
-use crate::ytdl_worker::{Controller, YTReqWrapped, YTSender};
+use crate::ytdl_worker::{Controller, Request, YTSender};
 use crate::SETTINGS;
 use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, Song, SongID, TimeStarted};
+use yamba_types::track::TrackResponse;
 
 /// module containing a single instance
 
@@ -149,7 +150,12 @@ impl Instance {
     }
 
     /// Resolve URL under this instances queue
-    pub fn dispatch_resolve(&self, request: YTReqWrapped) -> Fallible<()> {
+    pub fn dispatch_resolve(&self, request: Request) -> Fallible<()> {
+        // an amount of workers can be running jobs that will re-spawn followup jobs on playlist resolve
+        if self.url_resolve.len() + SETTINGS.ytdl.workers >= SETTINGS.ytdl.instance_backlog_max {
+            use mpmc_scheduler::TrySendError;
+            return Err(TrySendError::Full(request).into());
+        }
         Ok(self.url_resolve.try_send(request)?)
     }
 
@@ -372,10 +378,10 @@ impl Instance {
             v
         } else {
             debug!("No cache entry for {}", song_id);
-            let track = ytdl.get_url_info(source.as_str())?;
-            let track = match track.get(0) {
-                Some(t) => t,
-                None => return Err(InstanceErr::InvalidSource(source).into()),
+            let track = ytdl.get_url_info(source.as_str(), 1)?;
+            let track = match track {
+                TrackResponse::Track(t) => t,
+                _ => return Err(InstanceErr::InvalidSource(source).into()),
             };
 
             let url_temp = match track.best_audio_format(SETTINGS.ytdl.min_audio_bitrate) {

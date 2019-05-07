@@ -48,6 +48,7 @@ workers = 4
 # max amount of backlog requests per instance / web interface
 # any additional will get dropped
 # round up to next 2^n
+# The actual size is: instance_backlog_max - workers
 instance_backlog_max = 32
 dir="ytdl"
 # intervall for updates in hours

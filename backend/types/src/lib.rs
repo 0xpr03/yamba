@@ -44,6 +44,9 @@ pub mod track;
 extern crate actix;
 
 /// Instance ID
+///
+/// **Note** For all API requests ID has to be >= 0.
+/// IDs < 0 are reserved for internal use!
 pub type ID = i32;
 
 /// Error codes  
@@ -51,6 +54,7 @@ pub type ID = i32;
 #[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ErrorCodes {
+    /// Unknown internal error
     NONE = 0,
     /// Invalid instance ID
     INVALID_INSTANCE = 401,
@@ -60,6 +64,8 @@ pub enum ErrorCodes {
     INSTANCE_RUNNING = 403,
     /// Queue overloaded for instance, can't enqueue resolve job
     RESOLVE_QUEUE_OVERLOAD = 404,
+    /// Resolve got cancelled by shutdown of instance or manual cancel
+    RESOLVE_CANCELLED = 405,
 }
 
 /// Volume of 0 to 1.0 (you can go above but that's undefined)
