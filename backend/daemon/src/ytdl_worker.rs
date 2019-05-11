@@ -191,7 +191,7 @@ impl ResolveFollowup {
         let inst = instances.read().expect("Can't read instances!");
         if let Some(inst) = inst.get(&self.instance) {
             let start_new = self.end + 1;
-            let end_new = self.end + (self.end - self.start);
+            let end_new = start_new + (self.end - self.start);
             self.start = start_new;
             self.end = end_new;
             let ticket = self.ticket;

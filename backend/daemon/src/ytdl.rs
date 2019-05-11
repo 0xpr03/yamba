@@ -62,6 +62,8 @@ pub enum YtDLErr {
     InvalidHash(String),
     #[fail(display = "Thread panicked at {}", _0)]
     ThreadPanic(String),
+    #[fail(display = "Invalid playlist range!")]
+    InvalidRange,
 }
 
 /// Version struct for retrieval of version & sha on update check
@@ -131,6 +133,9 @@ impl YtDL {
             .arg(start_list.to_string());
 
         if let Some(end) = end_list {
+            if start_list < end {
+                return Err(YtDLErr::InvalidRange.into());
+            }
             cmd.arg("--playlist-end").arg(end.to_string());
         }
 
@@ -155,7 +160,6 @@ impl YtDL {
             stderr_reader.read_to_string(&mut buffer)?;
             Ok(buffer)
         });
-
         let response: Option<T> = serde_json::from_reader(stdout)?;
 
         child.wait()?;
@@ -498,5 +502,17 @@ mod test {
             }
             v => panic!("Expected tracklist got {:#?}", v),
         }
+    }
+
+    #[test]
+    fn test_playlist_out_of_range() {
+        let output: TrackList = DOWNLOADER
+            .get_tracks_multipart(
+                "https://soundcloud.com/nihilusx/sets/friday-night-drunk-as-hell",
+                30,
+                Some(35),
+            )
+            .unwrap();
+        assert_eq!(output.entries.len(), 6);
     }
 }
