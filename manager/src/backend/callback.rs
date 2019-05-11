@@ -62,16 +62,15 @@ fn callback_playback(
 }
 
 fn callback_resolve(
-    (data, req): (Json<cb::ResolveResponse>, HttpRequest<CallbackState>),
+    (body, req): (Json<cb::ResolveResponse>, HttpRequest<CallbackState>),
 ) -> HttpResponse {
-    debug!("Resolve callback: {:?}", data);
-    let data_r = data.into_inner();
+    debug!("Resolve callback: {:?}", body);
+    let data_r = body.into_inner();
     let ticket = data_r.ticket;
-    let songs = data_r.songs;
     req.state()
         .backend
         .tickets
-        .handle(&ticket, &req.state().instances, songs, data_r.source);
+        .handle(&ticket, &req.state().instances, data_r.data);
     HttpResponse::Ok().json(true)
 }
 

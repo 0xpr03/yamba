@@ -58,27 +58,56 @@ pub struct NewInstance {
 pub struct PlaylistData {
     pub id: PlaylistID,
     pub name: String,
+    pub source: Option<String>,
     /// Data of playlist
     pub data: Vec<Song>,
+}
+
+#[cfg(feature = "local")]
+impl PlaylistData {
+    pub fn new(name: String, source: Option<String>, data: Vec<Song>, db: &DB) -> Fallible<Self> {
+        Ok(PlaylistData {
+            id: db.generate_id()?,
+            name,
+            data,
+            source,
+        })
+    }
 }
 
 /// New playlist Data, used for insertion
 #[derive(Debug, Serialize)]
 pub struct NewPlaylistData<'a> {
     pub id: PlaylistID,
-    pub name: String,
+    pub name: &'a str,
+    pub source: Option<&'a str>,
     /// Data of playlist
     pub data: &'a [Song],
 }
 
 #[cfg(feature = "local")]
 impl<'a> NewPlaylistData<'a> {
-    pub fn new(name: String, data: &'a [Song], db: &DB) -> Fallible<Self> {
+    pub fn new(
+        name: &'a str,
+        source: Option<&'a str>,
+        data: &'a [Song],
+        db: &DB,
+    ) -> Fallible<Self> {
         Ok(NewPlaylistData {
             id: db.generate_id()?,
             name,
             data,
+            source,
         })
+    }
+
+    pub fn from_playlist(data: &'a PlaylistData) -> NewPlaylistData<'a> {
+        NewPlaylistData {
+            id: data.id,
+            name: data.name.as_str(),
+            data: &data.data,
+            source: data.source.as_ref().map_or(None, |v| Some(v.as_str())),
+        }
     }
 }
 

@@ -39,7 +39,7 @@ const TREE_PLAYLISTS: &'static str = "playlists";
 const TREE_PLAYLIST_URL: &'static str = "playlists_url";
 
 const KEY_VERSION: &'static str = "DB_VERSION";
-const DB_VERSION: &'static str = "0.0.1";
+const DB_VERSION: &'static str = "0.0.2";
 const KEY_INSTANCE_ID: &'static str = "INSTANCE_ID";
 const INSTANCE_ID_ZERO: ID = 0;
 
@@ -161,11 +161,11 @@ impl Database for DB {
         }
         Ok(None)
     }
-    fn upsert_playlist(&self, playlist: &NewPlaylistData, url: Option<&str>) -> Fallible<()> {
+    fn upsert_playlist(&self, playlist: &NewPlaylistData) -> Fallible<()> {
         let tree = self.open_tree(TREE_PLAYLISTS)?;
         let id = playlist.id.to_le_bytes();
         tree.set(&id, serialize(playlist)?)?;
-        if let Some(url) = url {
+        if let Some(url) = playlist.source {
             self.open_tree(TREE_PLAYLIST_URL)?
                 .set(serialize(url)?, &id)?;
         }
@@ -214,7 +214,7 @@ impl DB {
                 }
                 Err(e) => {
                     return Err(LocalDBErr::InvalidVersion(format!(
-                        "Invalid version type in DB {}",
+                        "Invalid version type in DB?! {}",
                         e
                     ))
                     .into());

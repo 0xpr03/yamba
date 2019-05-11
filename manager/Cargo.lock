@@ -912,7 +912,7 @@ dependencies = [
  "serde_urlencoded 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "sled 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-signal 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "yamba_types 0.5.0",
+ "yamba_types 0.6.0",
 ]
 
 [[package]]
@@ -2319,7 +2319,7 @@ dependencies = [
 
 [[package]]
 name = "yamba_types"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "actix 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.90 (registry+https://github.com/rust-lang/crates.io-index)",

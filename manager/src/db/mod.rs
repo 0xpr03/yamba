@@ -67,7 +67,7 @@ pub trait Database: Send + Sync + Clone {
     /// Get song by URL
     fn get_song_by_url(&self, url: &str) -> Fallible<Option<Song>>;
     /// Upsert playlist, insert URL relation if provided
-    fn upsert_playlist(&self, playlist: &NewPlaylistData, url: Option<&str>) -> Fallible<()>;
+    fn upsert_playlist(&self, playlist: &NewPlaylistData) -> Fallible<()>;
     /// Get Playlist by URL
     fn get_playlist_by_url(&self, url: &str) -> Fallible<Option<PlaylistData>>;
     // /// Get user by UID

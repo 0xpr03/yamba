@@ -38,6 +38,8 @@ use crate::frontend;
 use crate::models;
 use crate::playlist::{ItemReturn, Playlist};
 
+const RESOLVE_LIMIT: usize = 5;
+
 #[derive(Fail, Debug)]
 pub enum InstanceErr {
     #[fail(display = "No instance with id {} found when expected!", _0)]
@@ -385,6 +387,7 @@ impl Instance {
 
         let fut = self.backend.resolve_url(&ResolveRequest {
             instance: self.get_id(),
+            limit: RESOLVE_LIMIT,
             url,
         })?;
 
