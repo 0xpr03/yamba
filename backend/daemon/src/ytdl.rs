@@ -133,7 +133,7 @@ impl YtDL {
             .arg(start_list.to_string());
 
         if let Some(end) = end_list {
-            if start_list < end {
+            if start_list > end {
                 return Err(YtDLErr::InvalidRange.into());
             }
             cmd.arg("--playlist-end").arg(end.to_string());
