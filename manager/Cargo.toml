@@ -48,3 +48,4 @@ features = ["rest","rpc","message"]
 
 [dev-dependencies]
 serde_urlencoded = "0.5"
+tempfile = "3"

@@ -39,7 +39,7 @@ const TREE_PLAYLISTS: &'static str = "playlists";
 const TREE_PLAYLIST_URL: &'static str = "playlists_url";
 
 const KEY_VERSION: &'static str = "DB_VERSION";
-const DB_VERSION: &'static str = "0.0.2";
+const DB_VERSION: &'static str = "0.0.3";
 const KEY_INSTANCE_ID: &'static str = "INSTANCE_ID";
 const INSTANCE_ID_ZERO: ID = 0;
 
@@ -110,7 +110,7 @@ impl Database for DB {
         let id = self.gen_instance_id()?;
         let instance = Instance::from_new_instance(new_instance, id);
         let tree = self.open_tree(TREE_INSTANCES)?;
-        tree.set(serialize(&id).unwrap(), serialize(&instance).unwrap())?;
+        tree.set(id.to_le_bytes(), serialize(&instance).unwrap())?;
         Ok(instance)
     }
     fn get_instance_startup(&self, instance: &ID) -> Fallible<Option<TimeStarted>> {
@@ -134,11 +134,10 @@ impl Database for DB {
     }
     fn upsert_song(&self, song: &Song, url: &Option<&str>) -> Fallible<()> {
         let tree = self.open_tree(TREE_SONGS)?;
-        let id = serialize(&song.id)?;
-        tree.set(serialize(&id)?, serialize(&song)?)?;
+        let id = song.id.as_str();
+        tree.set(id, serialize(&song)?)?;
         if let Some(url) = url {
-            self.open_tree(TREE_SONG_URL)?
-                .set(serialize(url)?, serialize(&id)?)?;
+            self.open_tree(TREE_SONG_URL)?.set(url, id)?;
         }
         Ok(())
     }
@@ -166,14 +165,13 @@ impl Database for DB {
         let id = playlist.id.to_le_bytes();
         tree.set(&id, serialize(playlist)?)?;
         if let Some(url) = playlist.source {
-            self.open_tree(TREE_PLAYLIST_URL)?
-                .set(serialize(url)?, &id)?;
+            self.open_tree(TREE_PLAYLIST_URL)?.set(url, &id)?;
         }
         Ok(())
     }
     fn get_playlist_by_url(&self, url: &str) -> Fallible<Option<PlaylistData>> {
         let tree_url = self.open_tree(TREE_PLAYLIST_URL)?;
-        if let Some(id) = tree_url.get(serialize(url)?)? {
+        if let Some(id) = tree_url.get(url)? {
             let tree_pl = self.open_tree(TREE_PLAYLISTS)?;
             match tree_pl.get(&id)? {
                 Some(pl) => return Ok(Some(deserialize::<PlaylistData>(&pl)?)),
@@ -267,5 +265,66 @@ impl DB {
             .db
             .open_tree(tree)
             .map_err(|e| LocalDBErr::TreeOpenFailed(e, tree))?)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use tempfile::tempdir;
+    /// Test header creation
+    #[test]
+    fn test_init() {
+        let tmp_dir = tempdir().unwrap();
+        {
+            DB::create(format!("{}/db", tmp_dir.path().to_string_lossy())).unwrap();
+        }
+    }
+    #[test]
+    fn test_song_insert() {
+        let tmp_dir = tempdir().unwrap();
+        {
+            let db = DB::create(format!("{}/db", tmp_dir.path().to_string_lossy())).unwrap();
+            let song = Song {
+                id: String::from("asd"),
+                name: String::from("test"),
+                source: String::from("my_source"),
+                artist: Some(String::from("some_artist")),
+                length: Some(123),
+            };
+            let url = Some(song.source.as_str());
+            db.upsert_song(&song, &url).unwrap();
+            assert!(db.get_song_by_url(song.source.as_str()).unwrap().is_some());
+            assert!(db.get_song(song.id).unwrap().is_some());
+        }
+    }
+    #[test]
+    fn test_playlist_insert() {
+        let tmp_dir = tempdir().unwrap();
+        {
+            let db = DB::create(format!("{}/db", tmp_dir.path().to_string_lossy())).unwrap();
+            let song = Song {
+                id: String::from("asd"),
+                name: String::from("test"),
+                source: String::from("my_source"),
+                artist: Some(String::from("some_artist")),
+                length: Some(123),
+            };
+            let mut songs = Vec::new();
+            songs.push(song);
+            let playlist = PlaylistData::new(
+                String::from("my_playlist"),
+                Some(String::from("source")),
+                songs,
+                &db,
+            )
+            .unwrap();
+            let url: &str = playlist.source.as_ref().unwrap().as_str();
+            db.upsert_playlist(&NewPlaylistData::from_playlist(&playlist))
+                .unwrap();
+            assert!(db.get_playlist_by_url(url).unwrap().is_some());
+            db.delete_playlist(playlist.id).unwrap();
+            assert!(db.get_playlist_by_url(url).unwrap().is_none());
+        }
     }
 }
