@@ -70,6 +70,8 @@ pub trait Database: Send + Sync + Clone {
     fn upsert_playlist(&self, playlist: &NewPlaylistData) -> Fallible<()>;
     /// Get Playlist by URL
     fn get_playlist_by_url(&self, url: &str) -> Fallible<Option<PlaylistData>>;
+    /// Delete playlist by PlaylistID
+    fn delete_playlist(&self, id: PlaylistID) -> Fallible<()>;
     // /// Get user by UID
     // fn get_user(&self, uid: UID) -> Fallible<User>;
     // /// Create user

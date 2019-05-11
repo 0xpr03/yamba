@@ -186,6 +186,21 @@ impl Database for DB {
         }
         Ok(None)
     }
+    fn delete_playlist(&self, id: PlaylistID) -> Fallible<()> {
+        let tree_pl = self.open_tree(TREE_PLAYLISTS)?;
+        match tree_pl.get(id.to_le_bytes())? {
+            Some(pl) => {
+                let playlist = deserialize::<PlaylistData>(&pl)?;
+                if let Some(url) = playlist.source {
+                    let tree_url = self.open_tree(TREE_PLAYLIST_URL)?;
+                    tree_url.del(url)?;
+                }
+                tree_pl.del(id.to_le_bytes())?;
+                Ok(())
+            }
+            None => Err(LocalDBErr::NoValueFound.into()),
+        }
+    }
 }
 
 type WTree = Arc<Tree>;

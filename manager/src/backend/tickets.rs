@@ -144,12 +144,16 @@ impl QueueTicket {
 
         Ok(data.state == ResolveState::Finished)
     }
-    fn error(&mut self, err: ResolveErrorResponse) -> Fallible<bool> {
+    fn error(&mut self, instances: &Instances, err: ResolveErrorResponse) -> Fallible<bool> {
         warn!(
             "Error on resolving song: {}, {:#?}",
             err.msg.unwrap_or(String::from("No Message")),
             err.details
         );
+        if let Some(pl) = &self.playlist {
+            debug!("Removing incomplete playlist..");
+            instances.get_db().delete_playlist(pl.id)?;
+        }
         Ok(true)
     }
 }
@@ -158,7 +162,7 @@ impl Ticket for QueueTicket {
     fn handle(&mut self, instances: &Instances, data: ResolveResponseData) -> Fallible<bool> {
         match data {
             ResolveResponseData::Part(part) => self.part(instances, part),
-            ResolveResponseData::Error(err) => self.error(err),
+            ResolveResponseData::Error(err) => self.error(instances, err),
             ResolveResponseData::Initial(inital) => self.initial(instances, inital),
         }
     }
