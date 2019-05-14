@@ -42,7 +42,7 @@ import tech.yamba.db.jooq.tables.records.UsersRecord;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Users extends TableImpl<UsersRecord> {
 
-    private static final long serialVersionUID = -1799107918;
+    private static final long serialVersionUID = 2006884087;
 
     /**
      * The reference instance of <code>public.users</code>
@@ -70,7 +70,7 @@ public class Users extends TableImpl<UsersRecord> {
     /**
      * The column <code>public.users.enabled</code>.
      */
-    public final TableField<UsersRecord, Boolean> ENABLED = createField("enabled", org.jooq.impl.SQLDataType.BOOLEAN.nullable(false).defaultValue(org.jooq.impl.DSL.field("true", org.jooq.impl.SQLDataType.BOOLEAN)), this, "");
+    public final TableField<UsersRecord, Boolean> ENABLED = createField("enabled", org.jooq.impl.SQLDataType.BOOLEAN.nullable(false).defaultValue(org.jooq.impl.DSL.field("false", org.jooq.impl.SQLDataType.BOOLEAN)), this, "");
 
     /**
      * The column <code>public.users.password</code>.

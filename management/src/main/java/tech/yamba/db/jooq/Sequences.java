@@ -34,6 +34,11 @@ public class Sequences {
     public static final Sequence<Short> GROUPS_ID_SEQ = new SequenceImpl<Short>("groups_id_seq", Public.PUBLIC, org.jooq.impl.SQLDataType.SMALLINT.nullable(false));
 
     /**
+     * The sequence <code>public.instances_id_seq</code>
+     */
+    public static final Sequence<Integer> INSTANCES_ID_SEQ = new SequenceImpl<Integer>("instances_id_seq", Public.PUBLIC, org.jooq.impl.SQLDataType.INTEGER.nullable(false));
+
+    /**
      * The sequence <code>public.users_id_seq</code>
      */
     public static final Sequence<Short> USERS_ID_SEQ = new SequenceImpl<Short>("users_id_seq", Public.PUBLIC, org.jooq.impl.SQLDataType.SMALLINT.nullable(false));

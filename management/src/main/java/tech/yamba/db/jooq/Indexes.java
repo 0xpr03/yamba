@@ -14,6 +14,7 @@ import tech.yamba.db.jooq.tables.Authorities;
 import tech.yamba.db.jooq.tables.GroupAuthorities;
 import tech.yamba.db.jooq.tables.GroupMembers;
 import tech.yamba.db.jooq.tables.Groups;
+import tech.yamba.db.jooq.tables.Instances;
 import tech.yamba.db.jooq.tables.UserAuthorities;
 import tech.yamba.db.jooq.tables.Users;
 
@@ -39,6 +40,8 @@ public class Indexes {
     public static final Index GROUP_AUTHORITIES_PKEY = Indexes0.GROUP_AUTHORITIES_PKEY;
     public static final Index GROUP_MEMBERS_PKEY = Indexes0.GROUP_MEMBERS_PKEY;
     public static final Index GROUPS_PKEY = Indexes0.GROUPS_PKEY;
+    public static final Index AUTOSTART_INDEX = Indexes0.AUTOSTART_INDEX;
+    public static final Index INSTANCES_PKEY = Indexes0.INSTANCES_PKEY;
     public static final Index USER_AUTHORITIES_PKEY = Indexes0.USER_AUTHORITIES_PKEY;
     public static final Index USERS_PKEY = Indexes0.USERS_PKEY;
     public static final Index USERS_USERNAME_KEY = Indexes0.USERS_USERNAME_KEY;
@@ -52,6 +55,8 @@ public class Indexes {
         public static Index GROUP_AUTHORITIES_PKEY = Internal.createIndex("group_authorities_pkey", GroupAuthorities.GROUP_AUTHORITIES, new OrderField[] { GroupAuthorities.GROUP_AUTHORITIES.GROUP_ID, GroupAuthorities.GROUP_AUTHORITIES.AUTHORITY_ID }, true);
         public static Index GROUP_MEMBERS_PKEY = Internal.createIndex("group_members_pkey", GroupMembers.GROUP_MEMBERS, new OrderField[] { GroupMembers.GROUP_MEMBERS.USER_ID, GroupMembers.GROUP_MEMBERS.GROUP_ID }, true);
         public static Index GROUPS_PKEY = Internal.createIndex("groups_pkey", Groups.GROUPS, new OrderField[] { Groups.GROUPS.ID }, true);
+        public static Index AUTOSTART_INDEX = Internal.createIndex("autostart_index", Instances.INSTANCES, new OrderField[] { Instances.INSTANCES.AUTOSTART }, false);
+        public static Index INSTANCES_PKEY = Internal.createIndex("instances_pkey", Instances.INSTANCES, new OrderField[] { Instances.INSTANCES.ID }, true);
         public static Index USER_AUTHORITIES_PKEY = Internal.createIndex("user_authorities_pkey", UserAuthorities.USER_AUTHORITIES, new OrderField[] { UserAuthorities.USER_AUTHORITIES.USER_ID, UserAuthorities.USER_AUTHORITIES.AUTHORITY_ID }, true);
         public static Index USERS_PKEY = Internal.createIndex("users_pkey", Users.USERS, new OrderField[] { Users.USERS.ID }, true);
         public static Index USERS_USERNAME_KEY = Internal.createIndex("users_username_key", Users.USERS, new OrderField[] { Users.USERS.USERNAME }, true);

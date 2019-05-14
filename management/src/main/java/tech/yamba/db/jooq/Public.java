@@ -19,6 +19,7 @@ import tech.yamba.db.jooq.tables.Authorities;
 import tech.yamba.db.jooq.tables.GroupAuthorities;
 import tech.yamba.db.jooq.tables.GroupMembers;
 import tech.yamba.db.jooq.tables.Groups;
+import tech.yamba.db.jooq.tables.Instances;
 import tech.yamba.db.jooq.tables.UserAuthorities;
 import tech.yamba.db.jooq.tables.Users;
 
@@ -36,7 +37,7 @@ import tech.yamba.db.jooq.tables.Users;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Public extends SchemaImpl {
 
-    private static final long serialVersionUID = 1896386177;
+    private static final long serialVersionUID = 345318647;
 
     /**
      * The reference instance of <code>public</code>
@@ -62,6 +63,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.groups</code>.
      */
     public final Groups GROUPS = tech.yamba.db.jooq.tables.Groups.GROUPS;
+
+    /**
+     * The table <code>public.instances</code>.
+     */
+    public final Instances INSTANCES = tech.yamba.db.jooq.tables.Instances.INSTANCES;
 
     /**
      * The table <code>public.user_authorities</code>.
@@ -100,6 +106,7 @@ public class Public extends SchemaImpl {
         return Arrays.<Sequence<?>>asList(
             Sequences.AUTHORITIES_ID_SEQ,
             Sequences.GROUPS_ID_SEQ,
+            Sequences.INSTANCES_ID_SEQ,
             Sequences.USERS_ID_SEQ);
     }
 
@@ -116,6 +123,7 @@ public class Public extends SchemaImpl {
             GroupAuthorities.GROUP_AUTHORITIES,
             GroupMembers.GROUP_MEMBERS,
             Groups.GROUPS,
+            Instances.INSTANCES,
             UserAuthorities.USER_AUTHORITIES,
             Users.USERS);
     }

@@ -15,12 +15,14 @@ import tech.yamba.db.jooq.tables.Authorities;
 import tech.yamba.db.jooq.tables.GroupAuthorities;
 import tech.yamba.db.jooq.tables.GroupMembers;
 import tech.yamba.db.jooq.tables.Groups;
+import tech.yamba.db.jooq.tables.Instances;
 import tech.yamba.db.jooq.tables.UserAuthorities;
 import tech.yamba.db.jooq.tables.Users;
 import tech.yamba.db.jooq.tables.records.AuthoritiesRecord;
 import tech.yamba.db.jooq.tables.records.GroupAuthoritiesRecord;
 import tech.yamba.db.jooq.tables.records.GroupMembersRecord;
 import tech.yamba.db.jooq.tables.records.GroupsRecord;
+import tech.yamba.db.jooq.tables.records.InstancesRecord;
 import tech.yamba.db.jooq.tables.records.UserAuthoritiesRecord;
 import tech.yamba.db.jooq.tables.records.UsersRecord;
 
@@ -45,6 +47,7 @@ public class Keys {
 
     public static final Identity<AuthoritiesRecord, Short> IDENTITY_AUTHORITIES = Identities0.IDENTITY_AUTHORITIES;
     public static final Identity<GroupsRecord, Short> IDENTITY_GROUPS = Identities0.IDENTITY_GROUPS;
+    public static final Identity<InstancesRecord, Integer> IDENTITY_INSTANCES = Identities0.IDENTITY_INSTANCES;
     public static final Identity<UsersRecord, Short> IDENTITY_USERS = Identities0.IDENTITY_USERS;
 
     // -------------------------------------------------------------------------
@@ -55,6 +58,7 @@ public class Keys {
     public static final UniqueKey<GroupAuthoritiesRecord> GROUP_AUTHORITIES_PKEY = UniqueKeys0.GROUP_AUTHORITIES_PKEY;
     public static final UniqueKey<GroupMembersRecord> GROUP_MEMBERS_PKEY = UniqueKeys0.GROUP_MEMBERS_PKEY;
     public static final UniqueKey<GroupsRecord> GROUPS_PKEY = UniqueKeys0.GROUPS_PKEY;
+    public static final UniqueKey<InstancesRecord> INSTANCES_PKEY = UniqueKeys0.INSTANCES_PKEY;
     public static final UniqueKey<UserAuthoritiesRecord> USER_AUTHORITIES_PKEY = UniqueKeys0.USER_AUTHORITIES_PKEY;
     public static final UniqueKey<UsersRecord> USERS_PKEY = UniqueKeys0.USERS_PKEY;
     public static final UniqueKey<UsersRecord> USERS_USERNAME_KEY = UniqueKeys0.USERS_USERNAME_KEY;
@@ -77,6 +81,7 @@ public class Keys {
     private static class Identities0 {
         public static Identity<AuthoritiesRecord, Short> IDENTITY_AUTHORITIES = Internal.createIdentity(Authorities.AUTHORITIES, Authorities.AUTHORITIES.ID);
         public static Identity<GroupsRecord, Short> IDENTITY_GROUPS = Internal.createIdentity(Groups.GROUPS, Groups.GROUPS.ID);
+        public static Identity<InstancesRecord, Integer> IDENTITY_INSTANCES = Internal.createIdentity(Instances.INSTANCES, Instances.INSTANCES.ID);
         public static Identity<UsersRecord, Short> IDENTITY_USERS = Internal.createIdentity(Users.USERS, Users.USERS.ID);
     }
 
@@ -85,6 +90,7 @@ public class Keys {
         public static final UniqueKey<GroupAuthoritiesRecord> GROUP_AUTHORITIES_PKEY = Internal.createUniqueKey(GroupAuthorities.GROUP_AUTHORITIES, "group_authorities_pkey", GroupAuthorities.GROUP_AUTHORITIES.GROUP_ID, GroupAuthorities.GROUP_AUTHORITIES.AUTHORITY_ID);
         public static final UniqueKey<GroupMembersRecord> GROUP_MEMBERS_PKEY = Internal.createUniqueKey(GroupMembers.GROUP_MEMBERS, "group_members_pkey", GroupMembers.GROUP_MEMBERS.USER_ID, GroupMembers.GROUP_MEMBERS.GROUP_ID);
         public static final UniqueKey<GroupsRecord> GROUPS_PKEY = Internal.createUniqueKey(Groups.GROUPS, "groups_pkey", Groups.GROUPS.ID);
+        public static final UniqueKey<InstancesRecord> INSTANCES_PKEY = Internal.createUniqueKey(Instances.INSTANCES, "instances_pkey", Instances.INSTANCES.ID);
         public static final UniqueKey<UserAuthoritiesRecord> USER_AUTHORITIES_PKEY = Internal.createUniqueKey(UserAuthorities.USER_AUTHORITIES, "user_authorities_pkey", UserAuthorities.USER_AUTHORITIES.USER_ID, UserAuthorities.USER_AUTHORITIES.AUTHORITY_ID);
         public static final UniqueKey<UsersRecord> USERS_PKEY = Internal.createUniqueKey(Users.USERS, "users_pkey", Users.USERS.ID);
         public static final UniqueKey<UsersRecord> USERS_USERNAME_KEY = Internal.createUniqueKey(Users.USERS, "users_username_key", Users.USERS.USERNAME);

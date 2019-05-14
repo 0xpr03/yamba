@@ -10,6 +10,7 @@ import tech.yamba.db.jooq.tables.Authorities;
 import tech.yamba.db.jooq.tables.GroupAuthorities;
 import tech.yamba.db.jooq.tables.GroupMembers;
 import tech.yamba.db.jooq.tables.Groups;
+import tech.yamba.db.jooq.tables.Instances;
 import tech.yamba.db.jooq.tables.UserAuthorities;
 import tech.yamba.db.jooq.tables.Users;
 
@@ -46,6 +47,11 @@ public class Tables {
      * The table <code>public.groups</code>.
      */
     public static final Groups GROUPS = tech.yamba.db.jooq.tables.Groups.GROUPS;
+
+    /**
+     * The table <code>public.instances</code>.
+     */
+    public static final Instances INSTANCES = tech.yamba.db.jooq.tables.Instances.INSTANCES;
 
     /**
      * The table <code>public.user_authorities</code>.
