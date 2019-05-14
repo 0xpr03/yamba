@@ -277,6 +277,8 @@ mod test {
     fn test_init() {
         let tmp_dir = tempdir().unwrap();
         {
+            let db = DB::create(format!("{}/db", tmp_dir.path().to_string_lossy())).unwrap();
+            drop(db);
             DB::create(format!("{}/db", tmp_dir.path().to_string_lossy())).unwrap();
         }
     }
