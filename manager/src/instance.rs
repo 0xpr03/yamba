@@ -167,7 +167,7 @@ pub type SPlaylist = Playlist<Song>;
 pub struct Instance {
     id: ID,
     name: String,
-    playlist: SPlaylist,
+    queue: SPlaylist,
     volume: RwLock<Volume>,
     state: AtomicUsize,
     playstate: AtomicUsize,
@@ -211,7 +211,7 @@ impl Instance {
             id,
             db,
             start_time: RwLock::new(None),
-            playlist: SPlaylist::new(),
+            queue: SPlaylist::new(true),
             volume: RwLock::new(0.05),
             state: AtomicUsize::new(InstanceState::Stopped as usize),
             backend,
@@ -222,7 +222,7 @@ impl Instance {
 
     /// Returns currently playing title
     pub fn get_current_title(&self) -> ItemReturn<Song> {
-        self.playlist.get_current()
+        self.queue.get_current()
     }
 
     /// Format time from seconds!
@@ -242,9 +242,9 @@ impl Instance {
         self.playstate.load(Ordering::Relaxed) == Playstate::Playing as usize
     }
 
-    /// Randomize playlistis_playing
+    /// Randomize queueis_playing
     pub fn shuffle(&self) {
-        self.playlist.shuffle();
+        self.queue.shuffle();
     }
 
     /// Format track to human readable display
@@ -265,7 +265,7 @@ impl Instance {
     pub fn get_upcoming_tracks(&self, amount: usize) -> Vec<String> {
         let amount = if amount > 30 { 30 } else { amount };
 
-        self.playlist
+        self.queue
             .get_next_tracks(amount)
             .iter()
             .map(|v| Self::format_track(v, None))
@@ -283,13 +283,13 @@ impl Instance {
     /// Returns formated playback info
     pub fn get_formated_title(&self) -> Fallible<String> {
         debug!(
-            "Playlist size: {} Upcoming: {}",
-            self.playlist.size(),
-            self.playlist.amount_upcoming()
+            "queue size: {} Upcoming: {}",
+            self.queue.len(),
+            self.queue.amount_upcoming()
         );
         match self.playstate.load(Ordering::Relaxed) {
             x if x == (Playstate::Playing as usize) => Ok(self
-                .playlist
+                .queue
                 .get_current()
                 .map_or(String::from("No current song! This is an error."), |v| {
                     Self::format_track(&v, self.get_pos())
@@ -363,7 +363,7 @@ impl Instance {
 
     /// Add songs to end of queue
     pub fn add_to_queue(&self, songs: Vec<Song>) {
-        self.playlist.push(songs);
+        self.queue.push(songs);
     }
 
     /// Returns queue future.
@@ -447,7 +447,7 @@ impl Instance {
         let state = self.state.load(Ordering::Relaxed);
         let playstate = self.playstate.load(Ordering::Relaxed);
         debug!("State: {} Playstate: {}", state, playstate);
-        if state == InstanceState::Running as usize && playstate == Playstate::Stopped as usize {
+        if state == InstanceState::Running as usize && playstate != Playstate::Playing as usize {
             if let Err(e) = self.play_next_int() {
                 warn!(
                     "Unable to resume playback on instance {}! {}",
@@ -455,6 +455,12 @@ impl Instance {
                     e
                 );
             }
+        } else {
+            trace!(
+                "Still playing.. at {}/{}",
+                self.queue.get_position(),
+                self.queue.len()
+            );
         }
     }
 
@@ -466,7 +472,7 @@ impl Instance {
     /// Play next track
     /// Note: Currently only queue
     fn play_next_int(&self) -> Fallible<()> {
-        if let Some(v) = self.playlist.get_next(false) {
+        if let Some(v) = self.queue.get_next(false) {
             let fut = self.backend.play_url(&PlaybackUrlReq {
                 id: self.get_id(),
                 song: v.clone(),
@@ -482,6 +488,12 @@ impl Instance {
                     Ok(())
                 })
             })?;
+        } else {
+            trace!(
+                "No further lements in queue. At {}/{}",
+                self.queue.get_position(),
+                self.queue.len()
+            );
         }
         Ok(())
     }
@@ -490,7 +502,7 @@ impl Instance {
         self.id
     }
 
-    pub fn get_playlist(&self) -> &SPlaylist {
-        &self.playlist
+    pub fn get_queue(&self) -> &SPlaylist {
+        &self.queue
     }
 }

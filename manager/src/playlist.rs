@@ -20,16 +20,21 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 
 use std::cmp::PartialEq;
+use std::fmt;
 use std::ops::Deref;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::vec::Vec;
 
 /// Playlist for generic type of title
 pub struct Playlist<T> {
     list: RwLock<Vec<Item<T>>>,
+    /// Curent position
     current_pos: RwLock<Option<usize>>,
+    playback_finished: AtomicBool,
+    /// Unique Item ID counter
     last_item_id: AtomicUsize,
+    queue_mode: bool,
 }
 
 /// Item in playlist, wrapper for position
@@ -53,6 +58,12 @@ impl<T> PartialEq for Item<T> {
     }
 }
 
+impl<T: fmt::Debug> fmt::Debug for Item<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Item {{id: {:?}, val: {:?}}}", self.id, self.val)
+    }
+}
+
 pub type ItemReturn<'a, T> = Option<OwningRef<RwLockReadGuard<'a, Vec<Item<T>>>, Item<T>>>;
 
 #[allow(unused)]
@@ -61,16 +72,18 @@ where
     T: Sync, // rayon iter
 {
     /// Create a new playlist
-    pub fn new() -> Playlist<T> {
+    pub fn new(queue: bool) -> Playlist<T> {
         Playlist {
             list: RwLock::new(Vec::new()),
             current_pos: RwLock::new(Option::None),
             last_item_id: AtomicUsize::new(0),
+            queue_mode: queue,
+            playback_finished: AtomicBool::new(false),
         }
     }
 
     /// Returns size of playlist
-    pub fn size(&self) -> usize {
+    pub fn len(&self) -> usize {
         let lst_r = self.list.read().expect("Can't lock list");
         lst_r.len()
     }
@@ -104,8 +117,11 @@ where
         let mut pos = *self.get_pos();
         let length = lst_w.len();
 
+        dbg!(pos);
+        dbg!(length);
+
         // non-playing playlist
-        if pos > length {
+        if pos >= length {
             pos = 0;
         } else {
             // don't randomize current playback position
@@ -122,9 +138,15 @@ where
     ) -> OwningRef<RwLockReadGuard<'a, Vec<Item<T>>>, [Item<T>]> {
         let lst_r = self.list.read().expect("Can't lock list");
         OwningRef::new(lst_r).map(|v| {
+            if self.playback_finished.load(Ordering::Relaxed) {
+                dbg!("playback_finished");
+                return &v[0..0];
+            }
             let mut pos: usize = self.get_pos().clone();
             let mut end = pos.wrapping_add(amount);
-
+            dbg!(pos);
+            dbg!(end);
+            dbg!(v.len());
             if v.len() == 0 {
                 return &v[0..0];
             }
@@ -132,11 +154,8 @@ where
             if end >= v.len() {
                 end = v.len() - 1;
             }
-
-            // workaround, catch usize::MAX case
-            if pos > end {
-                pos = 0;
-            }
+            dbg!(pos);
+            dbg!(end);
             &v[pos..end]
         })
     }
@@ -155,6 +174,7 @@ where
                 id: self.last_item_id.fetch_add(1, Ordering::SeqCst),
             })
         });
+        self.playback_finished.store(false, Ordering::SeqCst);
     }
 
     /// Insert track into playlist
@@ -174,32 +194,61 @@ where
                 id: self.last_item_id.fetch_add(1, Ordering::SeqCst),
             },
         );
+        self.playback_finished.store(false, Ordering::SeqCst);
     }
 
     /// Get current track
     pub fn get_current<'a>(&'a self) -> ItemReturn<T> {
-        self.get_item(*self.get_pos())
+        if self.playback_finished.load(Ordering::Relaxed) {
+            return None;
+        }
+        match *self.get_pos_exact() {
+            Some(pos) => self.get_item(pos),
+            None => None,
+        }
     }
 
     /// Get next track, updating current position
     pub fn get_next(&self, repeat: bool) -> ItemReturn<T> {
+        if self.playback_finished.load(Ordering::Relaxed) {
+            if repeat {
+                self.playback_finished.store(false, Ordering::SeqCst);
+            } else {
+                return None;
+            }
+        }
         let lst = self.list.read().expect("Can't lock list!");
         let mut pos_mut = self.get_pos_mut();
         if lst.len() == 0 {
             return None;
         }
-
+        dbg!(lst.len());
         let pos = match *pos_mut {
             Some(v) => {
-                if !repeat && v >= lst.len() {
-                    *pos_mut = None;
-                    return None;
+                let mut pos_new = v;
+                // old value out of range
+                // when played to end..
+                if v < lst.len() {
+                    pos_new = v.wrapping_add(1);
+                    if pos_new >= lst.len() {
+                        if repeat {
+                            dbg!("Repeat..");
+                            pos_new = 0;
+                        } else {
+                            // end of playlist
+                            self.playback_finished.store(true, Ordering::SeqCst);
+                            return None;
+                        }
+                    }
+                    // set new pos, if out of range we specify that playlist finished..
+                    *pos_mut = Some(pos_new);
                 }
-                let pos_new = v.wrapping_add(1);
-                *pos_mut = Some(pos_new);
+
+                dbg!(pos_new);
                 pos_new
             }
             None => {
+                dbg!("First call..");
                 *pos_mut = Some(0);
                 0
             }
@@ -233,30 +282,47 @@ mod tests {
     use std::collections::HashSet;
     #[test]
     fn get_next_test() {
-        let playlist = Playlist::new();
+        get_next(Playlist::new(false));
+        get_next(Playlist::new(true));
+    }
+
+    fn get_next(playlist: Playlist<i32>) {
+        const REPEAT: bool = false;
         let vec: Vec<_> = (0..5).collect();
         playlist.push(vec);
         {
-            assert_eq!(0, **playlist.get_next(false).unwrap());
-            assert_eq!(1, **playlist.get_next(false).unwrap());
-            assert_eq!(2, **playlist.get_next(false).unwrap());
-            assert_eq!(3, **playlist.get_next(false).unwrap());
-            assert_eq!(4, **playlist.get_next(false).unwrap());
-            assert!(playlist.get_next(false).is_none());
-            assert_eq!(true, playlist.get_next_tracks(1).is_empty());
+            assert_eq!(0, **playlist.get_next(REPEAT).unwrap());
+            assert_eq!(0, **playlist.get_current().unwrap());
+            assert_eq!(1, **playlist.get_next(REPEAT).unwrap());
+            assert_eq!(1, **playlist.get_current().unwrap());
+            assert_eq!(2, **playlist.get_next(REPEAT).unwrap());
+            assert_eq!(2, **playlist.get_current().unwrap());
+            assert_eq!(3, **playlist.get_next(REPEAT).unwrap());
+            assert_eq!(3, **playlist.get_current().unwrap());
+            assert_eq!(4, **playlist.get_next(REPEAT).unwrap());
+            assert_eq!(4, **playlist.get_current().unwrap());
+            assert!(playlist.get_next(REPEAT).is_none());
+            assert_eq!(None, playlist.get_current());
+            dbg!(playlist.get_next_tracks(1));
+            assert!(playlist.get_next_tracks(1).is_empty());
         }
         let vec: Vec<_> = (5..6).collect();
+        dbg!(vec.len());
         playlist.push(vec);
         dbg!(playlist.get_position());
-        dbg!(playlist.size());
-        assert_eq!(5, **playlist.get_next(false).unwrap());
-        assert!(playlist.get_next(false).is_none());
-        assert!(playlist.get_next(false).is_none());
+        dbg!(playlist.len());
+        assert_eq!(5, **playlist.get_next(REPEAT).unwrap());
+        assert!(playlist.get_next(REPEAT).is_none());
+        assert!(playlist.get_next(REPEAT).is_none());
     }
 
     #[test]
-    fn shuffle() {
-        let playlist = Playlist::new();
+    fn shuffle_test() {
+        shuffle(Playlist::new(false));
+        shuffle(Playlist::new(true));
+    }
+
+    fn shuffle(playlist: Playlist<i32>) {
         playlist.shuffle();
         // add 5 items
         let vec: Vec<_> = (0..5).collect();
@@ -285,8 +351,12 @@ mod tests {
     }
 
     #[test]
-    fn init() {
-        let playlist = Playlist::new();
+    fn init_test() {
+        init(Playlist::new(false));
+        init(Playlist::new(true));
+    }
+
+    fn init(playlist: Playlist<i32>) {
         assert!(
             playlist.get_next(false).is_none(),
             "get_next on empty playlist should be none"
