@@ -194,7 +194,6 @@ where
                 id: self.last_item_id.fetch_add(1, Ordering::SeqCst),
             },
         );
-        self.playback_finished.store(false, Ordering::SeqCst);
     }
 
     /// Get current track
