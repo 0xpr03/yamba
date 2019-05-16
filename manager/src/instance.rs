@@ -44,6 +44,8 @@ const RESOLVE_LIMIT: usize = 5;
 pub enum InstanceErr {
     #[fail(display = "No instance with id {} found when expected!", _0)]
     NoInstanceFound(ID),
+    #[fail(display = "Volume above max volume")]
+    MaxVolume,
 }
 
 //pub type Instances = Arc<RwLock<HashMap<ID, Instance>>>;
@@ -169,6 +171,7 @@ pub struct Instance {
     name: String,
     queue: SPlaylist,
     volume: RwLock<Volume>,
+    max_volume: RwLock<Volume>,
     state: AtomicUsize,
     playstate: AtomicUsize,
     backend: Backend,
@@ -215,6 +218,7 @@ impl Instance {
             volume: RwLock::new(0.05),
             state: AtomicUsize::new(InstanceState::Stopped as usize),
             backend,
+            max_volume: RwLock::new(0.10),
             playstate: AtomicUsize::new(Playstate::Stopped as usize),
             position: Arc::downgrade(&instances.pos_cache),
         }
@@ -340,10 +344,19 @@ impl Instance {
         &self,
         v: Volume,
     ) -> Fallible<impl Future<Item = DefaultResponse, Error = reqwest::Error>> {
+        if v > self.get_volume_max() {
+            return Err(InstanceErr::MaxVolume.into());
+        }
         Ok(self.backend.set_volume(&VolumeSetReq {
             id: self.get_id(),
             volume: v,
         })?)
+    }
+
+    /// Returns maximum volume
+    pub fn get_volume_max(&self) -> Volume {
+        let vol_r = self.max_volume.read().expect("Can't lock volume!");
+        vol_r.clone()
     }
 
     /// Return current volume
