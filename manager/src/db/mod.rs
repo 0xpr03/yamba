@@ -19,32 +19,8 @@ use yamba_types::models::{Song, SongID, TimeStarted, ID};
 
 use failure::Fallible;
 
-#[cfg(feature = "local")]
 mod local;
-#[cfg(any(feature = "maria", feature = "postgres"))]
-mod remote;
-
-#[cfg(any(feature = "maria", feature = "postgres"))]
-pub mod schema;
-
-#[cfg(any(feature = "maria", feature = "postgres"))]
-pub use remote::DB;
-
-#[cfg(feature = "local")]
 pub use local::DB;
-
-macro_rules! assert_unique_feature {
-    () => {};
-    ($first:tt $(,$rest:tt)*) => {
-        $(
-            #[cfg(all(feature = $first, feature = $rest))]
-            compile_error!(concat!("features \"", $first, "\" and \"", $rest, "\" cannot be used together"));
-        )*
-        assert_unique_feature!($($rest),*);
-    }
-}
-
-assert_unique_feature!("maria", "local", "postgres");
 
 pub trait Database: Send + Sync + Clone {
     type DB: Database;

@@ -21,9 +21,6 @@ use clap::{App, Arg, ArgMatches};
 use failure::Fallible;
 #[macro_use]
 extern crate log;
-#[cfg(any(feature = "mysql", feature = "postgres"))]
-#[macro_use]
-extern crate diesel;
 use actix::System;
 use env_logger::{self, Env};
 use futures::future::Future;
@@ -43,10 +40,7 @@ mod models;
 mod playlist;
 mod security;
 
-#[cfg(any(feature = "maria", feature = "postgres"))]
-const DB_DEFAULT_PATH: &'static str = "127.0.0.1:3306";
-#[cfg(feature = "local")]
-const DB_DEFAULT_PATH: &'static str = "sled_db.db";
+const DB_DEFAULT_PATH: &'static str = "manage-rs.db";
 
 #[derive(Fail, Debug)]
 pub enum ParamErr {

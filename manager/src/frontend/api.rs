@@ -26,6 +26,11 @@ use reqwest::StatusCode;
 
 use super::*;
 
+// pub fn handle_queue_get((state, params): (State<FrState>, Json<GenericRequest>)) -> Fallible<HttpResponse> {
+//     trace!("Queue..");
+//     Ok(HttpResponse::Ok().json(models::))
+// }
+
 /// Returns current track information
 pub fn handle_instances_get(state: State<FrState>) -> Fallible<HttpResponse> {
     trace!("State..");
