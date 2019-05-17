@@ -51,6 +51,10 @@ pub fn init_frontend_server(
     server::new(move || {
         App::with_state(state.clone())
             .middleware(middleware::Logger::new("manager::api::frontend"))
+            .resource("/api/instances/stop", |r| {
+                r.method(http::Method::POST)
+                    .with_async(api::handle_instance_stop)
+            })
             .resource("/api/instances/create", |r| {
                 r.method(http::Method::POST)
                     .with_async(api::handle_instances_create)

@@ -26,10 +26,21 @@ use reqwest::StatusCode;
 
 use super::*;
 
-// pub fn handle_queue_get((state, params): (State<FrState>, Json<GenericRequest>)) -> Fallible<HttpResponse> {
-//     trace!("Queue..");
-//     Ok(HttpResponse::Ok().json(models::))
-// }
+/// Stop running instance
+pub fn handle_instance_stop(
+    (state, params): (State<FrState>, Json<GenericRequest>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    if let Some(i) = state.instances.read(&params.instance) {
+        match i.stop() {
+            Ok(res) => Either::A(res.then(|res| result(Ok(HttpResponse::Ok().json(true))))),
+            Err(e) => Either::B(Either::A(err(e.into()))),
+        }
+    } else {
+        Either::B(Either::B(result(Ok(
+            HttpResponse::BadRequest().json("Invalid instance!")
+        ))))
+    }
+}
 
 /// Returns current track information
 pub fn handle_instances_get(state: State<FrState>) -> Fallible<HttpResponse> {
