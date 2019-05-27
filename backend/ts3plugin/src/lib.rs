@@ -150,12 +150,15 @@ const HELP: &str = r#"
 
 [b]Help[/b]: !help
 
+[i]Next track[/i]: [i]!next[/i] / [i]>>[/i]
+
 [i]Get[/i] [b]volume[/b]: [i]!volume[/i]
 [i]Set[/i] volume <vol>: [i]!volume[/i] <vol>
 
 [i]Randomize[/i] queue: [i]!random[/i]
 
 Get [b]current track[/b]: [I]!playing[/I]
+Get [b]incoming tracks[/b]: [I]!tracks [amount][/I] amount is optional
 [b]Enqueue[/b] <url> : [I]!queue[/I] <url>
 "#;
 
