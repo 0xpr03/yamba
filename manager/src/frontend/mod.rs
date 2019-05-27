@@ -51,7 +51,7 @@ pub fn init_frontend_server(
     server::new(move || {
         App::with_state(state.clone())
             .middleware(middleware::Logger::new("manager::api::frontend"))
-            .resource("/api/instances/stop", |r| {
+            .resource("/api/instances/{instance}/stop", |r| {
                 r.method(http::Method::POST)
                     .with_async(api::handle_instance_stop)
             })
@@ -59,13 +59,13 @@ pub fn init_frontend_server(
                 r.method(http::Method::POST)
                     .with_async(api::handle_instances_create)
             })
-            .resource("/api/playback/volume", |r| {
+            .resource("/api/playback/{instance}/volume", |r| {
                 r.method(http::Method::GET).with(api::handle_volume_get)
             })
-            .resource("/api/playback/state", |r| {
+            .resource("/api/playback/{instance}/state", |r| {
                 r.method(http::Method::GET).with(api::handle_playback_get)
             })
-            .resource("/api/playback/track", |r| {
+            .resource("/api/playback/{instance}/track", |r| {
                 r.method(http::Method::GET).with(api::handle_track_get)
             })
             .resource("/api/instances", |r| {

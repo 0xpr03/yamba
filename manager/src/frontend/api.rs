@@ -16,7 +16,7 @@
  */
 
 use crate::models::{self, *};
-use actix_web::{Error, HttpResponse, Json, State};
+use actix_web::{Error, HttpResponse, Json, Path, State};
 use failure::Fallible;
 use futures::{
     future::{err, result, Either},
@@ -28,9 +28,9 @@ use super::*;
 
 /// Stop running instance
 pub fn handle_instance_stop(
-    (state, params): (State<FrState>, Json<GenericRequest>),
+    (state, path): (State<FrState>, Path<GenericRequest>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    if let Some(i) = state.instances.read(&params.instance) {
+    if let Some(i) = state.instances.read(&path.instance) {
         match i.stop() {
             Ok(res) => Either::A(res.then(|res| result(Ok(HttpResponse::Ok().json(true))))),
             Err(e) => Either::B(Either::A(err(e.into()))),
@@ -44,17 +44,16 @@ pub fn handle_instance_stop(
 
 /// Returns current track information
 pub fn handle_instances_get(state: State<FrState>) -> Fallible<HttpResponse> {
-    trace!("State..");
-    Ok(HttpResponse::Ok().json(models::Instances {
-        instances: state.instances.get_instances_min(),
-    }))
+    trace!("Instances get..");
+    let instances: models::Instances = state.instances.get_instances_min();
+    Ok(HttpResponse::Ok().json(instances))
 }
 
 /// Returns current track information
 pub fn handle_track_get(
-    (state, params): (State<FrState>, Json<GenericRequest>),
+    (state, path): (State<FrState>, Path<GenericRequest>),
 ) -> Fallible<HttpResponse> {
-    if let Some(i) = state.instances.read(&params.instance) {
+    if let Some(i) = state.instances.read(&path.instance) {
         let track = match i.get_current_title() {
             Some(t) => Some(TrackMin::from_song(&*t)),
             None => None,
@@ -67,9 +66,9 @@ pub fn handle_track_get(
 
 /// Returns volume info
 pub fn handle_volume_get(
-    (state, params): (State<FrState>, Json<GenericRequest>),
+    (state, path): (State<FrState>, Path<GenericRequest>),
 ) -> Fallible<HttpResponse> {
-    if let Some(i) = state.instances.read(&params.instance) {
+    if let Some(i) = state.instances.read(&path.instance) {
         let vol = VolumeFull {
             current: i.get_volume()?,
             max: 1.0, // TODO: add support for volume limit
@@ -82,9 +81,9 @@ pub fn handle_volume_get(
 
 /// Returns playback state
 pub fn handle_playback_get(
-    (state, params): (State<FrState>, Json<GenericRequest>),
+    (state, path): (State<FrState>, Path<GenericRequest>),
 ) -> Fallible<HttpResponse> {
-    if let Some(i) = state.instances.read(&params.instance) {
+    if let Some(i) = state.instances.read(&path.instance) {
         let playback = Playback {
             playing: i.is_playing(),
             position: i.get_pos().unwrap_or(0),

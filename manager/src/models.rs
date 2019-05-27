@@ -173,10 +173,7 @@ pub struct UseInstance {
 }
 
 /// Send to client for overview of instances
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Instances {
-    pub instances: Vec<InstanceMin>,
-}
+pub type Instances = Vec<InstanceMin>;
 
 /// Minimum representation of an Instance
 #[derive(Debug, Deserialize, Serialize)]
