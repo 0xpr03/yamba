@@ -85,7 +85,7 @@ impl Instances {
     }
 
     /// Create new instance
-    pub fn create_instance(&self, new: models::NewInstance, backend: Backend) -> Fallible<ID> {
+    pub fn create_instance(&self, new: models::InstanceCore, backend: Backend) -> Fallible<ID> {
         let model = self.db.create_instance(new)?;
         let mut instances_w = self.ins.write().expect("Can't lock instance!");
         let id = model.id.clone();
@@ -169,6 +169,7 @@ pub type SPlaylist = Playlist<Song>;
 pub struct Instance {
     id: ID,
     name: String,
+    autostart: bool,
     queue: SPlaylist,
     volume: RwLock<Volume>,
     max_volume: RwLock<Volume>,
@@ -206,11 +207,12 @@ impl Instance {
                 .map_err(|e| warn!("WS-Server error: {}", e)),
         );
 
-        let (load_req, name) = model.into_InstanceLoadReq();
+        let (load_req, name, autostart) = model.into_InstanceLoadReq();
 
         Instance {
             model: load_req,
-            name: name,
+            autostart,
+            name,
             id,
             db,
             start_time: RwLock::new(None),
@@ -227,6 +229,10 @@ impl Instance {
     /// Returns currently playing title
     pub fn get_current_title(&self) -> ItemReturn<Song> {
         self.queue.get_current()
+    }
+
+    pub fn get_core_config<'a>(&'a self) -> models::InstanceCoreRef<'a> {
+        models::InstanceCoreRef::from_load_request(self.name.as_str(), self.autostart, &self.model)
     }
 
     /// Format time from seconds!

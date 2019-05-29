@@ -223,7 +223,7 @@ fn create_instance_cmd(
             Some(Ok(i)) => Some(i),
         };
         let addr: SocketAddr = addr.parse()?;
-        let model = models::NewInstance {
+        let model = models::InstanceCore {
             autostart: true,
             host: addr.ip().to_string(),
             port: Some(addr.port()),

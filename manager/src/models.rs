@@ -29,8 +29,8 @@ use yamba_types::{TimeMS, Volume, ID};
 pub type PlaylistID = u64;
 
 /// Used for creating instances in manager-rs
-#[derive(Debug, Serialize, Deserialize)]
-pub struct NewInstance {
+#[derive(Debug, Deserialize)]
+pub struct InstanceCore {
     pub host: String,
     #[serde(default)]
     pub port: Option<u16>,
@@ -45,6 +45,47 @@ pub struct NewInstance {
     pub autostart: bool,
     /// VoIP identity nick
     pub nick: String,
+}
+
+/// Reference version for serialization
+#[derive(Debug, Serialize)]
+pub struct InstanceCoreRef<'a> {
+    pub host: &'a str,
+    #[serde(default)]
+    pub port: &'a Option<u16>,
+    #[serde(default)]
+    pub identity: &'a Option<String>,
+    #[serde(default)]
+    pub cid: &'a Option<i32>,
+    /// Instance name
+    pub name: &'a str,
+    #[serde(default)]
+    pub password: &'a Option<String>,
+    pub autostart: bool,
+    /// VoIP identity nick
+    pub nick: &'a str,
+}
+
+impl<'a> InstanceCoreRef<'a> {
+    /// Used to send instance core settings via frontend API
+    pub fn from_load_request(name: &'a str, autostart: bool, model: &'a InstanceLoadReq) -> Self {
+        match &model.data {
+            InstanceType::TS(ts) => {
+                InstanceCoreRef {
+                    host: &ts.host,
+                    port: &ts.port,
+                    identity: &ts.identity,
+                    cid: &ts.cid,
+                    /// Instance name
+                    name,
+                    password: &ts.password,
+                    autostart,
+                    /// VoIP identity nick
+                    nick: &ts.name,
+                }
+            }
+        }
+    }
 }
 
 /// PlaylistData for DB retrieval
@@ -104,7 +145,7 @@ impl<'a> NewPlaylistData<'a> {
 }
 
 /// Instance model, contains data for creating an instance
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 pub struct Instance {
     pub id: ID,
     pub host: String,
@@ -124,9 +165,47 @@ pub struct Instance {
     pub nick: String,
 }
 
+/// Reference version for serialization
+#[derive(Debug, Serialize)]
+pub struct InstanceRef<'a> {
+    pub id: ID,
+    pub host: &'a str,
+    #[serde(default)]
+    pub port: &'a Option<u16>,
+    #[serde(default)]
+    pub identity: &'a Option<String>,
+    #[serde(default)]
+    pub cid: &'a Option<i32>,
+    /// Instance name
+    pub name: &'a str,
+    #[serde(default)]
+    pub password: &'a Option<String>,
+    pub autostart: bool,
+    pub volume: &'a Volume,
+    /// VoIP identity nick
+    pub nick: &'a str,
+}
+
+impl<'a> InstanceRef<'a> {
+    pub fn from_instance(model: &'a Instance) -> Self {
+        InstanceRef {
+            id: model.id,
+            host: model.host.as_str(),
+            port: &model.port,
+            identity: &model.identity,
+            cid: &model.cid,
+            name: model.name.as_str(),
+            password: &model.password,
+            autostart: model.autostart,
+            volume: &model.volume,
+            nick: model.nick.as_str(),
+        }
+    }
+}
+
 impl Instance {
     /// Create Instance from NewInstance + ID
-    pub fn from_new_instance(new: NewInstance, id: ID) -> Self {
+    pub fn from_new_instance(new: InstanceCore, id: ID) -> Self {
         Instance {
             id,
             host: new.host,
@@ -140,10 +219,11 @@ impl Instance {
             nick: new.nick,
         }
     }
+
     /// Turn Model into InstanceLoadReq
-    /// Returns also the Name
+    /// Returns also the Name & autostart
     #[allow(non_snake_case)]
-    pub fn into_InstanceLoadReq(self) -> (InstanceLoadReq, String) {
+    pub fn into_InstanceLoadReq(self) -> (InstanceLoadReq, String, bool) {
         (
             InstanceLoadReq {
                 id: self.id,
@@ -158,6 +238,7 @@ impl Instance {
                 }),
             },
             self.name,
+            self.autostart,
         )
     }
 }

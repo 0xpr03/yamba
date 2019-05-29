@@ -106,12 +106,21 @@ impl Database for DB {
             })
             .collect::<std::result::Result<Vec<_>, Error>>()?)
     }
-    fn create_instance(&self, new_instance: NewInstance) -> Fallible<Instance> {
+    fn create_instance(&self, new_instance: InstanceCore) -> Fallible<Instance> {
         let id = self.gen_instance_id()?;
         let instance = Instance::from_new_instance(new_instance, id);
         let tree = self.open_tree(TREE_INSTANCES)?;
-        tree.set(id.to_le_bytes(), serialize(&instance).unwrap())?;
+        tree.set(
+            id.to_le_bytes(),
+            serialize(&InstanceRef::from_instance(&instance)).unwrap(),
+        )?;
         Ok(instance)
+    }
+    fn update_instance(&self, instance: &InstanceRef) -> Fallible<()> {
+        let id = instance.id.clone();
+        let tree = self.open_tree(TREE_INSTANCES)?;
+        tree.set(id.to_le_bytes(), serialize(instance).unwrap())?;
+        Ok(())
     }
     fn get_instance_startup(&self, instance: &ID) -> Fallible<Option<TimeStarted>> {
         Ok(self
@@ -280,6 +289,29 @@ mod test {
             let db = DB::create(format!("{}/db", tmp_dir.path().to_string_lossy())).unwrap();
             drop(db);
             DB::create(format!("{}/db", tmp_dir.path().to_string_lossy())).unwrap();
+        }
+    }
+    #[test]
+    fn test_instance_storage() {
+        let tmp_dir = tempdir().unwrap();
+        {
+            let db = DB::create(format!("{}/db", tmp_dir.path().to_string_lossy())).unwrap();
+            let instance = Instance {
+                id: 0,
+                host: String::from("my host"),
+                port: Some(1),
+                identity: Some(String::from("asd")),
+                cid: Some(1),
+                name: String::from("asd"),
+                password: Some(String::from("asd")),
+                autostart: true,
+                volume: 1.0,
+                nick: String::from("some nick"),
+            };
+            db.update_instance(&InstanceRef::from_instance(&instance))
+                .unwrap();
+            let inst_read = db.get_instance(0).unwrap();
+            assert_eq!(instance, inst_read);
         }
     }
     #[test]

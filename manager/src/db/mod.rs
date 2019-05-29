@@ -31,7 +31,9 @@ pub trait Database: Send + Sync + Clone {
     /// Get all instances, returns only autostart instances when isAutostart has been set
     fn get_instances(&self, is_autostart: bool) -> Fallible<Vec<Instance>>;
     /// Create a new instance
-    fn create_instance(&self, instance: NewInstance) -> Fallible<Instance>;
+    fn create_instance(&self, instance: InstanceCore) -> Fallible<Instance>;
+    /// Update instance
+    fn update_instance(&self, instance: &InstanceRef) -> Fallible<()>;
     /// Get startup time for instance
     fn get_instance_startup(&self, instance: &ID) -> Fallible<Option<TimeStarted>>;
     /// Set startup time for instance

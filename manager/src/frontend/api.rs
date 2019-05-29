@@ -42,6 +42,18 @@ pub fn handle_instance_stop(
     }
 }
 
+/// Returns instance core configuration
+pub fn handle_instance_config_core(
+    (state, path): (State<FrState>, Path<GenericRequest>),
+) -> Fallible<HttpResponse> {
+    if let Some(i) = state.instances.read(&path.instance) {
+        let details: InstanceCoreRef = i.get_core_config();
+        Ok(HttpResponse::Ok().json(details))
+    } else {
+        Ok(HttpResponse::BadRequest().json("Invalid instance!"))
+    }
+}
+
 /// Returns current track information
 pub fn handle_instances_get(state: State<FrState>) -> Fallible<HttpResponse> {
     trace!("Instances get..");
