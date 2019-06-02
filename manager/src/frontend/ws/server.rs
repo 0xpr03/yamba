@@ -113,7 +113,7 @@ impl Handler<Connect> for WSServer {
     type Result = usize;
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
-        println!("Someone joined");
+        println!("Client connected");
 
         // register session with random id
         let id = self.rng.gen::<usize>();

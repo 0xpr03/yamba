@@ -47,6 +47,30 @@ pub struct InstanceCore {
     pub nick: String,
 }
 
+impl InstanceCore {
+    /// Turns this instance core into a InstanceLoadReq.  
+    /// Returns InstanceLoadReq,name,autostart
+    #[allow(non_snake_case)]
+    pub fn into_InstanceLoadReq(self, id: ID, volume: Volume) -> (InstanceLoadReq, String, bool) {
+        (
+            InstanceLoadReq {
+                id: id,
+                volume,
+                data: InstanceType::TS(TSSettings {
+                    host: self.host,
+                    port: self.port,
+                    identity: self.identity,
+                    cid: self.cid,
+                    name: self.nick,
+                    password: self.password,
+                }),
+            },
+            self.name,
+            self.autostart,
+        )
+    }
+}
+
 /// Reference version for serialization
 #[derive(Debug, Serialize)]
 pub struct InstanceCoreRef<'a> {
@@ -181,7 +205,7 @@ pub struct InstanceRef<'a> {
     #[serde(default)]
     pub password: &'a Option<String>,
     pub autostart: bool,
-    pub volume: &'a Volume,
+    pub volume: Volume,
     /// VoIP identity nick
     pub nick: &'a str,
 }
@@ -197,9 +221,34 @@ impl<'a> InstanceRef<'a> {
             name: model.name.as_str(),
             password: &model.password,
             autostart: model.autostart,
-            volume: &model.volume,
+            volume: model.volume,
             nick: model.nick.as_str(),
         }
+    }
+    /// Create InstanceRef from InstanceLoadReq  
+    /// Volume is overriden to be more up to date.
+    #[allow(non_snake_case)]
+    pub fn from_InstanceLoadReq(
+        name: &'a str,
+        volume: Volume,
+        autostart: bool,
+        origin: &'a InstanceLoadReq,
+    ) -> Self {
+        match &origin.data {
+            InstanceType::TS(ts) => InstanceRef {
+                id: origin.id,
+                host: ts.host.as_str(),
+                port: &ts.port,
+                identity: &ts.identity,
+                cid: &ts.cid,
+                name,
+                password: &ts.password,
+                autostart,
+                volume,
+                nick: &ts.name,
+            },
+        }
+
     }
 }
 

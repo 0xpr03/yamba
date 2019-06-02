@@ -20,7 +20,7 @@ use chashmap::CHashMap;
 use failure::Fallible;
 use futures::future::{result, Either, Future};
 use hashbrown::HashMap;
-use owning_ref::OwningRef;
+use owning_ref::{OwningRef, OwningRefMut};
 use yamba_types::models::{
     callback::{InstanceState, Playstate, PlaystateResponse},
     *,
@@ -29,7 +29,7 @@ use yamba_types::models::{
 use std::ops::Deref;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
-    Arc, RwLock, RwLockReadGuard, Weak,
+    Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak,
 };
 
 use crate::backend::Backend;
@@ -46,6 +46,8 @@ pub enum InstanceErr {
     NoInstanceFound(ID),
     #[fail(display = "Volume above max volume")]
     MaxVolume,
+    #[fail(display = "Invalid state, instance still running!")]
+    InstanceRunning,
 }
 
 //pub type Instances = Arc<RwLock<HashMap<ID, Instance>>>;
@@ -65,11 +67,12 @@ impl Deref for Instances {
 }
 
 type InstanceRef<'a> = OwningRef<RwLockReadGuard<'a, HashMap<ID, Instance>>, Instance>;
+type InstanceRefMut<'a> = OwningRefMut<RwLockWriteGuard<'a, HashMap<ID, Instance>>, Instance>;
 
 impl Instances {
     /// Get read-ref to instance
     pub fn read<'a>(&'a self, id: &ID) -> Option<InstanceRef<'a>> {
-        let instances_r = self.ins.read().expect("Can't read instance!");
+        let instances_r = self.ins.read().expect("Can't read-access instances!");
         OwningRef::new(instances_r)
             .try_map(|i| match i.get(id) {
                 Some(v) => Ok(v),
@@ -82,6 +85,33 @@ impl Instances {
     pub fn read_err<'a>(&'a self, id: &ID) -> Fallible<InstanceRef<'a>> {
         self.read(id)
             .ok_or(InstanceErr::NoInstanceFound(id.clone()).into())
+    }
+
+    /// Get write-ref to instance
+    pub fn read_mut<'a>(&'a self, id: &ID) -> Option<InstanceRefMut<'a>> {
+        let instances_w = self.ins.write().expect("Can't write-access instances!");
+        OwningRefMut::new(instances_w)
+            .try_map_mut(|i| match i.get_mut(id) {
+                Some(v) => Ok(v),
+                None => Err(()),
+            })
+            .ok()
+    }
+
+    /// Delete instances  
+    /// Instance first has to be stopped
+    pub fn delete_instance(&self, id: &ID) -> Fallible<()> {
+        let mut instances_w = self.ins.write().expect("Can't write-access instances!");
+        if let Some(instance) = instances_w.get(id) {
+            if instance.is_running() {
+                return Err(InstanceErr::InstanceRunning.into());
+            }
+        } else {
+            return Err(InstanceErr::NoInstanceFound(id.clone()).into());
+        }
+
+        instances_w.remove(id);
+        Ok(())
     }
 
     /// Create new instance
@@ -220,7 +250,7 @@ impl Instance {
             volume: RwLock::new(0.05),
             state: AtomicUsize::new(InstanceState::Stopped as usize),
             backend,
-            max_volume: RwLock::new(0.10),
+            max_volume: RwLock::new(0.15),
             playstate: AtomicUsize::new(Playstate::Stopped as usize),
             position: Arc::downgrade(&instances.pos_cache),
         }
@@ -231,8 +261,35 @@ impl Instance {
         self.queue.get_current()
     }
 
+    /// Returns core-ref config
     pub fn get_core_config<'a>(&'a self) -> models::InstanceCoreRef<'a> {
         models::InstanceCoreRef::from_load_request(self.name.as_str(), self.autostart, &self.model)
+    }
+
+    /// Update core config of instance
+    pub fn update_core_config(&mut self, new_core: models::InstanceCore) -> Fallible<()> {
+        let (model, name, autostart) = new_core.into_InstanceLoadReq(self.id, self.get_volume()?);
+        self.model = model;
+        self.autostart = autostart;
+        self.name = name;
+        self.store_config()?;
+        Ok(())
+    }
+
+    /// Returns full instance-ref config
+    fn get_full_config<'a>(&'a self) -> Fallible<models::InstanceRef<'a>> {
+        Ok(models::InstanceRef::from_InstanceLoadReq(
+            &self.name,
+            self.get_volume()?,
+            self.autostart,
+            &self.model,
+        ))
+    }
+
+    /// Save full instance config back to DB
+    pub fn store_config(&self) -> Fallible<()> {
+        self.db.update_instance(&self.get_full_config()?)?;
+        Ok(())
     }
 
     /// Format time from seconds!
@@ -324,7 +381,7 @@ impl Instance {
         self.state.load(Ordering::Relaxed) != InstanceState::Stopped as usize
     }
 
-    /// Return start future, has to be called by Instances to store state changes
+    /// Return start future, **has to be called by Instances** to store state changes
     #[must_use = "Future doesn't do anything untill polled!"]
     fn start(&self) -> Fallible<impl Future<Item = InstanceLoadResponse, Error = reqwest::Error>> {
         Ok(self.backend.create_instance(&self.model)?)

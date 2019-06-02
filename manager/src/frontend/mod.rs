@@ -52,16 +52,24 @@ pub fn init_frontend_server(
         App::with_state(state.clone())
             .middleware(middleware::Logger::new("manager::api::frontend"))
             .resource("/api/instances/{instance}/core", |r| {
-                r.method(http::Method::GET)
-                    .with(api::handle_instance_config_core)
+                r.get().with(api::handle_instance_config_core_get);
+                r.put().with(api::handle_instance_config_core_update);
             })
             .resource("/api/instances/{instance}/stop", |r| {
                 r.method(http::Method::POST)
                     .with_async(api::handle_instance_stop)
             })
+            .resource("/api/instances/{instance}/start", |r| {
+                r.method(http::Method::POST)
+                    .with_async(api::handle_instance_start)
+            })
+            .resource("/api/instances/{instance}", |r| {
+                r.method(http::Method::DELETE)
+                    .with(api::handle_instance_delete)
+            })
             .resource("/api/instances/create", |r| {
                 r.method(http::Method::POST)
-                    .with_async(api::handle_instances_create)
+                    .with(api::handle_instances_create)
             })
             .resource("/api/playback/{instance}/volume", |r| {
                 r.method(http::Method::GET).with(api::handle_volume_get)
