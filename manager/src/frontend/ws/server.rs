@@ -18,7 +18,7 @@
 use actix::prelude::*;
 use actix::registry::SystemService;
 use failure::Fallible;
-use rand::{self, rngs::ThreadRng, Rng};
+use rand::{rngs::ThreadRng, thread_rng, Rng};
 use yamba_types::models::{self, ID};
 
 use std::collections::{HashMap, HashSet};
@@ -92,7 +92,7 @@ impl Default for WSServer {
         WSServer {
             sessions: HashMap::new(),
             instances: e,
-            rng: rand::thread_rng(),
+            rng: thread_rng(),
         }
     }
 }
