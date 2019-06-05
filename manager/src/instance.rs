@@ -132,6 +132,7 @@ impl Instances {
                 name: inst.get_name().to_string(),
                 id: inst.get_id(),
                 running: inst.is_running(),
+                autostart: inst.is_autostarting(),
             })
             .collect()
     }
@@ -381,6 +382,10 @@ impl Instance {
 
     pub fn is_running(&self) -> bool {
         self.state.load(Ordering::Relaxed) != InstanceState::Stopped as usize
+    }
+
+    pub fn is_autostarting(&self) -> bool {
+        self.autostart
     }
 
     /// Return start future, **has to be called by Instances** to store state changes

@@ -311,6 +311,7 @@ pub struct InstanceMin {
     pub id: ID,
     pub running: bool,
     pub name: String,
+    pub autostart: bool,
 }
 
 /// Send to client on initial connect
