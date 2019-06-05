@@ -214,11 +214,13 @@ pub struct Instance {
 
 impl Drop for Instance {
     fn drop(&mut self) {
-        match self.stop() {
-            Ok(v) => {
-                Backend::spawn_ignore(v);
+        if self.is_running() {
+            match self.stop() {
+                Ok(v) => {
+                    Backend::spawn_ignore(v);
+                }
+                Err(e) => warn!("Can't auto-kill instance: {}", e),
             }
-            Err(e) => warn!("Can't auto-kill instance: {}", e),
         }
         let _ = self.db.set_instance_startup(
             &self.get_id(),
