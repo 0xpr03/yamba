@@ -259,12 +259,12 @@ impl DB {
             .fetch_and_update(key, |v| match v {
                 // Basically fetch_add in sled style
                 Some(v) => Some(serialize(&(deserialize::<ID>(&v).unwrap() + 1)).unwrap()),
-                None => Some(serialize(&zero).unwrap()),
+                None => Some(serialize(&(zero + 1)).unwrap()),
             })?;
 
         Ok(match old {
             Some(v) => deserialize::<ID>(&v).unwrap(),
-            None => 0,
+            None => zero,
         })
     }
 
