@@ -84,10 +84,9 @@ pub fn init_frontend_server(
                 r.method(http::Method::GET).with(api::handle_instances_get)
             })
             .resource("/ws", |r| r.route().f(ws::ws_route))
-            .handler("/static", fs::StaticFiles::new("./static").unwrap())
             .handler(
                 "/",
-                fs::StaticFiles::new("./templates")
+                fs::StaticFiles::new("./static")
                     .unwrap()
                     .index_file("index.html"),
             )
