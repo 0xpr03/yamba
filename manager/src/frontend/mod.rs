@@ -51,6 +51,10 @@ pub fn init_frontend_server(
     server::new(move || {
         App::with_state(state.clone())
             .middleware(middleware::Logger::new("manager::api::frontend"))
+            .resource("/api/instances/create", |r| {
+                r.method(http::Method::POST)
+                    .with(api::handle_instances_create)
+            })
             .resource("/api/instances/{instance}/core", |r| {
                 r.get().with(api::handle_instance_config_core_get);
                 r.put().with(api::handle_instance_config_core_update);
@@ -66,10 +70,6 @@ pub fn init_frontend_server(
             .resource("/api/instances/{instance}", |r| {
                 r.method(http::Method::DELETE)
                     .with(api::handle_instance_delete)
-            })
-            .resource("/api/instances/create", |r| {
-                r.method(http::Method::POST)
-                    .with(api::handle_instances_create)
             })
             .resource("/api/playback/{instance}/volume", |r| {
                 r.method(http::Method::GET).with(api::handle_volume_get)
