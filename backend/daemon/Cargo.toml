@@ -39,8 +39,8 @@ metrohash = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 libpulse-sys = {version = "1.5", default-features = false }
 erased-serde = "0.3"
-libpulse-binding =  {version = "2.5", default-features = false}
-libpulse-glib-binding = { version = "2.5", default-features = false }
+libpulse-binding =  {version = "2.6", default-features = false}
+libpulse-glib-binding = { version = "2.6", default-features = false }
 gstreamer-player = "0.12"
 gstreamer = "0.12"
 glib = "0"
