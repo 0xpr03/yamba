@@ -18,7 +18,7 @@
 use super::*;
 use crate::instance::InstanceErr;
 use crate::models::{self, GenericRequest};
-use actix_web::{Error, HttpResponse, Json, Path, State};
+use actix_web::{web, Error, HttpResponse};
 use failure::Fallible;
 use futures::{
     future::{err, result, Either},
@@ -27,10 +27,9 @@ use futures::{
 
 use reqwest::StatusCode;
 
-
 /// Stop running instance
 pub fn handle_instance_stop(
-    (state, path): (State<FrState>, Path<GenericRequest>),
+    (state, path): (web::Data<FrState>, web::Path<GenericRequest>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     if let Some(i) = state.instances.read(&path.instance) {
         match i.stop() {
@@ -46,7 +45,7 @@ pub fn handle_instance_stop(
 
 /// Start existing instance
 pub fn handle_instance_start(
-    (state, path): (State<FrState>, Path<GenericRequest>),
+    (state, path): (web::Data<FrState>, web::Path<GenericRequest>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     match state.instances.start_instance(path.instance) {
         Ok(v) => Either::A(v.then(|res| {
@@ -72,7 +71,7 @@ pub fn handle_instance_start(
 
 /// Delete instance
 pub fn handle_instance_delete(
-    (state, path): (State<FrState>, Path<GenericRequest>),
+    (state, path): (web::Data<FrState>, web::Path<GenericRequest>),
 ) -> Fallible<HttpResponse> {
     match state.instances.delete_instance(&path.instance) {
         Ok(_) => Ok(HttpResponse::NoContent().finish()),
@@ -93,7 +92,7 @@ pub fn handle_instance_delete(
 
 /// Returns instance core configuration
 pub fn handle_instance_config_core_get(
-    (state, path): (State<FrState>, Path<GenericRequest>),
+    (state, path): (web::Data<FrState>, web::Path<GenericRequest>),
 ) -> Fallible<HttpResponse> {
     if let Some(i) = state.instances.read(&path.instance) {
         let details: models::InstanceCoreRef = i.get_core_config();
@@ -106,12 +105,12 @@ pub fn handle_instance_config_core_get(
 /// Update instance core configuration
 pub fn handle_instance_config_core_update(
     (state, path, data): (
-        State<FrState>,
-        Path<GenericRequest>,
-        Json<models::InstanceCore>,
+        web::Data<FrState>,
+        web::Path<GenericRequest>,
+        web::Json<models::InstanceCore>,
     ),
 ) -> Fallible<HttpResponse> {
-    trace!("Update instance core {}",path.instance);
+    trace!("Update instance core {}", path.instance);
     if let Some(mut i) = state.instances.read_mut(&path.instance) {
         i.update_core_config(data.into_inner())?;
         Ok(HttpResponse::Ok().finish())
@@ -121,7 +120,7 @@ pub fn handle_instance_config_core_update(
 }
 
 /// Returns current track information
-pub fn handle_instances_get(state: State<FrState>) -> Fallible<HttpResponse> {
+pub fn handle_instances_get(state: web::Data<FrState>) -> Fallible<HttpResponse> {
     trace!("Instances get..");
     let instances: models::Instances = state.instances.get_instances_min();
     Ok(HttpResponse::Ok().json(instances))
@@ -129,7 +128,7 @@ pub fn handle_instances_get(state: State<FrState>) -> Fallible<HttpResponse> {
 
 /// Returns current track information
 pub fn handle_track_get(
-    (state, path): (State<FrState>, Path<GenericRequest>),
+    (state, path): (web::Data<FrState>, web::Path<GenericRequest>),
 ) -> Fallible<HttpResponse> {
     if let Some(i) = state.instances.read(&path.instance) {
         let track = match i.get_current_title() {
@@ -144,7 +143,7 @@ pub fn handle_track_get(
 
 /// Returns volume info
 pub fn handle_volume_get(
-    (state, path): (State<FrState>, Path<GenericRequest>),
+    (state, path): (web::Data<FrState>, web::Path<GenericRequest>),
 ) -> Fallible<HttpResponse> {
     if let Some(i) = state.instances.read(&path.instance) {
         let vol = models::VolumeFull {
@@ -159,7 +158,7 @@ pub fn handle_volume_get(
 
 /// Returns playback state
 pub fn handle_playback_get(
-    (state, path): (State<FrState>, Path<GenericRequest>),
+    (state, path): (web::Data<FrState>, web::Path<GenericRequest>),
 ) -> Fallible<HttpResponse> {
     if let Some(i) = state.instances.read(&path.instance) {
         let playback = models::Playback {
@@ -174,7 +173,7 @@ pub fn handle_playback_get(
 
 /// Returns instance ID on success
 pub fn handle_instances_create(
-    (state, params): (State<FrState>, Json<models::InstanceCore>),
+    (state, params): (web::Data<FrState>, web::Json<models::InstanceCore>),
 ) -> Fallible<HttpResponse> {
     match state
         .instances

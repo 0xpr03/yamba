@@ -21,7 +21,8 @@ mod server;
 
 use crate::models::UseInstance;
 use actix::prelude::*;
-use actix_web::{ws, Error, HttpRequest, HttpResponse};
+use actix_web::{web, Error, HttpRequest, HttpResponse};
+use actix_web_actors::ws;
 use serde::Serialize;
 use yamba_types::models::{self, ID};
 
@@ -81,12 +82,12 @@ impl Handler<RawMessage> for WsSession {
     type Result = ();
 
     fn handle(&mut self, msg: RawMessage, ctx: &mut Self::Context) {
-        ctx.text(msg.0);
+        ctx.text(msg.0.as_str());
     }
 }
 
 impl Actor for WsSession {
-    type Context = ws::WebsocketContext<Self, FrState>;
+    type Context = ws::WebsocketContext<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
         self.hb(ctx);
@@ -135,12 +136,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
             }
             ws::Message::Binary(_) => warn!("Unexpected binary"),
             ws::Message::Close(_) => ctx.stop(),
+            ws::Message::Nop => (),
         }
     }
 }
 
 impl WsSession {
-    fn hb(&self, ctx: &mut ws::WebsocketContext<Self, FrState>) {
+    fn hb(&self, ctx: &mut ws::WebsocketContext<Self>) {
         ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
             if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
                 println!("Websocket Client heartbeat failed, disconnecting!");
@@ -154,13 +156,14 @@ impl WsSession {
     }
 }
 
-pub fn ws_route(req: &HttpRequest<FrState>) -> Result<HttpResponse, Error> {
+pub fn ws_route(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
     ws::start(
-        req,
         WsSession {
             id: 0,
             hb: Instant::now(),
             instance: 1,
         },
+        &req,
+        stream,
     )
 }

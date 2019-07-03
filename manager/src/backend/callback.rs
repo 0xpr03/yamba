@@ -20,7 +20,7 @@ use crate::frontend;
 use crate::security::SecurityModule;
 
 use actix::SystemService;
-use actix_web::{http, middleware, server, App, HttpRequest, HttpResponse, Json};
+use actix_web::{http, middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 use failure::Fallible;
 use yamba_types::models::callback as cb;
 
@@ -32,52 +32,54 @@ pub enum ServerErr {
 
 /// Handle instance callback
 fn callback_instance(
-    (data, req): (Json<cb::InstanceStateResponse>, HttpRequest<CallbackState>),
+    (data, req): (
+        web::Json<cb::InstanceStateResponse>,
+        web::Data<CallbackState>,
+    ),
 ) -> HttpResponse {
     debug!("Instance state change: {:?}", data);
-    if let Some(i) = req.state().instances.read(&data.id) {
+    if let Some(i) = req.instances.read(&data.id) {
         i.cb_set_instance_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
 }
 
 fn callback_volume(
-    (data, req): (Json<cb::VolumeChange>, HttpRequest<CallbackState>),
+    (data, req): (web::Json<cb::VolumeChange>, web::Data<CallbackState>),
 ) -> HttpResponse {
     debug!("Volume change: {:?}", data);
-    if let Some(i) = req.state().instances.read(&data.id) {
+    if let Some(i) = req.instances.read(&data.id) {
         i.cb_update_volume(data.into_inner().volume);
     }
     HttpResponse::Ok().json(true)
 }
 
 fn callback_playback(
-    (data, req): (Json<cb::PlaystateResponse>, HttpRequest<CallbackState>),
+    (data, req): (web::Json<cb::PlaystateResponse>, web::Data<CallbackState>),
 ) -> HttpResponse {
     debug!("Playback change: {:?}", data);
-    if let Some(i) = req.state().instances.read(&data.id) {
+    if let Some(i) = req.instances.read(&data.id) {
         i.cb_set_playback_state(data.into_inner().state);
     }
     HttpResponse::Ok().json(true)
 }
 
 fn callback_resolve(
-    (body, req): (Json<cb::ResolveResponse>, HttpRequest<CallbackState>),
+    (body, req): (web::Json<cb::ResolveResponse>, web::Data<CallbackState>),
 ) -> HttpResponse {
     debug!("Resolve callback: {:?}", body);
     let data_r = body.into_inner();
     let ticket = data_r.ticket;
-    req.state()
-        .backend
+    req.backend
         .tickets
-        .handle(&ticket, &req.state().instances, data_r.data);
+        .handle(&ticket, &req.instances, data_r.data);
     HttpResponse::Ok().json(true)
 }
 
 fn callback_position(
-    (data, req): (Json<cb::TrackPositionUpdate>, HttpRequest<CallbackState>),
+    (data, req): (web::Json<cb::TrackPositionUpdate>, web::Data<CallbackState>),
 ) -> HttpResponse {
-    req.state().instances.set_pos(data.id, data.position_ms);
+    req.instances.set_pos(data.id, data.position_ms);
     spawn(
         frontend::WSServer::from_registry()
             .send(data.into_inner())
@@ -103,40 +105,36 @@ pub fn init_callback_server(
         backend: backend.clone(),
         instances,
     };
-    server::new(move || {
-        App::with_state(state.clone())
-            .middleware(middleware::Logger::new("manager::api::backend::callback"))
-            .middleware(SecurityModule::new(backend.addr.ip()))
-            .resource(cb::PATH_INSTANCE, |r| {
-                r.method(http::Method::POST)
-                    .with_config(callback_instance, |((cfg, _),)| {
-                        cfg.limit(4096);
-                    })
-            })
-            .resource(cb::PATH_VOLUME, |r| {
-                r.method(http::Method::POST)
-                    .with_config(callback_volume, |((cfg, _),)| {
-                        cfg.limit(4096);
-                    })
-            })
-            .resource(cb::PATH_PLAYBACK, |r| {
-                r.method(http::Method::POST)
-                    .with_config(callback_playback, |((cfg, _),)| {
-                        cfg.limit(4096);
-                    })
-            })
-            .resource(cb::PATH_RESOLVE, |r| {
-                r.method(http::Method::POST)
-                    .with_config(callback_resolve, |((cfg, _),)| {
-                        cfg.limit(256096);
-                    })
-            })
-            .resource(cb::PATH_POSITION, |r| {
-                r.method(http::Method::POST)
-                    .with_config(callback_position, |((cfg, _),)| {
-                        cfg.limit(4096);
-                    })
-            })
+    HttpServer::new(move || {
+        App::new()
+            .data(state.clone())
+            .wrap(middleware::Logger::new("manager::api::backend::callback"))
+            .wrap(SecurityModule::new(backend.addr.ip()))
+            .service(
+                web::resource(cb::PATH_INSTANCE)
+                    .data(web::JsonConfig::default().limit(4096))
+                    .route(web::post().to(callback_instance)),
+            )
+            .service(
+                web::resource(cb::PATH_VOLUME)
+                    .data(web::JsonConfig::default().limit(4096))
+                    .route(web::post().to(callback_volume)),
+            )
+            .service(
+                web::resource(cb::PATH_PLAYBACK)
+                    .data(web::JsonConfig::default().limit(4096))
+                    .route(web::post().to(callback_playback)),
+            )
+            .service(
+                web::resource(cb::PATH_RESOLVE)
+                    .data(web::JsonConfig::default().limit(256096))
+                    .route(web::post().to(callback_resolve)),
+            )
+            .service(
+                web::resource(cb::PATH_POSITION)
+                    .data(web::JsonConfig::default().limit(4096))
+                    .route(web::post().to(callback_position)),
+            )
     })
     .bind(callback_server)
     .map_err(|e| ServerErr::BindFailed(e))

@@ -248,7 +248,6 @@ impl<'a> InstanceRef<'a> {
                 nick: &ts.name,
             },
         }
-
     }
 }
 

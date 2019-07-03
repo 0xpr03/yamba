@@ -17,7 +17,8 @@
 
 use crate::backend::Backend;
 use crate::instance::Instances;
-use actix_web::{fs, http, middleware, server, App};
+use actix_files as fs;
+use actix_web::{http, middleware, web, App, HttpServer};
 use failure::Fallible;
 use std::net::SocketAddr;
 
@@ -48,49 +49,48 @@ pub fn init_frontend_server(
         instances: instances.clone(),
         backend: backend.clone(),
     };
-    server::new(move || {
-        App::with_state(state.clone())
-            .middleware(middleware::Logger::new("manager::api::frontend"))
-            .resource("/api/instances/create", |r| {
-                r.method(http::Method::POST)
-                    .with(api::handle_instances_create)
-            })
-            .resource("/api/instances/{instance}/core", |r| {
-                r.get().with(api::handle_instance_config_core_get);
-                r.put().with(api::handle_instance_config_core_update);
-            })
-            .resource("/api/instances/{instance}/stop", |r| {
-                r.method(http::Method::POST)
-                    .with_async(api::handle_instance_stop)
-            })
-            .resource("/api/instances/{instance}/start", |r| {
-                r.method(http::Method::POST)
-                    .with_async(api::handle_instance_start)
-            })
-            .resource("/api/instances/{instance}", |r| {
-                r.method(http::Method::DELETE)
-                    .with(api::handle_instance_delete)
-            })
-            .resource("/api/playback/{instance}/volume", |r| {
-                r.method(http::Method::GET).with(api::handle_volume_get)
-            })
-            .resource("/api/playback/{instance}/state", |r| {
-                r.method(http::Method::GET).with(api::handle_playback_get)
-            })
-            .resource("/api/playback/{instance}/track", |r| {
-                r.method(http::Method::GET).with(api::handle_track_get)
-            })
-            .resource("/api/instances", |r| {
-                r.method(http::Method::GET).with(api::handle_instances_get)
-            })
-            .resource("/ws", |r| r.route().f(ws::ws_route))
-            .handler(
-                "/",
-                fs::StaticFiles::new("./static")
-                    .unwrap()
-                    .index_file("index.html"),
+    HttpServer::new(move || {
+        App::new()
+            .data(state.clone())
+            .wrap(middleware::Logger::new("manager::api::frontend"))
+            .service(
+                web::resource("/api/instances/create")
+                    .route(web::post().to(api::handle_instances_create)),
             )
-            .boxed()
+            .service(
+                web::resource("/api/instances/{instance}/core")
+                    .route(web::get().to(api::handle_instance_config_core_get))
+                    .route(web::put().to(api::handle_instance_config_core_update)),
+            )
+            .service(
+                web::resource("/api/instances/{instance}/stop")
+                    .route(web::post().to_async(api::handle_instance_stop)),
+            )
+            .service(
+                web::resource("/api/instances/{instance}/start")
+                    .route(web::post().to_async(api::handle_instance_start)),
+            )
+            .service(
+                web::resource("/api/instances/{instance}")
+                    .route(web::delete().to(api::handle_instance_delete)),
+            )
+            .service(
+                web::resource("/api/playback/{instance}/volume")
+                    .route(web::get().to(api::handle_volume_get)),
+            )
+            .service(
+                web::resource("/api/playback/{instance}/state")
+                    .route(web::get().to(api::handle_playback_get)),
+            )
+            .service(
+                web::resource("/api/playback/{instance}/track")
+                    .route(web::get().to(api::handle_track_get)),
+            )
+            .service(
+                web::resource("/api/instances").route(web::get().to(api::handle_instances_get)),
+            )
+            .service(web::resource("/ws").to(ws::ws_route))
+            .service(fs::Files::new("/", "./static").index_file("index.html"))
     })
     .bind(bind_addr)
     .map_err(|e| ServerErr::BindFailed(e))
