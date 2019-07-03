@@ -19,7 +19,7 @@ rpc = []
 message = ["actix"]
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
 tower-web = { optional = true, version = "0"}
 metrohash = { optional = true, version = "1" }
 actix = { optional = true, version = "0.8" }
