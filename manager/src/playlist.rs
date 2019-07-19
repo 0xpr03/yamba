@@ -107,8 +107,16 @@ where
 
     /// Returns amount of upcoming tracks
     pub fn amount_upcoming(&self) -> usize {
+        if self.playback_finished.load(Ordering::SeqCst) {
+            println!("playback finished");
+            return 0;
+        }
         let lst_r = self.list.read().expect("Can't lock list");
-        lst_r.len().wrapping_sub(*self.get_pos())
+        if let Some(v) = *self.get_pos_exact() {
+            lst_r.len().wrapping_sub(v + 1)
+        } else {
+            return lst_r.len();
+        }
     }
 
     /// (Re)Shuffle the playlist
@@ -152,7 +160,7 @@ where
             }
 
             if end >= v.len() {
-                end = v.len() - 1;
+                end = v.len();
             }
             dbg!(pos);
             dbg!(end);
@@ -315,6 +323,84 @@ mod tests {
         assert!(playlist.get_next(REPEAT).is_none());
     }
 
+    /// Interactive test for debugging
+    #[test]
+    #[ignore]
+    fn test_interactive() {
+        let mut playlist: Playlist<String> = Playlist::new(true);
+        let stdin = std::io::stdin();
+
+        loop {
+            let mut input = String::new();
+            stdin.read_line(&mut input).unwrap();
+            let args: Vec<_> = input.trim().split(' ').collect();
+            match args[0] {
+                "q" => {
+                    if args.len() == 2 {
+                        playlist.push(vec![(args[1].to_string())]);
+                    } else {
+                        eprintln!("Invalid amount of parameters!");
+                    }
+                }
+                ">>" => println!("Next: {:?}", print_next(&playlist, false)),
+                "s" => playlist.shuffle(),
+                "t" => println!("Tracks: {}", print_track(&playlist, 100)),
+                "c" => {
+                    println!("Replaying with new..");
+                    playlist = Playlist::new(true);
+                }
+                "end" => break,
+                _ => println!("Unknown command."),
+            }
+
+            println!(
+                "Size: {}, Upcoming: {}",
+                playlist.len(),
+                playlist.amount_upcoming()
+            );
+            println!(
+                "Current: {:?}@{}",
+                print_current(&playlist),
+                playlist.get_position()
+            );
+        }
+    }
+
+    fn print_current<T>(playlist: &Playlist<T>) -> String
+    where
+        T: std::fmt::Display + Sync,
+    {
+        match playlist.get_current() {
+            Some(v) => format!("{}", **v),
+            None => String::from("None"),
+        }
+    }
+
+    fn print_next<T>(playlist: &Playlist<T>, repeat: bool) -> String
+    where
+        T: std::fmt::Display + Sync,
+    {
+        match playlist.get_next(repeat) {
+            Some(v) => format!("{}", **v),
+            None => String::from("None"),
+        }
+    }
+
+    fn print_track<T>(playlist: &Playlist<T>, amount: usize) -> String
+    where
+        T: std::fmt::Display + Sync,
+    {
+        let mut output = String::new();
+        for track in playlist.get_next_tracks(amount).into_iter() {
+            if output.len() == 0 {
+                output = format!("{}", **track);
+            } else {
+                output = format!("{},{}", output, **track);
+            }
+        }
+        output
+    }
+
     #[test]
     fn shuffle_test() {
         shuffle(Playlist::new(false));
@@ -347,6 +433,29 @@ mod tests {
         }
         assert!(playlist.get_next(false).is_none());
         assert!(set.is_empty());
+    }
+
+    #[test]
+    fn test_upcoming_end() {
+        let playlist = Playlist::new(true);
+        assert_eq!(0, playlist.amount_upcoming());
+        playlist.push(vec![1, 2, 3]);
+        assert_eq!(3, playlist.amount_upcoming());
+        for i in 1..=3 {
+            playlist.get_next(false);
+            assert_eq!(3 - i, playlist.amount_upcoming());
+        }
+        assert_eq!(0, playlist.amount_upcoming());
+    }
+
+    #[test]
+    fn test_init_tracks_upcoming() {
+        let playlist = Playlist::new(true);
+        assert_eq!(0, playlist.get_next_tracks(100).len());
+        playlist.push(vec![1]);
+        assert_eq!(1, playlist.get_next_tracks(100).len());
+        playlist.push(vec![2]);
+        assert_eq!(2, playlist.get_next_tracks(100).len());
     }
 
     #[test]
