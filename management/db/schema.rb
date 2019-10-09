@@ -10,7 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_10_09_184729) do
+ActiveRecord::Schema.define(version: 2019_10_09_230044) do
+
+  create_table "instances", force: :cascade do |t|
+    t.string "host", null: false
+    t.integer "port", limit: 16
+    t.string "identity"
+    t.integer "cid", limit: 32
+    t.string "name", null: false
+    t.string "password"
+    t.boolean "autostart"
+    t.string "api_token"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["api_token"], name: "index_instances_on_api_token", unique: true
+  end
 
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false

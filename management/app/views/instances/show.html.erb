@@ -1,0 +1,39 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <strong>Host:</strong>
+  <%= @instance.host %>
+</p>
+
+<p>
+  <strong>Port:</strong>
+  <%= @instance.port %>
+</p>
+
+<p>
+  <strong>Identity:</strong>
+  <%= @instance.identity %>
+</p>
+
+<p>
+  <strong>Cid:</strong>
+  <%= @instance.cid %>
+</p>
+
+<p>
+  <strong>Name:</strong>
+  <%= @instance.name %>
+</p>
+
+<p>
+  <strong>Password:</strong>
+  <%= @instance.password %>
+</p>
+
+<p>
+  <strong>Autostart:</strong>
+  <%= @instance.autostart %>
+</p>
+
+<%= link_to 'Edit', edit_instance_path(@instance) %> |
+<%= link_to 'Back', instances_path %>

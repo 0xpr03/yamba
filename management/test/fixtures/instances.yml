@@ -1,0 +1,21 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  host: MyString
+  port: 1
+  identity: MyString
+  cid: 1
+  name: MyString
+  password: MyString
+  autostart: false
+  api_token: MyString
+
+two:
+  host: MyString
+  port: 1
+  identity: MyString
+  cid: 1
+  name: MyString
+  password: MyString
+  autostart: false
+  api_token: MyString

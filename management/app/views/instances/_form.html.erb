@@ -1,0 +1,52 @@
+<%= form_with(model: instance, local: true) do |form| %>
+  <% if instance.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(instance.errors.count, "error") %> prohibited this instance from being saved:</h2>
+
+      <ul>
+        <% instance.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= form.label :host %>
+    <%= form.text_field :host %>
+  </div>
+
+  <div class="field">
+    <%= form.label :port %>
+    <%= form.number_field :port %>
+  </div>
+
+  <div class="field">
+    <%= form.label :identity %>
+    <%= form.text_field :identity %>
+  </div>
+
+  <div class="field">
+    <%= form.label :cid %>
+    <%= form.number_field :cid %>
+  </div>
+
+  <div class="field">
+    <%= form.label :name %>
+    <%= form.text_field :name %>
+  </div>
+
+  <div class="field">
+    <%= form.label :password %>
+    <%= form.text_field :password %>
+  </div>
+
+  <div class="field">
+    <%= form.label :autostart %>
+    <%= form.check_box :autostart %>
+  </div>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>
