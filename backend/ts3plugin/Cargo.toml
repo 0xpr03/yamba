@@ -4,9 +4,6 @@ version = "0.1.0"
 authors = ["Aron Heinecke <aron.heinecke@t-online.de>","Oliver Habersetzer <oliver.habersetzer@gmail.com>"]
 edition = '2018'
 
-[profile.release]
-lto = true
-
 [lib]
 name = "yamba_plugin"
 crate-type = ["dylib"]

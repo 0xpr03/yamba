@@ -4,9 +4,6 @@ version = "0.1.0"
 authors = ["Aron Heinecke <aron.heinecke@t-online.de>"]
 edition = "2018"
 
-[profile.release]
-lto = true
-
 [features]
 default = []
 # valgrind massif support
