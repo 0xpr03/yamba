@@ -110,7 +110,7 @@ impl Instance {
     pub fn new(
         id: ID,
         voip: InstanceType,
-        base: &InstanceDataProvider,
+        base: &dyn InstanceDataProvider,
         player: Player,
         heartbeats: HeartbeatMap,
     ) -> Instance {

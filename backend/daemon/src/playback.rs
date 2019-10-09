@@ -123,7 +123,7 @@ impl Player {
 
         playbin.set_property("flags", &flags)?;
 
-        let pulsesink = gst::ElementFactory::make("pulsesink", name.as_str())
+        let pulsesink = gst::ElementFactory::make("pulsesink", Some(name.as_str()))
             .ok_or(PlaybackErr::GST("Couldn't create pulsesink"))?;
         playbin
             .set_property("audio-sink", &pulsesink)

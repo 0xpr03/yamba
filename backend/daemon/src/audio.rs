@@ -479,7 +479,9 @@ fn get_process_device(
                     let process_str = process.to_string();
                     match res {
                         ListResult::Item(source) => {
-                            if source.proplist.gets("application.process.id") == Some(process_str) {
+                            if source.proplist.get_str("application.process.id")
+                                == Some(process_str)
+                            {
                                 *success_ref.lock().unwrap() =
                                     DeviceFilterResult::Some(source.index);
                             }
@@ -502,7 +504,7 @@ fn get_process_device(
                 let process_str = process.to_string();
                 match res {
                     ListResult::Item(source) => {
-                        if source.proplist.gets("application.process.id") == Some(process_str) {
+                        if source.proplist.get_str("application.process.id") == Some(process_str) {
                             *success_ref.lock().unwrap() = DeviceFilterResult::Some(source.index);
                         }
                     }
@@ -697,7 +699,7 @@ pub fn init() -> Fallible<(CMainloop, CContext)> {
     debug!("Audio context init..");
     let mut proplist = Proplist::new().unwrap();
     proplist
-        .sets(properties::APPLICATION_NAME, "yamba")
+        .set_str(properties::APPLICATION_NAME, "yamba")
         .map_err(|_| AudioErr::PropSetErr)?;
     let mainloop = Arc::new(Mutex::new(Mainloop::new().unwrap()));
 
