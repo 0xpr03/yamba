@@ -17,8 +17,6 @@
 use failure::{Error, Fallible};
 use sled::{self, *};
 
-use std::sync::Arc;
-
 use super::Database;
 use crate::models::*;
 use bincode::{deserialize, serialize};
@@ -110,7 +108,7 @@ impl Database for DB {
         let id = self.gen_instance_id()?;
         let instance = Instance::from_new_instance(new_instance, id);
         let tree = self.open_tree(TREE_INSTANCES)?;
-        tree.set(
+        tree.insert(
             id.to_le_bytes(),
             serialize(&InstanceRef::from_instance(&instance)).unwrap(),
         )?;
@@ -119,7 +117,7 @@ impl Database for DB {
     fn update_instance(&self, instance: &InstanceRef) -> Fallible<()> {
         let id = instance.id.clone();
         let tree = self.open_tree(TREE_INSTANCES)?;
-        tree.set(id.to_le_bytes(), serialize(instance).unwrap())?;
+        tree.insert(id.to_le_bytes(), serialize(instance).unwrap())?;
         Ok(())
     }
     fn get_instance_startup(&self, instance: &ID) -> Fallible<Option<TimeStarted>> {
@@ -133,10 +131,10 @@ impl Database for DB {
         let serialized = serialize(instance)?;
         match time {
             Some(v) => {
-                tree.set(serialized, serialize(v)?)?;
+                tree.insert(serialized, serialize(v)?)?;
             }
             None => {
-                tree.del(serialized)?;
+                tree.remove(serialized)?;
             }
         }
         Ok(())
@@ -144,9 +142,9 @@ impl Database for DB {
     fn upsert_song(&self, song: &Song, url: &Option<&str>) -> Fallible<()> {
         let tree = self.open_tree(TREE_SONGS)?;
         let id = song.id.as_str();
-        tree.set(id, serialize(&song)?)?;
+        tree.insert(id, serialize(&song)?)?;
         if let Some(url) = url {
-            self.open_tree(TREE_SONG_URL)?.set(url, id)?;
+            self.open_tree(TREE_SONG_URL)?.insert(url, id)?;
         }
         Ok(())
     }
@@ -163,7 +161,7 @@ impl Database for DB {
                 None => {
                     // no song for ID found, delete wrong mapping
                     warn!("Inconsitent DB! No song for stored URL found!");
-                    tree_url.del(id)?;
+                    tree_url.remove(id)?;
                 }
             }
         }
@@ -172,9 +170,9 @@ impl Database for DB {
     fn upsert_playlist(&self, playlist: &NewPlaylistData) -> Fallible<()> {
         let tree = self.open_tree(TREE_PLAYLISTS)?;
         let id = playlist.id.to_le_bytes();
-        tree.set(&id, serialize(playlist)?)?;
+        tree.insert(&id, serialize(playlist)?)?;
         if let Some(url) = playlist.source {
-            self.open_tree(TREE_PLAYLIST_URL)?.set(url, &id)?;
+            self.open_tree(TREE_PLAYLIST_URL)?.insert(url, &id)?;
         }
         Ok(())
     }
@@ -187,7 +185,7 @@ impl Database for DB {
                 None => {
                     // No playlist but mapping URL->ID in DB
                     warn!("Inconsitent DB! No playlist for stored URL found!");
-                    tree_pl.del(id)?;
+                    tree_pl.remove(id)?;
                 }
             }
         }
@@ -200,17 +198,15 @@ impl Database for DB {
                 let playlist = deserialize::<PlaylistData>(&pl)?;
                 if let Some(url) = playlist.source {
                     let tree_url = self.open_tree(TREE_PLAYLIST_URL)?;
-                    tree_url.del(url)?;
+                    tree_url.remove(url)?;
                 }
-                tree_pl.del(id.to_le_bytes())?;
+                tree_pl.remove(id.to_le_bytes())?;
                 Ok(())
             }
             None => Err(LocalDBErr::NoValueFound.into()),
         }
     }
 }
-
-type WTree = Arc<Tree>;
 
 impl DB {
     /// Generate ID, used for manual ID creation
@@ -243,7 +239,7 @@ impl DB {
                 }
             }
         } else {
-            tree.set(KEY_VERSION, serialize(DB_VERSION).unwrap())?;
+            tree.insert(KEY_VERSION, serialize(DB_VERSION).unwrap())?;
         }
         Ok(())
     }
@@ -269,7 +265,7 @@ impl DB {
     }
 
     /// Open tree with wrapped error
-    fn open_tree(&self, tree: &'static str) -> Fallible<WTree> {
+    fn open_tree(&self, tree: &'static str) -> Fallible<Tree> {
         Ok(self
             .db
             .open_tree(tree)

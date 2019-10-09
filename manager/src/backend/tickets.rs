@@ -29,14 +29,14 @@ use crate::models::{NewPlaylistData, PlaylistData};
 /// Knows action to perform for specific IDs.
 #[derive(Clone)]
 pub struct TicketHandler {
-    data: Arc<RwLock<HashMap<TicketID, Box<Ticket + Send + Sync>>>>,
+    data: Arc<RwLock<HashMap<TicketID, Box<dyn Ticket + Send + Sync>>>>,
 }
 
 impl TicketHandler {
     pub fn new() -> TicketHandler {
         TicketHandler {
             data: Arc::new(RwLock::new(
-                HashMap::<TicketID, Box<Ticket + Send + Sync>>::new(),
+                HashMap::<TicketID, Box<dyn Ticket + Send + Sync>>::new(),
             )),
         }
     }
