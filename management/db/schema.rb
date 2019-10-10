@@ -10,7 +10,16 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_10_09_230044) do
+ActiveRecord::Schema.define(version: 2019_10_10_141150) do
+
+  create_table "entries", force: :cascade do |t|
+    t.integer "playlist_id", null: false
+    t.integer "song_id", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["playlist_id"], name: "index_entries_on_playlist_id"
+    t.index ["song_id"], name: "index_entries_on_song_id"
+  end
 
   create_table "instances", force: :cascade do |t|
     t.string "host", null: false
@@ -24,6 +33,23 @@ ActiveRecord::Schema.define(version: 2019_10_09_230044) do
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.index ["api_token"], name: "index_instances_on_api_token", unique: true
+  end
+
+  create_table "playlists", force: :cascade do |t|
+    t.string "name"
+    t.string "author"
+    t.string "source"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+  end
+
+  create_table "songs", force: :cascade do |t|
+    t.string "name"
+    t.string "source"
+    t.string "artist"
+    t.integer "length"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
   end
 
   create_table "users", force: :cascade do |t|
@@ -46,4 +72,6 @@ ActiveRecord::Schema.define(version: 2019_10_09_230044) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_foreign_key "entries", "playlists"
+  add_foreign_key "entries", "songs"
 end
