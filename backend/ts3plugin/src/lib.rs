@@ -46,51 +46,6 @@ pub enum APIErr {
     RequestError(#[cause] reqwest::Error),
 }
 
-// jsonrpc_client!(
-//     #[derive(Debug)]
-//     pub struct BackendRPCClient {
-
-//     // Return: allowed, message, Volume [0 - 100]
-//     pub fn volume_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<VolumeResponse>;
-//     // Return: allowed, message, success
-//     pub fn volume_set(&mut self, id : i32, invoker_name : String, invoker_groups : String, volume : f64) -> RpcRequest<DefaultResponse>;
-//     // Return: allowed, message, success
-//     pub fn volume_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
-
-//     // Return: allowed, message, title
-//     pub fn track_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<TitleResponse>;
-//     // Return: allowed, message, success
-//     pub fn track_next(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-//     // Return: allowed, message, success
-//     pub fn track_previous(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-//     // Return: allowed, message, success
-//     pub fn track_resume(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-//     // Return: allowed, message, success
-//     pub fn track_pause(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-//     // Return: allowed, message, success
-//     pub fn track_stop(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-//     // Return allowed, message
-//     pub fn playback_random(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-
-//     // Return: allowed, message, name
-//     pub fn playlist_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<PlaylistResponse>;
-//     // n > 0: return the next n tracks
-//     // n <= 0 isn't allowed
-//     // Return: allowed, message, tracklist
-//     pub fn queue_tracks(&mut self, id : i32, invoker_name : String, invoker_groups : String, n : i32) -> RpcRequest<TitleListResponse>;
-//     // Return: allowed, message, success
-//     pub fn queue_clear(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-//     // Return: allowed, message, success
-//     pub fn queue_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
-//     // Return: allowed, message, success
-//     pub fn queue(&mut self, id : i32, invoker_name : String, invoker_groups : String, url : String) -> RpcRequest<DefaultResponse>;
-//     // Return: allowed, message, success
-//     pub fn playlist_load(&mut self, id : i32, invoker_name : String, invoker_groups : String, playlist_name : String) -> RpcRequest<DefaultResponse>;
-
-//     // debug, halt bot
-//     pub fn halt(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-// });
-
 lazy_static! {
     static ref ADDRESS: SocketAddr = env::var("CALLBACK_YAMBA")
         .unwrap_or("127.0.0.1:1337".to_string())
