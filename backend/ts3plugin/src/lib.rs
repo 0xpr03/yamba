@@ -14,32 +14,27 @@
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
-#[macro_use]
-extern crate serde_derive;
+use serde::Serialize;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
-extern crate jsonrpc_client_core;
-#[macro_use]
 extern crate failure_derive;
 
-mod models;
-
-use models::*;
-
 use failure::Fallible;
-use jsonrpc_client_http::HttpTransport;
 use regex::*;
+use reqwest::{header, Client, ClientBuilder};
 use ts3plugin::TsApi;
 use ts3plugin::*;
-use yamba_types::rpc::*;
+use yamba_types::client::*;
+use yamba_types::client_internal::*;
 
+use std::collections::HashMap;
 use std::env;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::process;
+use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
@@ -51,54 +46,52 @@ pub enum APIErr {
     RequestError(#[cause] reqwest::Error),
 }
 
-jsonrpc_client!(
-    #[derive(Debug)]
-    pub struct BackendRPCClient {
+// jsonrpc_client!(
+//     #[derive(Debug)]
+//     pub struct BackendRPCClient {
 
-    // Return: allowed, message, Volume [0 - 100]
-    pub fn volume_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<VolumeResponse>;
-    // Return: allowed, message, success
-    pub fn volume_set(&mut self, id : i32, invoker_name : String, invoker_groups : String, volume : f64) -> RpcRequest<DefaultResponse>;
-    // Return: allowed, message, success
-    pub fn volume_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
+//     // Return: allowed, message, Volume [0 - 100]
+//     pub fn volume_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<VolumeResponse>;
+//     // Return: allowed, message, success
+//     pub fn volume_set(&mut self, id : i32, invoker_name : String, invoker_groups : String, volume : f64) -> RpcRequest<DefaultResponse>;
+//     // Return: allowed, message, success
+//     pub fn volume_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
 
-    // Return: allowed, message, title
-    pub fn track_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<TitleResponse>;
-    // Return: allowed, message, success
-    pub fn track_next(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-    // Return: allowed, message, success
-    pub fn track_previous(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-    // Return: allowed, message, success
-    pub fn track_resume(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-    // Return: allowed, message, success
-    pub fn track_pause(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-    // Return: allowed, message, success
-    pub fn track_stop(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-    // Return allowed, message
-    pub fn playback_random(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
+//     // Return: allowed, message, title
+//     pub fn track_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<TitleResponse>;
+//     // Return: allowed, message, success
+//     pub fn track_next(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
+//     // Return: allowed, message, success
+//     pub fn track_previous(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
+//     // Return: allowed, message, success
+//     pub fn track_resume(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
+//     // Return: allowed, message, success
+//     pub fn track_pause(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
+//     // Return: allowed, message, success
+//     pub fn track_stop(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
+//     // Return allowed, message
+//     pub fn playback_random(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
 
+//     // Return: allowed, message, name
+//     pub fn playlist_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<PlaylistResponse>;
+//     // n > 0: return the next n tracks
+//     // n <= 0 isn't allowed
+//     // Return: allowed, message, tracklist
+//     pub fn queue_tracks(&mut self, id : i32, invoker_name : String, invoker_groups : String, n : i32) -> RpcRequest<TitleListResponse>;
+//     // Return: allowed, message, success
+//     pub fn queue_clear(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
+//     // Return: allowed, message, success
+//     pub fn queue_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
+//     // Return: allowed, message, success
+//     pub fn queue(&mut self, id : i32, invoker_name : String, invoker_groups : String, url : String) -> RpcRequest<DefaultResponse>;
+//     // Return: allowed, message, success
+//     pub fn playlist_load(&mut self, id : i32, invoker_name : String, invoker_groups : String, playlist_name : String) -> RpcRequest<DefaultResponse>;
 
-    // Return: allowed, message, name
-    pub fn playlist_get(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<PlaylistResponse>;
-    // n > 0: return the next n tracks
-    // n <= 0 isn't allowed
-    // Return: allowed, message, tracklist
-    pub fn queue_tracks(&mut self, id : i32, invoker_name : String, invoker_groups : String, n : i32) -> RpcRequest<TitleListResponse>;
-    // Return: allowed, message, success
-    pub fn queue_clear(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-    // Return: allowed, message, success
-    pub fn queue_lock(&mut self, id : i32, invoker_name : String, invoker_groups : String, lock : bool) -> RpcRequest<DefaultResponse>;
-    // Return: allowed, message, success
-    pub fn queue(&mut self, id : i32, invoker_name : String, invoker_groups : String, url : String) -> RpcRequest<DefaultResponse>;
-    // Return: allowed, message, success
-    pub fn playlist_load(&mut self, id : i32, invoker_name : String, invoker_groups : String, playlist_name : String) -> RpcRequest<DefaultResponse>;
-
-    // debug, halt bot
-    pub fn halt(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
-});
+//     // debug, halt bot
+//     pub fn halt(&mut self, id : i32, invoker_name : String, invoker_groups : String) -> RpcRequest<DefaultResponse>;
+// });
 
 lazy_static! {
-    static ref CLIENT: reqwest::Client = reqwest::Client::new();
     static ref ADDRESS: SocketAddr = env::var("CALLBACK_YAMBA")
         .unwrap_or("127.0.0.1:1337".to_string())
         .parse::<SocketAddr>()
@@ -115,33 +108,34 @@ lazy_static! {
     pub static ref R_IGNORE: Regex =
         Regex::new(r"^((Sorry, I didn't get that... Have you tried !help yet)|(RPC call failed)|(n not parseable))")
             .unwrap();
-    pub static ref R_HELP: Regex = Regex::new(r"^((\?)|(!help))").unwrap();
-    pub static ref R_VOL_LOCK: Regex = Regex::new(r"^(!l(o?ck)?( )?v(ol(ume)?)?)").unwrap();
-    pub static ref R_VOL_UNLOCK: Regex = Regex::new(r"^(!un?l(o?ck)?( )?v(ol(ume)?)?)").unwrap();
-    pub static ref R_VOL_SET: Regex = Regex::new(r"^(!v(ol(ume)?)? (\d*))").unwrap();
-    pub static ref R_VOL_GET: Regex = Regex::new(r"^!v(ol(ume)?)?").unwrap();
-    pub static ref R_TRACK_GET: Regex = Regex::new(r"^!playing").unwrap();
-    pub static ref R_TRACK_NEXT: Regex = Regex::new(r"^((!n(e?xt)?)|(>>))").unwrap();
-    pub static ref R_TRACK_PREVIOUS: Regex = Regex::new(r"^((!(prv)|(previous))|<<)").unwrap();
-    pub static ref R_TRACK_RESUME: Regex = Regex::new(r"^((!r(es(ume)?)?)|>)$").unwrap();
-    pub static ref R_RANDOM: Regex = Regex::new(r"^!random").unwrap();
-    pub static ref R_TRACK_PAUSE: Regex = Regex::new(r"^((!pause)|(\|\|))").unwrap();
-    pub static ref R_TRACK_STOP: Regex = Regex::new(r"^!s(to?p)?").unwrap();
-    pub static ref R_PLAYLIST_GET: Regex = Regex::new(r"^!((playlist)|(plst))").unwrap();
-    pub static ref R_PLAYLIST_TRACKS_5: Regex = Regex::new(r"^!t((rx)|(racks))?").unwrap();
-    pub static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^!t((rx)|(racks))? (\d*)").unwrap();
-    pub static ref R_QUEUE_CLEAR: Regex = Regex::new("^!c(lear)?").unwrap();
-    pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^!l(o?ck)?( )?p((laylist)|(lst))").unwrap();
-    pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^!un?l(o?ck)?( )?p((laylist)|(lst))").unwrap();
-    pub static ref R_ENQUEUE: Regex = Regex::new(r"^!q(ueue)? ([^ ]+)").unwrap();
-    pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^!pl(oa)?d (.+)").unwrap();
-    pub static ref R_HALT: Regex = Regex::new(r"^!halt").unwrap();
+    pub static ref R_HELP: Regex = Regex::new(r"^((\?)|(help))$").unwrap();
+    pub static ref R_VOL_LOCK: Regex = Regex::new(r"^(l(o?ck)?( )?v(ol(ume)?)?)$").unwrap();
+    pub static ref R_VOL_UNLOCK: Regex = Regex::new(r"^(un?l(o?ck)?( )?v(ol(ume)?)?)$").unwrap();
+    pub static ref R_VOL_SET: Regex = Regex::new(r"^(v(ol(ume)?)? (\d*))$").unwrap();
+    pub static ref R_VOL_GET: Regex = Regex::new(r"^v(ol(ume)?)?$").unwrap();
+    pub static ref R_TRACK_GET: Regex = Regex::new(r"^playing$").unwrap();
+    pub static ref R_TRACK_NEXT: Regex = Regex::new(r"^((n(e?xt)?)|(>>))$").unwrap();
+    pub static ref R_TRACK_PREVIOUS: Regex = Regex::new(r"^(((prv)|(previxous))|<<)$").unwrap();
+    pub static ref R_TRACK_RESUME: Regex = Regex::new(r"^((r(es(ume)?)?)|>)$").unwrap();
+    pub static ref R_RANDOM: Regex = Regex::new(r"^random$").unwrap();
+    pub static ref R_TRACK_PAUSE: Regex = Regex::new(r"^((pause)|(\|\|))$").unwrap();
+    pub static ref R_TRACK_STOP: Regex = Regex::new(r"^s(to?p)?$").unwrap();
+    pub static ref R_PLAYLIST_GET: Regex = Regex::new(r"^((playlist)|(plst))$").unwrap();
+    pub static ref R_PLAYLIST_TRACKS_5: Regex = Regex::new(r"^t((rx)|(racks))?$").unwrap();
+    pub static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^t((rx)|(racks))? (\d*)$").unwrap();
+    pub static ref R_QUEUE_CLEAR: Regex = Regex::new("^c(lear)?$").unwrap();
+    pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^l(o?ck)?( )?p((laylist)|(lst))$").unwrap();
+    pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^un?l(o?ck)?( )?p((laylist)|(lst))$").unwrap();
+    pub static ref R_ENQUEUE: Regex = Regex::new(r"^q(ueue)? ([^ ]+)$").unwrap();
+    pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^pl(oa)?d (.+)$").unwrap();
+    pub static ref R_HALT: Regex = Regex::new(r"^halt$").unwrap();
 }
 
 #[derive(Debug)]
 struct MyTsPlugin {
     killer: Sender<()>,
-    client_mut: Arc<Mutex<BackendRPCClient<jsonrpc_client_http::HttpHandle>>>,
+    client: Arc<Client>,
+    tokens: HashMap<String, String>,
 }
 
 const PLUGIN_NAME_I: &'static str = env!("CARGO_PKG_NAME");
@@ -258,7 +252,7 @@ impl Plugin for MyTsPlugin {
         }
 
         if status == ConnectStatus::ConnectionEstablished {
-            match connected(*ID.as_ref().unwrap(), &api) {
+            match connected(*ID.as_ref().unwrap(), &api, &*self.client) {
                 Err(e) => {
                     api.log_or_print(
                         format!("Error trying to signal connected state to backend, stopping heartbeat: {}", e),
@@ -294,20 +288,29 @@ impl Plugin for MyTsPlugin {
             return Err(InitError::Failure);
         }
 
-        let transport = HttpTransport::new().standalone().unwrap();
-        let transport_handle = transport.handle(&rpc_host).unwrap();
-        let client = BackendRPCClient::new(transport_handle);
-        let client_mut_arc = Arc::new(Mutex::from(client));
-        let _client_mut_heartbeat = client_mut_arc.clone();
-        let client_mut_self = client_mut_arc.clone();
+        let mut headers = header::HeaderMap::new();
+        headers.insert(
+            header::AUTHORIZATION,
+            header::HeaderValue::from_static("secret"),
+        );
+
+        let client = Arc::new(
+            ClientBuilder::new()
+                .no_proxy()
+                .tcp_nodelay()
+                .default_headers(headers)
+                .build()
+                .expect("Can't create HTTP client!"),
+        );
 
         let (sender, receiver) = channel();
         let id_copy = ID.clone();
+        let client_cpy = client.clone();
         thread::spawn(move || {
             let mut failed_heartbeats = 0;
             if let Some(id) = id_copy {
                 while receiver.recv_timeout(Duration::from_secs(1)).is_err() {
-                    match heartbeat(id) {
+                    match heartbeat(id, &*client_cpy) {
                         Ok(_) => {
                             failed_heartbeats = 0;
                         }
@@ -335,7 +338,8 @@ impl Plugin for MyTsPlugin {
 
         let me = MyTsPlugin {
             killer: sender,
-            client_mut: client_mut_self,
+            client,
+            tokens: HashMap::new(),
         };
 
         api.log_or_print(format!("{:?}", me), PLUGIN_NAME_I, LogLevel::Debug);
@@ -364,9 +368,13 @@ impl Plugin for MyTsPlugin {
         message: String,
         _ignored: bool,
     ) -> bool {
-        let id: i32 = *ID.as_ref().unwrap();
         let invoker_name: String = invoker.get_name().to_string();
-        let invoker_groups: String;
+
+        if target == MessageReceiver::Channel {
+            if !message.starts_with("!") {
+                return false;
+            }
+        }
 
         if let Some(server) = api.get_server(server_id) {
             if Ok(invoker.get_id()) == server.get_own_connection_id() {
@@ -374,337 +382,26 @@ impl Plugin for MyTsPlugin {
             }
 
             if let Some(connection) = server.get_connection(invoker.get_id()) {
-                if let Ok(value) = api.get_string_client_properties(
-                    ClientProperties::Servergroups,
-                    &invoker.get_id(),
-                    &server_id,
-                ) {
-                    invoker_groups = value.to_owned_string_lossy();
-                    let mut client_lock =
-                        self.client_mut.lock().expect("Can't get client rpc lock!");
-                    let mut is_rpc_error: bool = false;
-                    let mut rpc_error: jsonrpc_client_core::Error =
-                        jsonrpc_client_core::Error::from_kind(jsonrpc_client_core::ErrorKind::Msg(
-                            String::from("No error"),
-                        ));
-                    let mut rpc_allowed: bool = true;
-                    let mut rpc_message: String = String::from("");
+                let mut message = message.trim();
+                if message.starts_with("!") {
+                    let (_, msg) = message.split_at(1);
+                    message = msg;
+                }
 
+                let token = self.tokens.get(invoker.get_uid()).map(|t| t.clone());
+
+                api.log_or_print(
+                    format!("\"{}\" from \"{}\"", message, invoker_name),
+                    PLUGIN_NAME_I,
+                    LogLevel::Info,
+                );
+
+                if let Err(e) = handle_message(message, token, &*self.client, target, connection) {
                     api.log_or_print(
-                        format!("\"{}\" from \"{}\"", message, invoker_name),
+                        format!("Error handling command: {}", e),
                         PLUGIN_NAME_I,
-                        LogLevel::Info,
+                        LogLevel::Warning,
                     );
-
-                    if R_IGNORE.is_match(&message) {
-                        // IGNORED MESSAGES
-                    } else if R_HELP.is_match(&message) {
-                        let _ = connection.send_message(HELP);
-                    } else if R_VOL_LOCK.is_match(&message) {
-                        match client_lock
-                            .volume_lock(id, invoker_name, invoker_groups, true)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("Ok"));
-                                }
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_VOL_UNLOCK.is_match(&message) {
-                        match client_lock
-                            .volume_lock(id, invoker_name, invoker_groups, false)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if let Some(caps) = R_VOL_SET.captures(&message) {
-                        if let Ok(vol) = caps[4].parse::<i32>() {
-                            match client_lock
-                                .volume_set(id, invoker_name, invoker_groups, vol as f64 / 100.0)
-                                .call()
-                            {
-                                Ok(_res) => {
-                                    let _ = connection.send_message(format!("Ok"));
-                                }
-                                Err(e) => {
-                                    is_rpc_error = true;
-                                    rpc_error = e;
-                                }
-                            }
-                        } else {
-                            let _ = connection.send_message(format!("n not parseable"));
-                        }
-                    } else if R_VOL_GET.is_match(&message) {
-                        match client_lock
-                            .volume_get(id, invoker_name, invoker_groups)
-                            .call()
-                        {
-                            Ok(res) => {
-                                let _ = connection
-                                    .send_message(format!("{}", (res.volume * 100.0) as i32));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_TRACK_GET.is_match(&message) {
-                        match client_lock
-                            .track_get(id, invoker_name, invoker_groups)
-                            .call()
-                        {
-                            Ok(res) => {
-                                let _ = connection.send_message(res.title);
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_TRACK_NEXT.is_match(&message) {
-                        match client_lock
-                            .track_next(id, invoker_name, invoker_groups)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_TRACK_PREVIOUS.is_match(&message) {
-                        match client_lock
-                            .track_previous(id, invoker_name, invoker_groups)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_TRACK_RESUME.is_match(&message) {
-                        match client_lock
-                            .track_resume(id, invoker_name, invoker_groups)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_TRACK_PAUSE.is_match(&message) {
-                        match client_lock
-                            .track_pause(id, invoker_name, invoker_groups)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_TRACK_STOP.is_match(&message) {
-                        match client_lock
-                            .track_stop(id, invoker_name, invoker_groups)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_PLAYLIST_GET.is_match(&message) {
-                        match client_lock
-                            .playlist_get(id, invoker_name, invoker_groups)
-                            .call()
-                        {
-                            Ok(res) => {
-                                rpc_allowed = res.allowed;
-                                rpc_message = res.message;
-                                let name = res.name;
-                                if rpc_allowed {
-                                    let _ = connection.send_message(format!("{}", name));
-                                }
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if let Some(caps) = R_PLAYLIST_TRACKS_N.captures(&message) {
-                        if let Ok(n) = caps[4].parse::<i32>() {
-                            match client_lock
-                                .queue_tracks(id, invoker_name, invoker_groups, n)
-                                .call()
-                            {
-                                Ok(res) => {
-                                    print_tracks(connection, res.tracklist);
-                                }
-                                Err(e) => {
-                                    is_rpc_error = true;
-                                    rpc_error = e;
-                                }
-                            }
-                        } else {
-                            let _ = connection.send_message(format!("n not parseable"));
-                        }
-                    } else if R_PLAYLIST_TRACKS_5.is_match(&message) {
-                        match client_lock
-                            .queue_tracks(id, invoker_name, invoker_groups, 5)
-                            .call()
-                        {
-                            Ok(res) => {
-                                print_tracks(connection, res.tracklist);
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_QUEUE_CLEAR.is_match(&message) {
-                        match client_lock
-                            .queue_clear(id, invoker_name, invoker_groups)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_PLAYLIST_LOCK.is_match(&message) {
-                        match client_lock
-                            .queue_lock(id, invoker_name, invoker_groups, true)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_PLAYLIST_UNLOCK.is_match(&message) {
-                        match client_lock
-                            .queue_lock(id, invoker_name, invoker_groups, false)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if let Some(caps) = R_ENQUEUE.captures(&message) {
-                        let url = String::from(&caps[2])
-                            .replace("[URL]", "")
-                            .replace("[/URL]", "");
-                        match client_lock
-                            .queue(id, invoker_name, invoker_groups, url)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_PLAYLIST_LOAD.is_match(&message) {
-                        let playlist_name = String::from(&R_VOL_SET.captures(&message).unwrap()[4]);
-                        match client_lock
-                            .playlist_load(id, invoker_name, invoker_groups, playlist_name)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else if R_RANDOM.is_match(&message) {
-                        println!("Randomize..");
-                        match client_lock
-                            .playback_random(id, invoker_name, invoker_groups)
-                            .call()
-                        {
-                            Ok(_res) => {
-                                let _ = connection.send_message(format!("Ok"));
-                            }
-                            Err(e) => {
-                                is_rpc_error = true;
-                                rpc_error = e;
-                            }
-                        }
-                    } else {
-                        #[cfg(massif)]
-                        {
-                            if R_HALT.is_match(&message) {
-                                match client_lock.halt(id, invoker_name, invoker_groups).call() {
-                                    Ok(res) => {
-                                        let _ = connection.send_message(format!("Ok"));
-                                    }
-                                    Err(e) => {
-                                        is_rpc_error = true;
-                                        rpc_error = e;
-                                    }
-                                }
-                            }
-                        }
-
-                        if match target {
-                            MessageReceiver::Connection(_) => true,
-                            _ => false,
-                        } {
-                            let _ = connection.send_message(
-                                "Sorry, I didn't get that... Have you tried !help yet?",
-                            );
-                        }
-                    }
-
-                    if is_rpc_error {
-                        let _ = connection
-                            .send_message(format!("RPC call failed\nReason: {}", rpc_error));
-                        println!("Error on JSONRPC: {:?}", rpc_error);
-                    } else if !rpc_allowed {
-                        let _ = connection
-                            .send_message(format!("Action not allowed!\nReason: {}", rpc_message));
-                    }
-                } else {
-                    let _ =
-                        connection.send_message("Internal Error: Couldn't get your server groups!");
                 }
             }
         }
@@ -712,16 +409,102 @@ impl Plugin for MyTsPlugin {
     }
 }
 
-fn connected(id: i32, api: &TsApi) -> Fallible<()> {
+fn handle_message(
+    message: &str,
+    token: Option<String>,
+    client: &Client,
+    target: MessageReceiver,
+    connection: &Connection,
+) -> Fallible<()> {
+    if R_IGNORE.is_match(&message) {
+        // IGNORED MESSAGES
+    } else if R_HELP.is_match(&message) {
+        let _ = connection.send_message(HELP);
+    } else if R_TRACK_NEXT.is_match(&message) {
+        handle_action("next", &token, client)?;
+    } else if let Some(cpt) = R_VOL_SET.captures(&message) {
+        handle_action_cap::<usize>(cpt, 4, "next", &token, client)?;
+    } else {
+        if match target {
+            MessageReceiver::Connection(_) => true,
+            _ => false,
+        } {
+            let _ =
+                connection.send_message("Sorry, I didn't get that... Have you tried !help yet?");
+        }
+    }
+    Ok(())
+}
+
+fn handle_action_cap<T: Serialize + FromStr + Sized>(
+    cpt: Captures,
+    cpt_pos: usize,
+    action: &'static str,
+    token: &Option<String>,
+    client: &Client,
+) -> Fallible<()> {
+    let data = match cpt[cpt_pos].parse::<T>() {
+        Ok(v) => v,
+        Err(e) => {
+            /*todo send warn */
+            return Ok(());
+        }
+    };
+    send_action(
+        client,
+        &ParamRequest {
+            id: ID.expect("No ID!"),
+            token,
+            data,
+        },
+        action,
+    )?;
+    Ok(())
+}
+
+fn handle_action(action: &'static str, token: &Option<String>, client: &Client) -> Fallible<()> {
+    send_action(
+        client,
+        &DefaultRequest {
+            id: ID.expect("No ID!"),
+            token,
+        },
+        action,
+    )?;
+    Ok(())
+}
+
+fn send_action<T: Serialize + ?Sized>(
+    client: &Client,
+    data: &T,
+    action: &'static str,
+) -> Fallible<()> {
+    match client
+        .post(&format!("http://{}/{}", *ADDRESS, action))
+        .json(data)
+        .send()
+    {
+        Err(e) => Err(APIErr::RequestError(e).into()),
+        Ok(v) => {
+            if v.status() == reqwest::StatusCode::ACCEPTED {
+                Ok(())
+            } else {
+                Err(APIErr::NoSuccess(format!("Heartbeat failed: {}", v.status())).into())
+            }
+        }
+    }
+}
+
+fn connected(id: i32, api: &TsApi, client: &Client) -> Fallible<()> {
     let host_internal = format!("http://{}/internal/started", *CALLBACK_INTERNAL);
     api.log_or_print(
         format!("Internal RPC Host: {}", host_internal),
         PLUGIN_NAME_I,
         LogLevel::Debug,
     );
-    match CLIENT
+    match client
         .post(&host_internal)
-        .json(&ConnectedRequest {
+        .json(&Connected {
             id,
             pid: process::id(),
         })
@@ -743,10 +526,10 @@ fn connected(id: i32, api: &TsApi) -> Fallible<()> {
 }
 
 /// run heartbeat command
-fn heartbeat(id: i32) -> Fallible<()> {
-    match CLIENT
+fn heartbeat(id: i32, client: &Client) -> Fallible<()> {
+    match client
         .post(&format!("http://{}/internal/heartbeat", *CALLBACK_INTERNAL))
-        .json(&HeartbeatRequest { id })
+        .json(&Heartbeat { id })
         .send()
     {
         Err(e) => Err(APIErr::RequestError(e).into()),
@@ -761,21 +544,3 @@ fn heartbeat(id: i32) -> Fallible<()> {
 }
 
 create_plugin!(MyTsPlugin);
-
-#[cfg(test)]
-mod testing {
-    use super::*;
-    use std::process;
-    #[test]
-    fn test_connected() {
-        let pid = process::id();
-
-        let mut response = reqwest::Client::new()
-            .post("http://127.0.0.1:1330/internal/started")
-            .json(&ConnectedRequest { id: 1, pid })
-            .send()
-            .unwrap();
-        println!("{:?}", response);
-        println!("{:?}", response.text());
-    }
-}

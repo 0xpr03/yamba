@@ -15,14 +15,11 @@ crate-type = ["dylib"]
 massif = []
 
 [dependencies]
-failure = "0"
+failure = "0.1"
 failure_derive = "0.1"
 lazy_static = "1"
-jsonrpc-client-core = "0.5.0"
-jsonrpc-client-http = "0.5.0"
 regex = "1"
-serde = "1"
-serde_derive = "1"
+serde = {features = ["derive"],version = "1"}
 reqwest = {default-features = false, version = "0.9" }
 
 [dependencies.ts3plugin]
@@ -33,4 +30,4 @@ branch = "yamba_production"
 path = "../types"
 version = "0"
 default-features = false
-features = ["rpc"]
+features = ["client", "client_internal"]

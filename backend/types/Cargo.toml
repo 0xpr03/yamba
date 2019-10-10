@@ -13,8 +13,10 @@ tower = ["tower-web"]
 track = ["metrohash"]
 # Rest models in models
 rest = []
-# Json RPC types
-rpc = []
+# ts3<->daemon types
+client_internal = []
+# Plugin call types
+client = []
 # Actix messages for Websocket stuff
 message = ["actix"]
 

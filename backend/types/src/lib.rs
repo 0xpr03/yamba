@@ -33,10 +33,12 @@
 extern crate tower_web;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "client")]
+pub mod client;
+#[cfg(feature = "client_internal")]
+pub mod client_internal;
 #[cfg(feature = "rest")]
 pub mod models;
-#[cfg(feature = "rpc")]
-pub mod rpc;
 #[cfg(feature = "track")]
 pub mod track;
 #[cfg(feature = "message")]
