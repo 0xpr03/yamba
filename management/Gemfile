@@ -61,3 +61,6 @@ gem 'pundit', '~> 2.1.0'
 gem 'bootstrap', '~> 4.3.1'
 gem 'jquery-rails', '~> 4.3.5'
 gem 'font-awesome-sass', '~> 5.8.1'
+
+# Api Callbacks
+gem 'http', '~>4.1.1'
