@@ -100,35 +100,38 @@ lazy_static! {
         .unwrap_or("127.0.0.1:1330".to_string())
         .parse::<SocketAddr>()
         .unwrap();
-    pub static ref ID: Option<i32> = env::var("ID_YAMBA")
+    static ref AUTH_TOKEN: String = env::var("AUTH_TOKEN_YAMBA")
+        .unwrap_or("".to_string());
+    static ref ID: Option<i32> = env::var("ID_YAMBA")
         .unwrap_or("".to_string())
         .parse::<i32>()
         .map(|v| Some(v))
         .unwrap_or(None);
-    pub static ref R_IGNORE: Regex =
+    static ref R_IGNORE: Regex =
         Regex::new(r"^((Sorry, I didn't get that... Have you tried !help yet)|(RPC call failed)|(n not parseable))")
             .unwrap();
-    pub static ref R_HELP: Regex = Regex::new(r"^((\?)|(help))$").unwrap();
-    pub static ref R_VOL_LOCK: Regex = Regex::new(r"^(l(o?ck)?( )?v(ol(ume)?)?)$").unwrap();
-    pub static ref R_VOL_UNLOCK: Regex = Regex::new(r"^(un?l(o?ck)?( )?v(ol(ume)?)?)$").unwrap();
-    pub static ref R_VOL_SET: Regex = Regex::new(r"^(v(ol(ume)?)? (\d*))$").unwrap();
-    pub static ref R_VOL_GET: Regex = Regex::new(r"^v(ol(ume)?)?$").unwrap();
-    pub static ref R_TRACK_GET: Regex = Regex::new(r"^playing$").unwrap();
-    pub static ref R_TRACK_NEXT: Regex = Regex::new(r"^((n(e?xt)?)|(>>))$").unwrap();
-    pub static ref R_TRACK_PREVIOUS: Regex = Regex::new(r"^(((prv)|(previxous))|<<)$").unwrap();
-    pub static ref R_TRACK_RESUME: Regex = Regex::new(r"^((r(es(ume)?)?)|>)$").unwrap();
-    pub static ref R_RANDOM: Regex = Regex::new(r"^random$").unwrap();
-    pub static ref R_TRACK_PAUSE: Regex = Regex::new(r"^((pause)|(\|\|))$").unwrap();
-    pub static ref R_TRACK_STOP: Regex = Regex::new(r"^s(to?p)?$").unwrap();
-    pub static ref R_PLAYLIST_GET: Regex = Regex::new(r"^((playlist)|(plst))$").unwrap();
-    pub static ref R_PLAYLIST_TRACKS_5: Regex = Regex::new(r"^t((rx)|(racks))?$").unwrap();
-    pub static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^t((rx)|(racks))? (\d*)$").unwrap();
-    pub static ref R_QUEUE_CLEAR: Regex = Regex::new("^c(lear)?$").unwrap();
-    pub static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^l(o?ck)?( )?p((laylist)|(lst))$").unwrap();
-    pub static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^un?l(o?ck)?( )?p((laylist)|(lst))$").unwrap();
-    pub static ref R_ENQUEUE: Regex = Regex::new(r"^q(ueue)? ([^ ]+)$").unwrap();
-    pub static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^pl(oa)?d (.+)$").unwrap();
-    pub static ref R_HALT: Regex = Regex::new(r"^halt$").unwrap();
+    static ref R_HELP: Regex = Regex::new(r"^((\?)|(help))$").unwrap();
+    static ref R_VOL_LOCK: Regex = Regex::new(r"^(l(o?ck)?( )?v(ol(ume)?)?)$").unwrap();
+    static ref R_VOL_UNLOCK: Regex = Regex::new(r"^(un?l(o?ck)?( )?v(ol(ume)?)?)$").unwrap();
+    static ref R_VOL_SET: Regex = Regex::new(r"^(v(ol(ume)?)? (\d*))$").unwrap();
+    static ref R_LOGIN: Regex = Regex::new(r"login (a-zA-Z0-9)+").unwrap();
+    static ref R_VOL_GET: Regex = Regex::new(r"^v(ol(ume)?)?$").unwrap();
+    static ref R_TRACK_GET: Regex = Regex::new(r"^playing$").unwrap();
+    static ref R_TRACK_NEXT: Regex = Regex::new(r"^((n(e?xt)?)|(>>))$").unwrap();
+    static ref R_TRACK_PREVIOUS: Regex = Regex::new(r"^(((prv)|(previxous))|<<)$").unwrap();
+    static ref R_TRACK_RESUME: Regex = Regex::new(r"^((r(es(ume)?)?)|>)$").unwrap();
+    static ref R_RANDOM: Regex = Regex::new(r"^random$").unwrap();
+    static ref R_TRACK_PAUSE: Regex = Regex::new(r"^((pause)|(\|\|))$").unwrap();
+    static ref R_TRACK_STOP: Regex = Regex::new(r"^s(to?p)?$").unwrap();
+    static ref R_PLAYLIST_GET: Regex = Regex::new(r"^((playlist)|(plst))$").unwrap();
+    static ref R_PLAYLIST_TRACKS_5: Regex = Regex::new(r"^t((rx)|(racks))?$").unwrap();
+    static ref R_PLAYLIST_TRACKS_N: Regex = Regex::new(r"^t((rx)|(racks))? (\d*)$").unwrap();
+    static ref R_QUEUE_CLEAR: Regex = Regex::new("^c(lear)?$").unwrap();
+    static ref R_PLAYLIST_LOCK: Regex = Regex::new(r"^l(o?ck)?( )?p((laylist)|(lst))$").unwrap();
+    static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^un?l(o?ck)?( )?p((laylist)|(lst))$").unwrap();
+    static ref R_ENQUEUE: Regex = Regex::new(r"^q(ueue)? ([^ ]+)$").unwrap();
+    static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^pl(oa)?d (.+)$").unwrap();
+    static ref R_HALT: Regex = Regex::new(r"^halt$").unwrap();
 }
 
 #[derive(Debug)]
@@ -291,7 +294,8 @@ impl Plugin for MyTsPlugin {
         let mut headers = header::HeaderMap::new();
         headers.insert(
             header::AUTHORIZATION,
-            header::HeaderValue::from_static("secret"),
+            header::HeaderValue::from_str(&AUTH_TOKEN)
+                .expect("Can't parse AUTH TOKEN as header value!"),
         );
 
         let client = Arc::new(
@@ -396,7 +400,14 @@ impl Plugin for MyTsPlugin {
                     LogLevel::Info,
                 );
 
-                if let Err(e) = handle_message(message, token, &*self.client, target, connection) {
+                // handle login special case here, to avoid more param passing
+                if let Some(cpt) = R_LOGIN.captures(&message) {
+                    self.tokens
+                        .insert(invoker.get_uid().clone(), cpt[1].to_string());
+                    send_msg(connection, "Token stored", api);
+                } else if let Err(e) =
+                    handle_message(message, token, &*self.client, target, connection, api)
+                {
                     api.log_or_print(
                         format!("Error handling command: {}", e),
                         PLUGIN_NAME_I,
@@ -415,6 +426,7 @@ fn handle_message(
     client: &Client,
     target: MessageReceiver,
     connection: &Connection,
+    api: &TsApi,
 ) -> Fallible<()> {
     if R_IGNORE.is_match(&message) {
         // IGNORED MESSAGES
@@ -423,7 +435,9 @@ fn handle_message(
     } else if R_TRACK_NEXT.is_match(&message) {
         handle_action("next", &token, client)?;
     } else if let Some(cpt) = R_VOL_SET.captures(&message) {
-        handle_action_cap::<usize>(cpt, 4, "next", &token, client)?;
+        handle_action_cap::<usize>(cpt, 4, "next", &token, client, connection, api)?;
+    } else if let Some(cpt) = R_ENQUEUE.captures(&message) {
+        handle_action_cap::<String>(cpt, 2, "enqueue", &token, client, connection, api)?;
     } else {
         if match target {
             MessageReceiver::Connection(_) => true,
@@ -436,17 +450,29 @@ fn handle_message(
     Ok(())
 }
 
+/// Handle command with value
 fn handle_action_cap<T: Serialize + FromStr + Sized>(
     cpt: Captures,
     cpt_pos: usize,
     action: &'static str,
     token: &Option<String>,
     client: &Client,
-) -> Fallible<()> {
+    connection: &Connection,
+    api: &TsApi,
+) -> Fallible<()>
+where
+    T::Err: ::std::fmt::Debug,
+    // https://github.com/rust-lang/rust/issues/52662 can't enforce FromStr<Err: Debug>
+{
     let data = match cpt[cpt_pos].parse::<T>() {
         Ok(v) => v,
         Err(e) => {
-            /*todo send warn */
+            send_msg(connection, "Invalid value provided! Try !help", api);
+            api.log_or_print(
+                format!("Can't parse input: {:?}", e),
+                PLUGIN_NAME_I,
+                LogLevel::Warning,
+            );
             return Ok(());
         }
     };
@@ -462,6 +488,7 @@ fn handle_action_cap<T: Serialize + FromStr + Sized>(
     Ok(())
 }
 
+/// Handle command without vlaue
 fn handle_action(action: &'static str, token: &Option<String>, client: &Client) -> Fallible<()> {
     send_action(
         client,
@@ -474,6 +501,7 @@ fn handle_action(action: &'static str, token: &Option<String>, client: &Client) 
     Ok(())
 }
 
+/// Send command action
 fn send_action<T: Serialize + ?Sized>(
     client: &Client,
     data: &T,
@@ -495,6 +523,7 @@ fn send_action<T: Serialize + ?Sized>(
     }
 }
 
+/// Handle connection establish to ts server
 fn connected(id: i32, api: &TsApi, client: &Client) -> Fallible<()> {
     let host_internal = format!("http://{}/internal/started", *CALLBACK_INTERNAL);
     api.log_or_print(
@@ -522,6 +551,17 @@ fn connected(id: i32, api: &TsApi, client: &Client) -> Fallible<()> {
             }
         }
         Err(e) => Err(APIErr::RequestError(e).into()),
+    }
+}
+
+/// Helper, send message to connections and log errors
+fn send_msg(conn: &Connection, msg: &str, api: &TsApi) {
+    if let Err(e) = conn.send_message(msg) {
+        api.log_or_print(
+            format!("Message: {:?}", e),
+            PLUGIN_NAME_I,
+            LogLevel::Warning,
+        );
     }
 }
 
