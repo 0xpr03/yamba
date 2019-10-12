@@ -1,5 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+pub const TS_ENV_CALLBACK_INTERNAL: &'static str = "CALLBACK_YAMBA_INTERNAL";
+pub const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
+pub const TS_ENV_CALLBACK_AUTH_TOKEN: &'static str = "CALLBACK_YAMBA_AUTH_TOKEN";
+pub const TS_ENV_ID: &'static str = "ID_YAMBA";
+
 /// Heartbeat, client -> daemon
 #[derive(Deserialize, Serialize)]
 pub struct Heartbeat {

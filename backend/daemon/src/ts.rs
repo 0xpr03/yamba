@@ -34,13 +34,9 @@ use rusqlite::{self, Connection};
 
 use crate::daemon::instance::ID;
 use crate::SETTINGS;
+use yamba_types::client_internal::*;
 use yamba_types::models::TSSettings;
 
-/// TS Instance
-
-const TS_ENV_CALLBACK_INTERNAL: &'static str = "CALLBACK_YAMBA_INTERNAL";
-const TS_ENV_CALLBACK: &'static str = "CALLBACK_YAMBA";
-const TS_ENV_ID: &'static str = "ID_YAMBA";
 const TS_SETTINGS_FILE: &'static str = "settings.db";
 const TS_PLUGINS_DIR: &'static str = "plugins";
 
@@ -108,6 +104,7 @@ impl TSInstance {
         callback_port_internal: &u16,
         callback_host: &str,
         callback_port: &u16,
+        auth_token: &str,
     ) -> Fallible<TSInstance> {
         let mut params = Vec::new();
         if let Some(v) = settings.port {
@@ -153,6 +150,7 @@ impl TSInstance {
             .env("KDEDIRS", "")
             .env("TS3_CONFIG_DIR", path_config.to_string_lossy().into_owned())
             .env(TS_ENV_ID, id.to_string())
+            .env(TS_ENV_CALLBACK_AUTH_TOKEN, auth_token)
             .env(
                 TS_ENV_CALLBACK_INTERNAL,
                 format!("{}:{}", callback_host_internal, callback_port_internal),

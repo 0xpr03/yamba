@@ -195,6 +195,8 @@ pub struct InstanceLoadReq {
     pub id: ID,
     /// Data for instance
     pub data: InstanceType,
+    /// Authentication token, used for callbacks
+    pub auth_token: String,
     /// Initial volume
     pub volume: Volume,
 }

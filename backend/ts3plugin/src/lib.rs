@@ -47,17 +47,17 @@ pub enum APIErr {
 }
 
 lazy_static! {
-    static ref ADDRESS: SocketAddr = env::var("CALLBACK_YAMBA")
+    static ref ADDRESS: SocketAddr = env::var(TS_ENV_CALLBACK)
         .unwrap_or("127.0.0.1:1337".to_string())
         .parse::<SocketAddr>()
         .unwrap_or(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1337));
-    static ref CALLBACK_INTERNAL: SocketAddr = env::var("CALLBACK_YAMBA_INTERNAL")
+    static ref CALLBACK_INTERNAL: SocketAddr = env::var(TS_ENV_CALLBACK_INTERNAL)
         .unwrap_or("127.0.0.1:1330".to_string())
         .parse::<SocketAddr>()
         .unwrap();
-    static ref AUTH_TOKEN: String = env::var("AUTH_TOKEN_YAMBA")
+    static ref AUTH_TOKEN: String = env::var(TS_ENV_CALLBACK_AUTH_TOKEN)
         .unwrap_or("".to_string());
-    static ref ID: Option<i32> = env::var("ID_YAMBA")
+    static ref ID: Option<i32> = env::var(TS_ENV_ID)
         .unwrap_or("".to_string())
         .parse::<i32>()
         .map(|v| Some(v))

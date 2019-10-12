@@ -113,8 +113,8 @@ impl Instance {
         base: &dyn InstanceDataProvider,
         player: Player,
         heartbeats: HeartbeatMap,
-    ) -> Instance {
-        let instance = Instance {
+    ) -> Self {
+        let instance = Self {
             voip: voip,
             url_resolve: base.get_controller().channel(id.clone(), 64),
             player,

@@ -220,7 +220,7 @@ fn restart() {
 pub fn create_instance(base: &InstanceBase, inst: models::InstanceLoadReq) -> Fallible<Instance> {
     let inst = match inst.data {
         models::InstanceType::TS(settings) => {
-            create_ts_instance(base, settings, inst.id, inst.volume)?
+            create_ts_instance(base, settings, inst.id, inst.volume, inst.auth_token)?
         }
     };
 
@@ -239,6 +239,7 @@ fn create_ts_instance(
     data: TSSettings,
     id: ID,
     volume: f64,
+    auth_token: String,
 ) -> Fallible<Instance> {
     let player = Player::new(base.player_send.clone(), id.clone(), volume)?;
     let sink = NullSink::new(
@@ -255,6 +256,7 @@ fn create_ts_instance(
             &SETTINGS.main.api_internal_bind_port,
             &SETTINGS.main.api_jsonrpc_ip,
             &SETTINGS.main.api_jsonrpc_port,
+            &auth_token,
         )?,
         sink,
         mute_sink: base.default_sink.clone(),
