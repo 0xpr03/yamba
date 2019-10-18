@@ -6,4 +6,7 @@ class User < ApplicationRecord
          :lockable, :timeoutable, :trackable,
          # Settings
          timeout_in: 2.hours
+
+  validates :name, presence: true
+  validates :source, presence: true
 end
