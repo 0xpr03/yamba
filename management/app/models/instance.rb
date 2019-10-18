@@ -3,11 +3,11 @@ class Instance < ApplicationRecord
 
   validates :host, presence: true
   validates :name, presence: true
-  after_create :start_instance
-  after_update :update_instance
-  after_destroy :stop_instance
+  after_create :daemon_start
+  after_update :daemon_update
+  after_destroy :daemon_stop
 
-  def start_instance
+  def daemon_start
     HTTP.headers(:content_type => "application/json")
              .post("http://172.18.0.3:1338/instance/start", :json => {
                  :id => self.id,
@@ -18,12 +18,12 @@ class Instance < ApplicationRecord
              })
   end
 
-  def update_instance
-    stop_instance
-    start_instance
+  def daemon_update
+    daemon_stop
+    daemon_start
   end
 
-  def stop_instance
+  def daemon_stop
     HTTP.headers(:content_type => "application/json")
         .post("http://172.18.0.3:1338/instance/stop", :json => {
             :id => self.id
