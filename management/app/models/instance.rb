@@ -14,7 +14,7 @@ class Instance < ApplicationRecord
                  :data => {
                      :TS => self
                  },
-                 :auth_token => SecureRandom.uuid,
+                 :auth_token => self.api_token,
                  :volume => 0.05
              })
   end
