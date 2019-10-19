@@ -70,7 +70,6 @@ pub struct ConfigMain {
     pub api_callback_ip: String,
     pub cache_lifetime_secs: u64,
     pub api_callback_secret: String,
-    pub api_secret: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
