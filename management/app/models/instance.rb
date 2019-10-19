@@ -9,11 +9,12 @@ class Instance < ApplicationRecord
 
   def daemon_start
     HTTP.headers(:content_type => "application/json")
-             .post("http://172.18.0.3:1338/instance/start", :json => {
+             .post("http://172.18.0.2:1338/instance/start", :json => {
                  :id => self.id,
                  :data => {
                      :TS => self
                  },
+                 :auth_token => SecureRandom.uuid,
                  :volume => 0.05
              })
   end
@@ -25,7 +26,7 @@ class Instance < ApplicationRecord
 
   def daemon_stop
     HTTP.headers(:content_type => "application/json")
-        .post("http://172.18.0.3:1338/instance/stop", :json => {
+        .post("http://172.18.0.2:1338/instance/stop", :json => {
             :id => self.id
         })
   end

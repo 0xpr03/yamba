@@ -66,7 +66,7 @@ class SongsController < ApplicationController
 
   def resolve
     HTTP.headers(:content_type => "application/json")
-        .get("http://172.18.0.3:1338/resolve/url", :params => {
+        .get("http://172.18.0.2:1338/resolve/url", :params => {
             :instance => 1,
             :url => params[:source],
             :limit => 1
