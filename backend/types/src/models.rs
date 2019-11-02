@@ -24,14 +24,10 @@
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "track")]
-use crate::track::{GetId, Track};
+use crate::track::Track;
 
 pub use crate::ErrorCodes;
 pub use crate::{Volume, ID};
-
-/// Song identifier, char(32)
-/// Effectively u128, but not supported by json
-pub type SongID = String;
 
 /// Playlist identifier, char(32)
 /// Effectively u128, but not supported by json
@@ -100,7 +96,6 @@ pub struct InstanceStartedReq {
 /// Minimal song representation as required for playback
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Song {
-    pub id: SongID,
     pub name: String,
     /// URL (not youtube-dl Format URL)
     pub source: String,
@@ -243,7 +238,6 @@ pub struct InstanceOverview {
 impl From<Track> for Song {
     fn from(mut track: Track) -> Self {
         Song {
-            id: track.get_id(),
             artist: track.take_artist(),
             length: track.duration_as_u32(),
             name: track.title,

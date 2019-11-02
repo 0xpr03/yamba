@@ -193,15 +193,6 @@ impl Track {
     }
 }
 
-impl GetId for Track {
-    fn get_id(&self) -> String {
-        let mut hasher = MetroHash128::default();
-        self.hash(&mut hasher);
-        let (h1, h2) = hasher.finish128();
-        format!("{:x}{:x}", h1, h2)
-    }
-}
-
 impl Format {
     pub fn has_audio(&self) -> bool {
         match self.acodec {

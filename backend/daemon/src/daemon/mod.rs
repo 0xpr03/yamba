@@ -43,7 +43,7 @@ use crate::ts::TSInstance;
 use crate::ytdl::YtDL;
 use crate::ytdl_worker;
 use crate::SETTINGS;
-use yamba_types::models::{self, SongID, TSSettings};
+use yamba_types::models::{self, TSSettings};
 
 /// Daemon init & startup of all servers
 
@@ -133,7 +133,7 @@ pub fn start_runtime() -> Fallible<()> {
 
         let mut rt = Runtime::new().map_err(|e| DaemonErr::RuntimeCreationError(e))?;
 
-        let cache = Cache::<SongID, String>::new(&mut rt);
+        let cache = Cache::<String, String>::new(&mut rt);
 
         let controller = ytdl_worker::crate_ytdl_scheduler(
             &mut rt,

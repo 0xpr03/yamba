@@ -40,7 +40,7 @@ use crate::ts::TSInstance;
 use crate::ytdl::YtDL;
 use crate::ytdl_worker::{Controller, Request, YTSender};
 use crate::SETTINGS;
-use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, Song, SongID, TimeStarted};
+use yamba_types::models::{callback::*, CacheSong, InstanceStartedReq, Song, TimeStarted};
 use yamba_types::track::TrackResponse;
 
 /// module containing a single instance
@@ -69,7 +69,7 @@ pub trait InstanceDataProvider {
 
 pub type ID = i32;
 /// Cache for resolved media URIs
-pub type SongCache = Cache<SongID, CacheSong>;
+pub type SongCache = Cache<String, CacheSong>;
 #[allow(non_camel_case_types)]
 type CURRENT_SONG = Arc<RwLock<Option<CurrentSong>>>;
 
@@ -178,15 +178,14 @@ impl Instance {
                 }
                 self.increate_error_retries();
                 let source = v.source.clone();
-                let songid = v.id.clone();
-                self.cache.delete(&songid);
+                self.cache.delete(&source);
                 let instances = self.instances.clone();
                 let cache = self.cache.clone();
                 let id = self.id.clone();
                 let ytdl = self.ytdl.clone();
                 thread::spawn(move || {
                     if let Err(e) =
-                        Instance::play_track_inner(instances, cache, id, ytdl, source, songid, true)
+                        Instance::play_track_inner(instances, cache, id, ytdl, source, true)
                     {
                         warn!("Error while retrying track! {}", e);
                     }
@@ -327,16 +326,13 @@ impl Instance {
         let mut c_song_w = self.current_song.write().expect("Can't lock current song!");
 
         let source = song.source.clone();
-        let songid = song.id.clone();
         *c_song_w = Some(song);
         let instances = self.instances.clone();
         let cache = self.cache.clone();
         let id = self.id.clone();
         let ytdl = self.ytdl.clone();
         thread::spawn(move || {
-            if let Err(e) =
-                Instance::play_track_inner(instances, cache, id, ytdl, source, songid, false)
-            {
+            if let Err(e) = Instance::play_track_inner(instances, cache, id, ytdl, source, false) {
                 warn!("Error while resolving next track! {}", e);
             }
         });
@@ -371,13 +367,12 @@ impl Instance {
         id: ID,
         ytdl: Arc<YtDL>,
         source: String,
-        song_id: SongID,
         retry: bool,
     ) -> Fallible<()> {
-        let audio_url: String = if let Some(v) = cache.get(&song_id) {
+        let audio_url: String = if let Some(v) = cache.get(&source) {
             v
         } else {
-            debug!("No cache entry for {}", song_id);
+            debug!("No cache entry for {}", source);
             let track = ytdl.get_url_info(source.as_str(), 1)?;
             let track = match track {
                 TrackResponse::Track(t) => t,
@@ -388,7 +383,7 @@ impl Instance {
                 Some(v) => v.url.clone(),
                 None => return Err(InstanceErr::NoAudioTrack(source).into()),
             };
-            cache.upsert(song_id, url_temp.clone());
+            cache.upsert(source, url_temp.clone());
             url_temp
         };
 

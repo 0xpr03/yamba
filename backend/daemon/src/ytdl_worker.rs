@@ -378,7 +378,7 @@ fn scheduler_retrieve(cache: SongCache, ytdl: &YtDL, req: &Request) -> ReqSongs 
                         };
 
                         let song: Song = t.into();
-                        cache.upsert(song.id.clone(), min_song);
+                        cache.upsert(song.source.clone(), min_song);
                         Some(song)
                     })
                     .collect(),
@@ -399,7 +399,7 @@ fn scheduler_retrieve(cache: SongCache, ytdl: &YtDL, req: &Request) -> ReqSongs 
             };
 
             let song: Song = track.into();
-            cache.upsert(song.id.clone(), min_song);
+            cache.upsert(song.source.clone(), min_song);
 
             Ok(ResolveType::Song(song))
         }
