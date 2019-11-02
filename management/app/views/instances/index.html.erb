@@ -12,6 +12,7 @@
       <th>Name</th>
       <th>Password</th>
       <th>Autostart</th>
+      <th>Running</th>
       <th colspan="3"></th>
     </tr>
   </thead>
@@ -26,6 +27,7 @@
         <td><%= instance.name %></td>
         <td><%= instance.password %></td>
         <td><%= instance.autostart %></td>
+        <td><%= instance.running %></td>
         <td><%= link_to 'Show', instance %></td>
         <td><%= link_to 'Edit', edit_instance_path(instance) %></td>
         <td><%= link_to 'Destroy', instance, method: :delete, data: { confirm: 'Are you sure?' } %></td>
