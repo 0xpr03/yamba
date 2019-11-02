@@ -16,12 +16,12 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//! VoIP plugin RPC structures  
+//! VoIP plugin RPC structures
 //! Param stands for parameter, meaning calls from voip -> management
 
 pub use crate::ErrorCodes;
 pub use crate::{Volume, ID};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// HTTP Error code for missing permission of invoking user
 pub const PERMISSION_ERROR_CODE: i64 = 403;
@@ -29,18 +29,18 @@ pub const PERMISSION_ERROR_CODE: i64 = 403;
 /// Default parameters provided
 #[derive(Debug, Serialize)]
 pub struct DefaultRequest<'a> {
-	/// Instance ID
-	pub id: ID,
-	/// Login Token (if any)
-	pub token: &'a Option<String>,
+    /// Instance ID
+    pub id: ID,
+    /// Login Token (if any)
+    pub token: &'a Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct ParamRequest<'a, T: Serialize> {
-	/// Instance ID
-	pub id: ID,
-	/// Login Token (if any)
-	pub token: &'a Option<String>,
-	/// Parameter
-	pub data: T,
+    /// Instance ID
+    pub id: ID,
+    /// Login Token (if any)
+    pub token: &'a Option<String>,
+    /// Parameter
+    pub data: T,
 }

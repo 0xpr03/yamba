@@ -18,7 +18,7 @@
 
 //! Yamba-Daemon API types & structures.
 //!
-//! All of the types here are written from the daemons pov.  
+//! All of the types here are written from the daemons pov.
 //! For ResolveRequest this means client -> daemon request (incoming for daemon)
 
 use serde::{Deserialize, Serialize};

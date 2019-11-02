@@ -21,7 +21,7 @@
 //! Defined here to allow direct conversion with public representation and further leverage the complexity in daemon
 
 use metrohash::MetroHash128;
-use serde::{Deserialize};
+use serde::Deserialize;
 
 use core::hash::{Hash, Hasher};
 
@@ -35,7 +35,7 @@ pub trait GetId {
 #[serde(untagged)]
 pub enum TrackResponse {
     TrackList(TrackList),
-    Track(Track)
+    Track(Track),
 }
 
 /// Internal representation of a "playlist" of tracks
@@ -130,7 +130,7 @@ impl Track {
     }
 
     /// Returns best audio format
-    pub fn best_audio_format(&self,min_audio_bitrate: i64 ) -> Option<&Format> {
+    pub fn best_audio_format(&self, min_audio_bitrate: i64) -> Option<&Format> {
         let track_audio = self.best_audio_only_format();
         let track_mixed = self.best_mixed_audio_format();
 
@@ -139,9 +139,7 @@ impl Track {
                 let abr_audio = audio_track
                     .abr
                     .expect("No audio bitrate in audio-only track!");
-                if abr_audio >= mixed_track.abr.unwrap()
-                    || abr_audio >= min_audio_bitrate
-                {
+                if abr_audio >= mixed_track.abr.unwrap() || abr_audio >= min_audio_bitrate {
                     return Some(audio_track);
                 } else {
                     return Some(mixed_track);
