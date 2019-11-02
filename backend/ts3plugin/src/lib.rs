@@ -14,25 +14,28 @@
  *  You should have received a copy of the GNU General Public License
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
-use serde::Serialize;
+
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate failure_derive;
+
+mod actions;
+mod internal;
+
+use actions::*;
+use internal::*;
 
 use failure::Fallible;
 use regex::*;
 use reqwest::{header, Client, ClientBuilder};
 use ts3plugin::TsApi;
 use ts3plugin::*;
-use yamba_types::client::*;
 use yamba_types::client_internal::*;
 
 use std::collections::HashMap;
 use std::env;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::process;
-use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::thread;
@@ -69,7 +72,7 @@ lazy_static! {
     static ref R_VOL_LOCK: Regex = Regex::new(r"^(l(o?ck)?( )?v(ol(ume)?)?)$").unwrap();
     static ref R_VOL_UNLOCK: Regex = Regex::new(r"^(un?l(o?ck)?( )?v(ol(ume)?)?)$").unwrap();
     static ref R_VOL_SET: Regex = Regex::new(r"^(v(ol(ume)?)? (\d*))$").unwrap();
-    static ref R_LOGIN: Regex = Regex::new(r"login (a-zA-Z0-9)+").unwrap();
+    static ref R_LOGIN: Regex = Regex::new(r"login ([a-zA-Z0-9]+)").unwrap();
     static ref R_VOL_GET: Regex = Regex::new(r"^v(ol(ume)?)?$").unwrap();
     static ref R_TRACK_GET: Regex = Regex::new(r"^playing$").unwrap();
     static ref R_TRACK_NEXT: Regex = Regex::new(r"^((n(e?xt)?)|(>>))$").unwrap();
@@ -86,7 +89,6 @@ lazy_static! {
     static ref R_PLAYLIST_UNLOCK: Regex = Regex::new(r"^un?l(o?ck)?( )?p((laylist)|(lst))$").unwrap();
     static ref R_ENQUEUE: Regex = Regex::new(r"^q(ueue)? ([^ ]+)$").unwrap();
     static ref R_PLAYLIST_LOAD: Regex = Regex::new(r"^pl(oa)?d (.+)$").unwrap();
-    static ref R_HALT: Regex = Regex::new(r"^halt$").unwrap();
 }
 
 #[derive(Debug)]
@@ -332,7 +334,8 @@ impl Plugin for MyTsPlugin {
                     message = msg;
                 }
 
-                let token = self.tokens.get(invoker.get_uid()).map(|t| t.clone());
+                let invoker_id = invoker.get_uid();
+                let token = self.tokens.get(invoker_id).map(|t| t.clone());
 
                 api.log_or_print(
                     format!("\"{}\" from \"{}\"", message, invoker_name),
@@ -370,14 +373,18 @@ fn handle_message(
 ) -> Fallible<()> {
     if R_IGNORE.is_match(&message) {
         // IGNORED MESSAGES
+    } else if let Some(cpt) = R_LOGIN.captures(&message) {
+
     } else if R_HELP.is_match(&message) {
         let _ = connection.send_message(HELP);
     } else if R_TRACK_NEXT.is_match(&message) {
         handle_action("next", &token, client)?;
     } else if let Some(cpt) = R_VOL_SET.captures(&message) {
-        handle_action_cap::<usize>(cpt, 4, "next", &token, client, connection, api)?;
+        handle_action_cap::<usize>(cpt, 4, "volume_set", &token, client, connection, api)?;
     } else if let Some(cpt) = R_ENQUEUE.captures(&message) {
         handle_action_cap::<String>(cpt, 2, "enqueue", &token, client, connection, api)?;
+    } else if R_TRACK_GET.is_match(&message) {
+
     } else {
         if match target {
             MessageReceiver::Connection(_) => true,
@@ -388,110 +395,6 @@ fn handle_message(
         }
     }
     Ok(())
-}
-
-/// Handle command with value
-fn handle_action_cap<T: Serialize + FromStr + Sized>(
-    cpt: Captures,
-    cpt_pos: usize,
-    action: &'static str,
-    token: &Option<String>,
-    client: &Client,
-    connection: &Connection,
-    api: &TsApi,
-) -> Fallible<()>
-where
-    T::Err: ::std::fmt::Debug,
-    // https://github.com/rust-lang/rust/issues/52662 can't enforce FromStr<Err: Debug>
-{
-    let data = match cpt[cpt_pos].parse::<T>() {
-        Ok(v) => v,
-        Err(e) => {
-            send_msg(connection, "Invalid value provided! Try !help", api);
-            api.log_or_print(
-                format!("Can't parse input: {:?}", e),
-                PLUGIN_NAME_I,
-                LogLevel::Warning,
-            );
-            return Ok(());
-        }
-    };
-    send_action(
-        client,
-        &ParamRequest {
-            id: ID.expect("No ID!"),
-            token,
-            data,
-        },
-        action,
-    )?;
-    Ok(())
-}
-
-/// Handle command without vlaue
-fn handle_action(action: &'static str, token: &Option<String>, client: &Client) -> Fallible<()> {
-    send_action(
-        client,
-        &DefaultRequest {
-            id: ID.expect("No ID!"),
-            token,
-        },
-        action,
-    )?;
-    Ok(())
-}
-
-/// Send command action
-fn send_action<T: Serialize + ?Sized>(
-    client: &Client,
-    data: &T,
-    action: &'static str,
-) -> Fallible<()> {
-    match client
-        .post(&format!("http://{}/{}", *ADDRESS, action))
-        .json(data)
-        .send()
-    {
-        Err(e) => Err(APIErr::RequestError(e).into()),
-        Ok(v) => {
-            if v.status() == reqwest::StatusCode::ACCEPTED {
-                Ok(())
-            } else {
-                Err(APIErr::NoSuccess(format!("Heartbeat failed: {}", v.status())).into())
-            }
-        }
-    }
-}
-
-/// Handle connection establish to ts server
-fn connected(id: i32, api: &TsApi, client: &Client) -> Fallible<()> {
-    let host_internal = format!("http://{}/internal/started", *CALLBACK_INTERNAL);
-    api.log_or_print(
-        format!("Internal RPC Host: {}", host_internal),
-        PLUGIN_NAME_I,
-        LogLevel::Debug,
-    );
-    match client
-        .post(&host_internal)
-        .json(&Connected {
-            id,
-            pid: process::id(),
-        })
-        .send()
-    {
-        Ok(v) => {
-            if v.status() == reqwest::StatusCode::ACCEPTED {
-                Ok(())
-            } else {
-                Err(APIErr::NoSuccess(format!(
-                    "No success during connect-callback: {}",
-                    v.status()
-                ))
-                .into())
-            }
-        }
-        Err(e) => Err(APIErr::RequestError(e).into()),
-    }
 }
 
 /// Helper, send message to connections and log errors
@@ -505,23 +408,6 @@ fn send_msg(conn: &Connection, msg: &str, api: &TsApi) {
     }
 }
 
-/// run heartbeat command
-fn heartbeat(id: i32, client: &Client) -> Fallible<()> {
-    match client
-        .post(&format!("http://{}/internal/heartbeat", *CALLBACK_INTERNAL))
-        .json(&Heartbeat { id })
-        .send()
-    {
-        Err(e) => Err(APIErr::RequestError(e).into()),
-        Ok(v) => {
-            if v.status() == reqwest::StatusCode::ACCEPTED {
-                Ok(())
-            } else {
-                Err(APIErr::NoSuccess(format!("Heartbeat failed: {}", v.status())).into())
-            }
-        }
-    }
-}
 
 create_plugin!(PLUGIN_NAME_I,env!("CARGO_PKG_VERSION"),env!("CARGO_PKG_AUTHORS"),"yamba ts3 controller",
 ConfigureOffer::No, true,MyTsPlugin);
