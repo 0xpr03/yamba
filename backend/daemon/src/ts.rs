@@ -15,7 +15,7 @@
  *  along with yamba.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use failure::Fallible;
+use failure::{Fallible, ResultExt};
 use serde_urlencoded;
 
 use std::env;
@@ -175,12 +175,12 @@ impl TSInstance {
             let mut child = cmd.spawn().map_err(|e| TSInstanceErr::SpawnError(e))?;
             thread::sleep(Duration::from_millis(5000));
             TSInstance::kill_by_ppid(&child.id())?;
-            child.kill()?; // evaluate
+            child.kill().context("Can't kill ts client")?; // evaluate
             TSInstance::wait_for_child_timeout(1000, &mut child)?;
             if !path_config.exists() {
                 warn!("Unable to create configuration, no db existing!");
                 return Err(TSInstanceErr::ConfigCreationError(
-                    "No settings db, creation failed!".into(),
+                    "No ts settings db, creation failed!".into(),
                 )
                 .into());
             }
@@ -306,7 +306,8 @@ impl TSInstance {
             Ok(_) => (),
         }
 
-        TSInstance::wait_for_child_timeout(5000, &mut self.process)?;
+        TSInstance::wait_for_child_timeout(5000, &mut self.process)
+            .context("Error waiting for child timeout")?;
         Ok(())
     }
 
