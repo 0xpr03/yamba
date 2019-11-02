@@ -6,7 +6,7 @@ edition = '2018'
 
 [lib]
 name = "yamba_plugin"
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
 [features]
 
@@ -21,10 +21,11 @@ lazy_static = "1"
 regex = "1"
 serde = {features = ["derive"],version = "1"}
 reqwest = {default-features = false, version = "0.9" }
+ts3plugin = "0.2"
 
-[dependencies.ts3plugin]
-git = "https://github.com/0xpr03/rust-ts3plugin"
-branch = "yamba_production"
+# [dependencies.ts3plugin]
+# git = "https://github.com/0xpr03/rust-ts3plugin"
+# branch = "yamba_production"
 
 [dependencies.yamba_types]
 path = "../types"

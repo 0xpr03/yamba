@@ -159,25 +159,6 @@ pub fn print_tracks(connection: &ts3plugin::Connection, tracks: Vec<String>) {
 }
 
 impl Plugin for MyTsPlugin {
-    fn name() -> String {
-        PLUGIN_NAME_I.into()
-    }
-    fn version() -> String {
-        env!("CARGO_PKG_VERSION").into()
-    }
-    fn author() -> String {
-        env!("CARGO_PKG_AUTHORS").into()
-    }
-    fn description() -> String {
-        "yamba ts3 controller".into()
-    }
-    fn autoload() -> bool {
-        true
-    }
-    fn configurable() -> ConfigureOffer {
-        ConfigureOffer::No
-    }
-
     fn connect_status_change(
         &mut self,
         api: &mut TsApi,
@@ -329,10 +310,14 @@ impl Plugin for MyTsPlugin {
     ) -> bool {
         let invoker_name: String = invoker.get_name().to_string();
 
-        if target == MessageReceiver::Channel {
-            if !message.starts_with("!") {
-                return false;
-            }
+        // if target == MessageReceiver::Channel {
+        //     if !message.starts_with("!") {
+        //         return false;
+        //     }
+        // }
+        match target {
+            MessageReceiver::Channel => if !message.starts_with("!") {return false },
+            _ => (),
         }
 
         if let Some(server) = api.get_server(server_id) {
@@ -538,4 +523,5 @@ fn heartbeat(id: i32, client: &Client) -> Fallible<()> {
     }
 }
 
-create_plugin!(MyTsPlugin);
+create_plugin!(PLUGIN_NAME_I,env!("CARGO_PKG_VERSION"),env!("CARGO_PKG_AUTHORS"),"yamba ts3 controller",
+ConfigureOffer::No, true,MyTsPlugin);
