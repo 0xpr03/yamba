@@ -2,10 +2,10 @@ use super::*;
 use failure::Fallible;
 use regex::*;
 use reqwest::Client;
+use serde::Serialize;
 use ts3plugin::TsApi;
 use ts3plugin::*;
 use yamba_types::client::*;
-use serde::Serialize;
 
 use std::str::FromStr;
 
@@ -48,7 +48,11 @@ where
 }
 
 /// Handle command without vlaue
-pub fn handle_action(action: &'static str, token: &Option<String>, client: &Client) -> Fallible<()> {
+pub fn handle_action(
+    action: &'static str,
+    token: &Option<String>,
+    client: &Client,
+) -> Fallible<()> {
     send_action(
         client,
         &DefaultRequest {

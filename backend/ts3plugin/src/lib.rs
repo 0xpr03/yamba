@@ -318,7 +318,11 @@ impl Plugin for MyTsPlugin {
         //     }
         // }
         match target {
-            MessageReceiver::Channel => if !message.starts_with("!") {return false },
+            MessageReceiver::Channel => {
+                if !message.starts_with("!") {
+                    return false;
+                }
+            }
             _ => (),
         }
 
@@ -373,8 +377,6 @@ fn handle_message(
 ) -> Fallible<()> {
     if R_IGNORE.is_match(&message) {
         // IGNORED MESSAGES
-    } else if let Some(cpt) = R_LOGIN.captures(&message) {
-
     } else if R_HELP.is_match(&message) {
         let _ = connection.send_message(HELP);
     } else if R_TRACK_NEXT.is_match(&message) {
@@ -384,7 +386,6 @@ fn handle_message(
     } else if let Some(cpt) = R_ENQUEUE.captures(&message) {
         handle_action_cap::<String>(cpt, 2, "enqueue", &token, client, connection, api)?;
     } else if R_TRACK_GET.is_match(&message) {
-
     } else {
         if match target {
             MessageReceiver::Connection(_) => true,
@@ -408,6 +409,12 @@ fn send_msg(conn: &Connection, msg: &str, api: &TsApi) {
     }
 }
 
-
-create_plugin!(PLUGIN_NAME_I,env!("CARGO_PKG_VERSION"),env!("CARGO_PKG_AUTHORS"),"yamba ts3 controller",
-ConfigureOffer::No, true,MyTsPlugin);
+create_plugin!(
+    PLUGIN_NAME_I,
+    env!("CARGO_PKG_VERSION"),
+    env!("CARGO_PKG_AUTHORS"),
+    "yamba ts3 controller",
+    ConfigureOffer::No,
+    true,
+    MyTsPlugin
+);

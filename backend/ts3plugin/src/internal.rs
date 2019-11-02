@@ -31,7 +31,6 @@ pub fn heartbeat(id: i32, client: &Client) -> Fallible<()> {
     }
 }
 
-
 /// Handle connection establish to ts server
 pub fn connected(id: i32, api: &TsApi, client: &Client) -> Fallible<()> {
     let host_internal = format!("http://{}/internal/started", *CALLBACK_INTERNAL);
