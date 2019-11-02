@@ -42,6 +42,7 @@ class InstancesController < ApplicationController
   def update
     respond_to do |format|
       if @instance.update(instance_params)
+        @instance.daemon_update
         format.html { redirect_to @instance, notice: 'Instance was successfully updated.' }
         format.json { render :show, status: :ok, location: @instance }
       else

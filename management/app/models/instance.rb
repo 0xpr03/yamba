@@ -4,7 +4,6 @@ class Instance < ApplicationRecord
   validates :host, presence: true
   validates :name, presence: true
   after_create :daemon_start
-  after_update :daemon_update
   after_destroy :daemon_stop
 
   def daemon_start
